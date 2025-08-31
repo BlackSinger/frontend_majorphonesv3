@@ -8,7 +8,7 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath }) => {
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen" style={{backgroundColor: '#1e293b'}}>
       {/* Sidebar */}
       <Sidebar currentPath={currentPath} />
       
@@ -18,16 +18,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
         <div className="lg:hidden h-16"></div>
         
         {/* Navbar */}
-        <nav className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-900 border-b border-slate-600/50 px-4 lg:px-8 py-4 relative overflow-hidden">
-          {/* Background decoration */}
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 via-purple-600/5 to-cyan-600/5"></div>
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-400/10 to-purple-500/10 rounded-full blur-3xl"></div>
+        <nav className="border-b border-slate-600/50 px-4 lg:px-10 py-2 relative" style={{backgroundColor: '#1e293b'}}>
           
           <div className="flex items-center justify-end relative z-10">
             {/* Right side - Combined User Actions */}
             <div className="flex items-center">
               {/* Combined Profile, Balance & Add Funds Button */}
-              <a href="/profile" className="group bg-slate-700/50 hover:bg-slate-600/50 rounded-2xl p-4 border border-slate-600/50 hover:border-blue-500/50 backdrop-blur-sm transition-all duration-300 hover:scale-105">
+              <a href="/profile" className="group bg-slate-700/50 hover:bg-slate-600/50 rounded-2xl p-2 border border-slate-600/50 hover:border-blue-500/50 backdrop-blur-sm transition-all duration-300 hover:scale-104">
                 <div className="flex items-center space-x-4">
                   {/* Profile Section */}
                   <div className="flex items-center space-x-3">
@@ -38,7 +35,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
                     </div>
                     <div>
                       <p className="text-white font-semibold text-sm group-hover:text-cyan-200 transition-colors duration-300">Profile</p>
-                      <p className="text-slate-400 text-xs group-hover:text-slate-300 transition-colors duration-300">Account Settings</p>
                     </div>
                   </div>
 
@@ -53,7 +49,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
                       </svg>
                     </div>
                     <div>
-                      <p className="text-slate-400 text-xs font-medium group-hover:text-slate-300 transition-colors duration-300">Available Balance</p>
+                      <p className="text-slate-400 text-xs font-medium group-hover:text-slate-300 transition-colors duration-300">Balance</p>
                       <p className="text-white font-bold text-sm group-hover:text-emerald-200 transition-colors duration-300">$2,847.50</p>
                     </div>
                   </div>
@@ -70,7 +66,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
                     </div>
                     <div>
                       <p className="text-sm font-semibold">Add Funds</p>
-                      <p className="text-xs opacity-75 group-hover:opacity-100 transition-opacity duration-300">Top up balance</p>
                     </div>
                   </a>
                 </div>
@@ -80,7 +75,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
         </nav>
         
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-4 lg:p-8">
+        <main 
+          className="flex-1 overflow-y-auto p-4 lg:p-8 dashboard-scrollbar" 
+          style={{
+            backgroundColor: '#1e293b',
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(71, 85, 105, 0.6) rgba(30, 41, 59, 0.3)'
+          }}
+        >
           <div className="max-w-7xl mx-auto">
             {children}
           </div>

@@ -1,17 +1,37 @@
 import React, { useState } from 'react';
+import LogoMajor from '../LogoMajor.png';
+import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Custom validation
+    if (!email.trim()) {
+      setModalMessage('Please enter your email address.');
+      setShowModal(true);
+      return;
+    }
+    
+    if (!validateEmail(email)) {
+      setModalMessage('Please enter a valid email address.');
+      setShowModal(true);
+      return;
+    }
+    
     setIsLoading(true);
-    
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
     setIsLoading(false);
     setIsSuccess(true);
   };
@@ -25,65 +45,40 @@ const ForgotPassword: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           {/* Success Card */}
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-8 relative overflow-hidden">
-            {/* Animated Background Elements */}
-            <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
-              <div className="absolute top-4 right-4 w-16 h-16 bg-gradient-to-r from-green-400 to-blue-500 rounded-full animate-pulse"></div>
-              <div className="absolute bottom-6 left-6 w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-bounce delay-300"></div>
-              <div className="absolute top-1/2 left-2 w-4 h-4 bg-green-400 rounded-full animate-ping delay-700"></div>
-            </div>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden">
 
             {/* Success Content */}
-            <div className="text-center relative z-10">
+            <div className="text-center mb-6 relative z-10">
               {/* Success Icon */}
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-green-400 to-green-500 rounded-full mb-6 shadow-lg animate-pulse">
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                </svg>
+              <div className="inline-flex items-center justify-center">
+                <img src={LogoMajor} alt="Major Phones Logo" className="w-30 h-20" />
               </div>
+              <h1 className="text-3xl font-bold text-white">Email Sent</h1>
+              <p className="text-blue-200">
+                Check the mail inbox of
+              </p>
+            </div>
 
-              <h1 className="text-3xl font-bold text-white mb-4">Email Sent!</h1>
-              
-              <div className="space-y-4 mb-8">
-                <p className="text-blue-200 text-lg">
-                  We've sent password recovery instructions to:
-                </p>
-                <div className="bg-white/5 border border-white/20 rounded-xl p-4">
-                  <p className="text-green-400 font-medium text-lg break-all">
-                    {email}
-                  </p>
-                </div>
-                <p className="text-blue-300 text-sm">
-                  Please check your inbox and follow the instructions to reset your password.
-                  If you don't see the email, check your spam folder.
+            <div className="space-y-4 relative z-10">
+              <div className="bg-white/5 border border-white/20 rounded-xl p-3">
+                <p className="text-green-400 font-medium text-lg break-all">
+                  {email}
                 </p>
               </div>
+              <p className="text-blue-300 text-sm">
+                If you don't see the email, check your spam folder or
+              </p>
 
-              {/* Action Buttons */}
-              <div className="space-y-4">
-                <button
-                  onClick={handleBackToSignIn}
-                  className="w-full bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 focus:ring-offset-transparent shadow-lg"
-                >
-                  Back to Sign In
-                </button>
-                
-                <button
-                  onClick={() => setIsSuccess(false)}
-                  className="w-full bg-white/10 hover:bg-white/20 text-blue-200 hover:text-white font-medium py-3 px-4 rounded-xl transition-all duration-300 border border-white/20"
-                >
-                  Send Another Email
-                </button>
-              </div>
+              {/* Action Button */}
+              <button
+                onClick={() => setIsSuccess(false)}
+                className="w-full bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
+              >
+                Change the Email
+              </button>
             </div>
           </div>
 
-          {/* Bottom Text */}
-          <div className="text-center mt-6">
-            <p className="text-blue-300 text-sm">
-              Didn't receive the email? Check your spam folder or try again.
-            </p>
-          </div>
         </div>
       </div>
     );
@@ -93,32 +88,24 @@ const ForgotPassword: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Main Card */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-8 relative overflow-hidden">
-          {/* Animated Background Elements */}
-          <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
-            <div className="absolute top-4 right-4 w-16 h-16 bg-gradient-to-r from-green-400 to-blue-500 rounded-full animate-pulse"></div>
-            <div className="absolute bottom-6 left-6 w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-bounce delay-300"></div>
-            <div className="absolute top-1/2 left-2 w-4 h-4 bg-green-400 rounded-full animate-ping delay-700"></div>
-          </div>
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden">
 
           {/* Header */}
-          <div className="text-center mb-8 relative z-10">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-orange-400 to-red-500 rounded-xl mb-4 shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 12H9v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-6.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-              </svg>
+          <div className="text-center mb-6 relative z-10">
+            <div className="inline-flex items-center justify-center">
+              <img src={LogoMajor} alt="Major Phones Logo" className="w-30 h-20" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Forgot Password?</h1>
+            <h1 className="text-3xl font-bold text-white">Forgot Password</h1>
             <p className="text-blue-200">
-              No worries! Enter your email and we'll send you reset instructions.
+            Enter your email to recover your account
             </p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+          <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
             {/* Email Input */}
             <div className="space-y-2">
-              <label htmlFor="email" className="block text-sm font-medium text-blue-100">
+              <label htmlFor="email" className="block text-sm font-medium text-blue-100 text-left">
                 Email Address
               </label>
               <div className="relative">
@@ -129,85 +116,91 @@ const ForgotPassword: React.FC = () => {
                 </div>
                 <input
                   id="email"
-                  name="email"
-                  type="email"
+                  name="randomfield"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
                   placeholder="Enter your email address"
-                  required
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
                 />
               </div>
-              <p className="text-blue-300 text-xs">
-                We'll send recovery instructions to this email address.
-              </p>
             </div>
 
             {/* Send Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-orange-400 to-red-500 hover:from-orange-500 hover:to-red-600 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-transparent disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
+              className="w-full bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Sending Instructions...
                 </div>
               ) : (
                 <>
-                  <svg className="inline w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                  Send Reset Instructions
+                  Send Reset Email
                 </>
               )}
             </button>
 
             {/* Divider */}
             <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/20"></div>
-              </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-transparent text-blue-200">or</span>
               </div>
             </div>
 
             {/* Alternative Actions */}
-            <div className="space-y-3">
+            <div className="flex flex-col space-y-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
               <a
                 href="/signin"
-                className="w-full flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 text-blue-200 hover:text-white transition-all duration-300 group"
+                className="flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 text-blue-200 hover:text-white transition-all duration-300 group"
               >
-                <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
                 Back to Sign In
               </a>
               
               <a
                 href="/signup"
-                className="w-full flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 text-blue-200 hover:text-white transition-all duration-300 group"
+                className="flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 text-blue-200 hover:text-white transition-all duration-300 group"
               >
-                <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
                 Create New Account
               </a>
             </div>
           </form>
         </div>
 
-        {/* Bottom Text */}
-        <div className="text-center mt-6">
-          <p className="text-blue-300 text-sm">
-            Secure password recovery powered by Major Phones
-          </p>
-        </div>
+        {/* Custom Validation Modal */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-70 h-58">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+                <p className="text-blue-200 mb-4">{modalMessage}</p>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

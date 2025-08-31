@@ -1,15 +1,43 @@
 import React, { useState } from 'react';
+import LogoMajor from '../LogoMajor.png';
+import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 
 const SignIn: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Custom validation
+    if (!email.trim()) {
+      setModalMessage('Please enter your email address.');
+      setShowModal(true);
+      return;
+    }
+    
+    if (!password.trim()) {
+      setModalMessage('Please enter your password.');
+      setShowModal(true);
+      return;
+    }
+    
+    if (!validateEmail(email)) {
+      setModalMessage('Please enter a valid email address.');
+      setShowModal(true);
+      return;
+    }
+    
     setIsLoading(true);
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     setIsLoading(false);
   };
@@ -18,30 +46,22 @@ const SignIn: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Main Card */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-8 relative overflow-hidden">
-          {/* Animated Background Elements */}
-          <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
-            <div className="absolute top-4 right-4 w-16 h-16 bg-gradient-to-r from-green-400 to-blue-500 rounded-full animate-pulse"></div>
-            <div className="absolute bottom-6 left-6 w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-bounce delay-300"></div>
-            <div className="absolute top-1/2 left-2 w-4 h-4 bg-green-400 rounded-full animate-ping delay-700"></div>
-          </div>
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 relative overflow-hidden">
 
           {/* Header */}
-          <div className="text-center mb-8 relative z-10">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-400 to-blue-500 rounded-xl mb-4 shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+          <div className="text-center mb-6 relative z-10">
+            <div className="inline-flex items-center justify-center">
+              <img src={LogoMajor} alt="Major Phones Logo" className="w-30 h-20" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
+            <h1 className="text-3xl font-bold text-white">Welcome Back</h1>
             <p className="text-blue-200">Sign in to your Major Phones account</p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+          <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
             {/* Email Input */}
             <div className="space-y-2">
-              <label htmlFor="email" className="block text-sm font-medium text-blue-100">
+              <label htmlFor="email" className="block text-sm font-medium text-blue-100 text-left">
                 Email Address
               </label>
               <div className="relative">
@@ -53,19 +73,19 @@ const SignIn: React.FC = () => {
                 <input
                   id="email"
                   name="email"
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
                   placeholder="john@example.com"
-                  required
+                  autoComplete="off"
                 />
               </div>
             </div>
 
             {/* Password Input */}
             <div className="space-y-2">
-              <label htmlFor="password" className="block text-sm font-medium text-blue-100">
+              <label htmlFor="password" className="block text-sm font-medium text-blue-100 text-left">
                 Password
               </label>
               <div className="relative">
@@ -82,7 +102,6 @@ const SignIn: React.FC = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
                   placeholder="••••••••"
-                  required
                 />
                 <button
                   type="button"
@@ -103,19 +122,8 @@ const SignIn: React.FC = () => {
               </div>
             </div>
 
-            {/* Remember & Forgot */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-green-400 bg-white/10 border-white/20 rounded focus:ring-green-400 focus:ring-2"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-blue-200">
-                  Remember me
-                </label>
-              </div>
+            {/* Forgot Password */}
+            <div className="text-center">
               <a
                 href="/forgot-password"
                 className="text-sm text-green-400 hover:text-green-300 transition-colors font-medium"
@@ -128,15 +136,14 @@ const SignIn: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 focus:ring-offset-transparent disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
+              className="w-full bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Signing In...
                 </div>
               ) : (
                 'Sign In'
@@ -145,9 +152,6 @@ const SignIn: React.FC = () => {
 
             {/* Divider */}
             <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/20"></div>
-              </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-transparent text-blue-200">Or continue with</span>
               </div>
@@ -172,33 +176,52 @@ const SignIn: React.FC = () => {
                 className="flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-300 group"
               >
                 <svg className="w-5 h-5 text-white group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                 </svg>
-                <span className="ml-2 text-white text-sm font-medium">Twitter</span>
+                <span className="ml-2 text-white text-sm font-medium">Facebook</span>
               </button>
             </div>
           </form>
 
           {/* Sign Up Link */}
-          <div className="text-center mt-8 relative z-10">
+          <div className="text-center mt-4 relative z-10">
             <p className="text-blue-200">
               Don't have an account?{' '}
               <a 
                 href="/signup" 
                 className="text-green-400 hover:text-green-300 font-medium transition-colors"
               >
-                Sign up now
+                Sign up
               </a>
             </p>
           </div>
         </div>
 
-        {/* Bottom Text */}
-        <div className="text-center mt-6">
-          <p className="text-blue-300 text-sm">
-            Secure sign-in powered by Major Phones
-          </p>
-        </div>
+        {/* Custom Validation Modal */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-70 h-58">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+                <p className="text-blue-200 mb-4">{modalMessage}</p>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

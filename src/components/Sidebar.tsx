@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import LogoMajor from '../LogoMajor.png';
 
 interface SidebarProps {
   currentPath?: string;
@@ -53,7 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPath = '/dashboard' }) => {
       path: '/long'
     },
     {
-      name: 'Empty Simcard',
+      name: 'Empty SIM cards',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -88,6 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPath = '/dashboard' }) => {
 
   return (
     <>
+
       {/* Mobile Overlay */}
       {isOpen && (
         <div 
@@ -99,7 +101,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPath = '/dashboard' }) => {
       {/* Mobile Menu Button */}
       <button
         onClick={toggleSidebar}
-        className="fixed top-4 left-4 z-50 lg:hidden bg-gradient-to-br from-slate-700 to-slate-800 text-white p-2.5 rounded-xl shadow-xl hover:from-blue-600 hover:to-cyan-600 border border-slate-600 hover:border-blue-500 transition-all duration-300 hover:scale-110"
+        className="fixed top-4 left-4 z-50 lg:hidden text-white p-2.5 rounded-xl shadow-xl border border-slate-600 hover:border-blue-500 transition-all duration-300 hover:scale-110"
+        style={{backgroundColor: '#1e293b'}}
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           {isOpen ? (
@@ -111,45 +114,23 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPath = '/dashboard' }) => {
       </button>
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-40 w-72 bg-gradient-to-b from-slate-800 via-slate-700 to-slate-900 border-r border-slate-600 shadow-2xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
+      <div className={`fixed inset-y-0 left-0 z-40 w-72 border-r border-slate-600 shadow-2xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
+      }`} style={{backgroundColor: '#1e293b'}}>
         
-        {/* Enhanced Background Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Geometric patterns */}
-          <div className="absolute inset-0 opacity-5" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2364748b' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-          }}></div>
-          
-          {/* Floating orbs */}
-          <div className="absolute top-20 right-8 w-32 h-32 bg-gradient-to-r from-blue-500/20 to-cyan-400/20 rounded-full blur-2xl animate-pulse"></div>
-          <div className="absolute bottom-40 left-6 w-24 h-24 bg-gradient-to-r from-indigo-500/15 to-purple-500/15 rounded-full blur-xl animate-pulse delay-1000"></div>
-          <div className="absolute top-1/3 right-4 w-16 h-16 bg-gradient-to-r from-emerald-400/10 to-teal-400/10 rounded-full blur-lg animate-pulse delay-2000"></div>
-          
-        </div>
 
         <div className="flex flex-col h-full relative z-10">
           {/* Header */}
-          <div className="px-6 py-8 border-b border-slate-600/50 bg-slate-800/50">
-            <div className="flex items-center space-x-4">
+          <div className="border-b border-slate-600/50 bg-slate-800/50" style={{ paddingTop: '0.05rem', paddingBottom: '0.05rem' }}>
+            <div className="flex items-center justify-center">
               {/* Logo */}
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-                <svg className="w-7 h-7 text-white relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-white font-bold text-xl tracking-tight drop-shadow-sm">Major Phones</h1>
-                <p className="text-slate-300 text-sm font-medium">SMS verification service</p>
-              </div>
+              <img src={LogoMajor} alt="Major Phones Logo" className="w-50 h-20" />
             </div>
           </div>
 
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+          <nav className="flex-1 px-4 py-6 space-y-5 overflow-hidden">
             {menuItems.map((item) => {
               const isActive = currentPath === item.path;
               return (
@@ -179,10 +160,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPath = '/dashboard' }) => {
                     <span className="ml-2 px-2.5 py-1 text-xs font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-full shadow-sm animate-pulse relative z-10">
                       {item.badge}
                     </span>
-                  )}
-                  
-                  {isActive && (
-                    <div className="ml-2 w-2 h-2 bg-cyan-300 rounded-full animate-pulse relative z-10 shadow-sm"></div>
                   )}
                 </a>
               );
@@ -219,13 +196,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPath = '/dashboard' }) => {
               Sign Out
             </button>
 
-            {/* Version with enhanced styling */}
-            <div className="text-center pt-3">
-              <div className="inline-flex items-center px-3 py-1 bg-slate-800/50 rounded-full border border-slate-600/30">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse mr-2"></div>
-                <p className="text-slate-400 text-xs font-medium">Version 2.1.0</p>
-              </div>
-            </div>
           </div>
         </div>
       </div>
