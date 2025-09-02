@@ -14,17 +14,37 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
-        {/* Top Bar - Mobile spacing for hamburger button */}
-        <div className="lg:hidden h-16"></div>
-        
         {/* Navbar */}
         <nav className="border-b border-slate-600/50 px-4 lg:px-10 py-2 relative" style={{backgroundColor: '#1e293b'}}>
           
-          <div className="flex items-center justify-end relative z-10">
+          <div className="flex items-center justify-between lg:justify-end relative z-10">
+            {/* Mobile Menu Button - Integrated in navbar */}
+            <button
+              onClick={() => {
+                const sidebar = document.querySelector('[data-sidebar]');
+                const overlay = document.querySelector('[data-overlay]');
+                const isOpen = sidebar?.classList.contains('translate-x-0');
+                
+                if (isOpen) {
+                  sidebar?.classList.add('-translate-x-full');
+                  sidebar?.classList.remove('translate-x-0');
+                  overlay?.classList.add('hidden');
+                } else {
+                  sidebar?.classList.remove('-translate-x-full');
+                  sidebar?.classList.add('translate-x-0');
+                  overlay?.classList.remove('hidden');
+                }
+              }}
+              className="lg:hidden text-white p-2 rounded-lg border border-slate-600 hover:border-blue-500 transition-all duration-300 hover:bg-slate-700/50"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
             {/* Right side - Combined User Actions */}
             <div className="flex items-center">
-              {/* Combined Profile, Balance & Add Funds Button */}
-              <a href="/profile" className="group bg-slate-700/50 hover:bg-slate-600/50 rounded-2xl p-2 border border-slate-600/50 hover:border-blue-500/50 backdrop-blur-sm transition-all duration-300 hover:scale-104">
+              {/* Desktop Version - Full layout */}
+              <a href="/profile" className="hidden md:block group bg-slate-700/50 hover:bg-slate-600/50 rounded-2xl p-2 border border-slate-600/50 hover:border-blue-500/50 backdrop-blur-sm transition-all duration-300 hover:scale-104">
                 <div className="flex items-center space-x-4">
                   {/* Profile Section */}
                   <div className="flex items-center space-x-3">
@@ -59,7 +79,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
 
                   {/* Add Funds Section */}
                   <a href="/add-funds" className="flex items-center space-x-2 text-slate-300 group-hover:text-purple-300 transition-colors duration-300">
-                    <div className="w-8 h-8 bg-slate-600/50 group-hover:bg-purple-500/20 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110">
+                    <div className="w-10 h-10 bg-slate-600/50 group-hover:bg-purple-500/20 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110">
                       <svg className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
@@ -70,6 +90,39 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
                   </a>
                 </div>
               </a>
+
+              {/* Mobile/Tablet Version - Compact icons only */}
+              <div className="md:hidden flex items-center space-x-2">
+                {/* Profile Icon */}
+                <a href="/profile" className="p-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl border border-slate-600/50 hover:border-blue-500/50 transition-all duration-300">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                </a>
+
+                {/* Balance Display */}
+                <div className="p-2 bg-slate-700/50 rounded-xl border border-slate-600/50">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-green-500 rounded-lg flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                      </svg>
+                    </div>
+                    <span className="text-white text-sm font-semibold">$2,847.50</span>
+                  </div>
+                </div>
+
+                {/* Add Funds Icon */}
+                <a href="/add-funds" className="p-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl border border-slate-600/50 hover:border-blue-500/50 transition-all duration-300">
+                  <div className="w-8 h-8 bg-slate-600/50 hover:bg-slate-500/50 rounded-lg flex items-center justify-center transition-all duration-300">
+                    <svg className="w-4 h-4 text-white hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </div>
+                </a>
+              </div>
             </div>
           </div>
         </nav>

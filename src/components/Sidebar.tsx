@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import LogoMajor from '../LogoMajor.png';
 
 interface SidebarProps {
@@ -13,7 +13,6 @@ interface MenuItem {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ currentPath = '/dashboard' }) => {
-  const [isOpen, setIsOpen] = useState(false);
 
   const menuItems: MenuItem[] = [
     {
@@ -80,43 +79,59 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPath = '/dashboard' }) => {
         </svg>
       ),
       path: '/transactions',
+    },
+    {
+      name: 'Help',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      path: '/help'
     }
   ];
 
-  const toggleSidebar = () => {
-    setIsOpen(!isOpen);
-  };
 
   return (
     <>
+      {/* Custom Scrollbar Styles */}
+      <style>{`
+        .sidebar-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .sidebar-scrollbar::-webkit-scrollbar-track {
+          background: rgba(30, 41, 59, 0.3);
+          border-radius: 10px;
+        }
+        .sidebar-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(71, 85, 105, 0.6);
+          border-radius: 10px;
+          transition: background 0.3s ease;
+        }
+        .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(71, 85, 105, 0.8);
+        }
+      `}</style>
 
       {/* Mobile Overlay */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-
-      {/* Mobile Menu Button */}
-      <button
-        onClick={toggleSidebar}
-        className="fixed top-4 left-4 z-50 lg:hidden text-white p-2.5 rounded-xl shadow-xl border border-slate-600 hover:border-blue-500 transition-all duration-300 hover:scale-110"
-        style={{backgroundColor: '#1e293b'}}
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {isOpen ? (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          ) : (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-          )}
-        </svg>
-      </button>
+      <div 
+        data-overlay
+        className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden hidden"
+        onClick={() => {
+          const sidebar = document.querySelector('[data-sidebar]');
+          const overlay = document.querySelector('[data-overlay]');
+          sidebar?.classList.add('-translate-x-full');
+          sidebar?.classList.remove('translate-x-0');
+          overlay?.classList.add('hidden');
+        }}
+      />
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-40 w-72 border-r border-slate-600 shadow-2xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
-        isOpen ? 'translate-x-0' : '-translate-x-full'
-      }`} style={{backgroundColor: '#1e293b'}}>
+      <div 
+        data-sidebar
+        className="fixed inset-y-0 left-0 z-40 w-72 border-r border-slate-600 shadow-2xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 -translate-x-full lg:-translate-x-0" 
+        style={{backgroundColor: '#1e293b'}}
+      >
         
 
         <div className="flex flex-col h-full relative z-10">
@@ -130,7 +145,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPath = '/dashboard' }) => {
 
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-5 overflow-hidden">
+          <nav className="flex-1 px-4 py-6 space-y-5 overflow-y-auto sidebar-scrollbar" 
+               style={{
+                 scrollbarWidth: 'thin',
+                 scrollbarColor: 'rgba(71, 85, 105, 0.6) rgba(30, 41, 59, 0.3)'
+               }}>
             {menuItems.map((item) => {
               const isActive = currentPath === item.path;
               return (
@@ -178,14 +197,14 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPath = '/dashboard' }) => {
                 </div>
                 <span className="text-xs font-medium">API</span>
               </button>
-              <button className="flex flex-col items-center justify-center p-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all duration-300 border border-slate-600/30 hover:border-blue-500/50 hover:shadow-lg hover:scale-105 group">
+              <a href="https://t.me/MajorPhones" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all duration-300 border border-slate-600/30 hover:border-blue-500/50 hover:shadow-lg hover:scale-105 group">
                 <div className="w-8 h-8 bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg flex items-center justify-center mb-1 group-hover:from-blue-500 group-hover:to-cyan-500 transition-all duration-300">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 </div>
-                <span className="text-xs font-medium">Help</span>
-              </button>
+                <span className="text-xs font-medium">Telegram</span>
+              </a>
             </div>
 
             {/* Logout */}

@@ -235,15 +235,15 @@ const Dashboard: React.FC = () => {
           <div className="relative z-10 space-y-8">
             {/* Welcome Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-              <div className="group-hover:transform group-hover:translate-x-2 transition-transform duration-500">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-blue-100 to-cyan-100 bg-clip-text text-transparent mb-3 group-hover:from-cyan-300 group-hover:to-blue-300 transition-all duration-500 text-left">
+              <div className="group-hover:transform group-hover:translate-x-2 transition-transform duration-500 text-center sm:text-left flex-1 sm:flex-none">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-blue-100 to-cyan-100 bg-clip-text text-transparent mb-3 group-hover:from-cyan-300 group-hover:to-blue-300 transition-all duration-500">
                   {getGreeting()}! 👋
                 </h1>
                 <p className="text-slate-300 text-md group-hover:text-slate-200 transition-colors duration-300">
                   Welcome to your Major Phones dashboard
                 </p>
               </div>
-              <div className="mt-6 sm:mt-0 text-right group-hover:transform group-hover:-translate-x-2 transition-transform duration-500">
+              <div className="hidden sm:block mt-6 sm:mt-0 text-right group-hover:transform group-hover:-translate-x-2 transition-transform duration-500">
                 <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 border border-slate-700/50 group-hover:bg-slate-700/50 group-hover:border-slate-600/50 transition-all duration-300">
                   <p className="text-sm text-slate-400 mb-1">Today</p>
                   <p className="text-md font-bold text-white">
@@ -267,26 +267,18 @@ const Dashboard: React.FC = () => {
           >
             
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-2 group-hover/stats:transform group-hover/stats:translate-y-1 transition-transform duration-300">
+              <div className="flex items-center justify-center mb-3 group-hover/stats:transform group-hover/stats:translate-y-1 transition-transform duration-300">
                 <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl group-hover/stats:bg-white/30 group-hover/stats:scale-110 transition-all duration-300 shadow-lg">
                   <svg className="w-6 h-6 group-hover/stats:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                   </svg>
                 </div>
-                <div className="text-right group-hover/stats:transform group-hover/stats:scale-110 transition-transform duration-300">
-                  <div className="flex items-center text-emerald-100 bg-emerald-500/20 rounded-full px-3 py-1 backdrop-blur-sm">
-                    <svg className="w-4 h-4 mr-1 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                    </svg>
-                    <span className="text-sm font-bold">+{userStats.monthlyIncrease}%</span>
-                  </div>
-                </div>
               </div>
               
               <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
-                <p className="text-emerald-100 text-sm font-semibold mb-3 uppercase tracking-wider">Total Purchases</p>
-                <div className="mb-3">
-                  <p className="text-2xl font-black mb-1 bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{animatedPurchases}</p>
+                <p className="text-emerald-100 text-sm font-semibold mb-1 uppercase tracking-wider">Purchases</p>
+                <div className="mb-1">
+                  <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{animatedPurchases}</p>
                 </div>
                 <p className="text-emerald-200 text-sm font-medium">Last 30 days</p>
               </div>
@@ -302,25 +294,17 @@ const Dashboard: React.FC = () => {
           >
 
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4 group-hover/stats:transform group-hover/stats:translate-y-1 transition-transform duration-300">
+              <div className="flex items-center justify-center mb-3 group-hover/stats:transform group-hover/stats:translate-y-1 transition-transform duration-300">
                 <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl group-hover/stats:bg-white/30 group-hover/stats:scale-110 transition-all duration-300 shadow-lg">
                   <svg className="w-6 h-6 group-hover/stats:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                   </svg>
                 </div>
-                <div className="text-right group-hover/stats:transform group-hover/stats:scale-110 transition-transform duration-300">
-                  <div className="flex items-center text-blue-100 bg-blue-500/20 rounded-full px-3 py-1 backdrop-blur-sm">
-                    <svg className="w-4 h-4 mr-1 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                    </svg>
-                    <span className="text-sm font-bold">+{userStats.spendingIncrease}%</span>
-                  </div>
-                </div>
               </div>
               
               <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
                 <p className="text-blue-100 text-sm font-semibold mb-2 uppercase tracking-wider">Total Spent</p>
-                <p className="text-2xl font-black mb-2 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{formatCurrency(animatedSpent)}</p>
+                <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{formatCurrency(animatedSpent)}</p>
                 <p className="text-blue-200 text-sm font-medium">Last 30 days</p>
               </div>
             </div>
@@ -335,25 +319,17 @@ const Dashboard: React.FC = () => {
           >
 
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-2 group-hover/stats:transform group-hover/stats:translate-y-1 transition-transform duration-300">
+              <div className="flex items-center justify-center mb-3 group-hover/stats:transform group-hover/stats:translate-y-1 transition-transform duration-300">
                 <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl group-hover/stats:bg-white/30 group-hover/stats:scale-110 transition-all duration-300 shadow-lg">
                   <svg className="w-6 h-6 group-hover/stats:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
-                <div className="text-right group-hover/stats:transform group-hover/stats:scale-110 transition-transform duration-300">
-                  <div className="flex items-center text-purple-100 bg-purple-500/20 rounded-full px-3 py-1 backdrop-blur-sm">
-                    <svg className="w-4 h-4 mr-1 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                    </svg>
-                    <span className="text-sm font-bold">+{userStats.depositIncrease}%</span>
-                  </div>
-                </div>
               </div>
               
               <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
-                <p className="text-purple-100 text-sm font-semibold mb-2 uppercase tracking-wider">Total Deposit</p>
-                <p className="text-2xl font-black mb-2 bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{formatCurrency(animatedDeposit)}</p>
+                <p className="text-purple-100 text-sm font-semibold mb-2 uppercase tracking-wider">Deposited</p>
+                <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{formatCurrency(animatedDeposit)}</p>
                 <p className="text-purple-200 text-sm font-medium">Last 30 days</p>
               </div>
             </div>
@@ -368,25 +344,17 @@ const Dashboard: React.FC = () => {
           >
 
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-2 group-hover/stats:transform group-hover/stats:translate-y-1 transition-transform duration-300">
+              <div className="flex items-center justify-center mb-3 group-hover/stats:transform group-hover/stats:translate-y-1 transition-transform duration-300">
                 <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl group-hover/stats:bg-white/30 group-hover/stats:scale-110 transition-all duration-300 shadow-lg">
                   <svg className="w-6 h-6 group-hover/stats:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                   </svg>
                 </div>
-                <div className="text-right group-hover/stats:transform group-hover/stats:scale-110 transition-transform duration-300">
-                  <div className="flex items-center text-orange-100 bg-orange-500/20 rounded-full px-3 py-1 backdrop-blur-sm">
-                    <svg className="w-4 h-4 mr-1 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                    </svg>
-                    <span className="text-sm font-bold">+{userStats.ticketsIncrease}%</span>
-                  </div>
-                </div>
               </div>
               
               <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
-                <p className="text-orange-100 text-sm font-semibold mb-2 uppercase tracking-wider">Total Tickets</p>
-                <p className="text-2xl font-black mb-2 bg-gradient-to-r from-white to-orange-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{animatedTickets}</p>
+                <p className="text-orange-100 text-sm font-semibold mb-2 uppercase tracking-wider">Tickets</p>
+                <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-orange-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{animatedTickets}</p>
                 <p className="text-orange-200 text-sm font-medium">Last 30 days</p>
               </div>
             </div>
@@ -475,7 +443,7 @@ const Dashboard: React.FC = () => {
                                 
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-start justify-between mb-2">
-                                    <h3 className="font-bold text-white text-sm group-hover/item:text-orange-200 transition-colors duration-300 leading-tight pr-2">{item.title}</h3>
+                                    <h3 className="text-left font-bold text-white text-sm group-hover/item:text-orange-200 transition-colors duration-300 leading-tight pr-2">{item.title}</h3>
                                     {item.urgent && (
                                       <span className="px-2 py-0.5 text-xs font-bold bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-full animate-pulse shadow-lg flex-none">
                                         CHECK
