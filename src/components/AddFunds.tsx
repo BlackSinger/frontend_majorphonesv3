@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DashboardLayout from './DashboardLayout';
 import CryptomusLogo from '../CryptomusLogo.svg';
 import AmazonPayLogo from '../AmazonPayLogo.png';
@@ -37,14 +37,12 @@ const AddFunds: React.FC = () => {
   const [modalMessage, setModalMessage] = useState('');
   const [showAmazonModal, setShowAmazonModal] = useState(false);
   const [showBinanceInstructions, setShowBinanceInstructions] = useState(false);
-
-  // Page load animation
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoaded(true);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
+  const [copiedAddress, setCopiedAddress] = useState(false);
+  
+  const amountSectionRef = useRef<HTMLDivElement>(null);
+  const staticWalletsSectionRef = useRef<HTMLDivElement>(null);
+  const submitButtonRef = useRef<HTMLDivElement>(null);
+  const walletAddressRef = useRef<HTMLDivElement>(null);
 
   const paymentMethods: PaymentMethod[] = [
     {
@@ -156,6 +154,64 @@ const AddFunds: React.FC = () => {
         return 'from-gray-500 to-slate-500';
     }
   };
+
+  // Page load animation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Auto-scroll when payment method is selected
+  useEffect(() => {
+    if (selectedMethod) {
+      setTimeout(() => {
+        if (selectedMethod === 'static-wallets' && staticWalletsSectionRef.current) {
+          staticWalletsSectionRef.current.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+          });
+        } else if (selectedMethod !== 'static-wallets' && amountSectionRef.current) {
+          amountSectionRef.current.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      }, 100);
+    }
+  }, [selectedMethod]);
+
+  // Auto-scroll when amount is valid or wallet is selected
+  useEffect(() => {
+    if (selectedMethod && selectedMethod !== 'static-wallets' && amount && parseFloat(amount) > 0) {
+      const selectedPaymentMethod = paymentMethods.find(method => method.id === selectedMethod);
+      if (selectedPaymentMethod && parseFloat(amount) >= selectedPaymentMethod.minAmount) {
+        setTimeout(() => {
+          if (submitButtonRef.current) {
+            submitButtonRef.current.scrollIntoView({ 
+              behavior: 'smooth',
+              block: 'start'
+            });
+          }
+        }, 100);
+      }
+    }
+  }, [selectedMethod, amount, paymentMethods]);
+
+  // Auto-scroll when crypto wallet is selected
+  useEffect(() => {
+    if (selectedWallet) {
+      setTimeout(() => {
+        if (walletAddressRef.current) {
+          walletAddressRef.current.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      }, 100);
+    }
+  }, [selectedWallet]);
 
   const handleAmazonModalOk = async () => {
     setShowAmazonModal(false);
@@ -297,52 +353,46 @@ const AddFunds: React.FC = () => {
                         : 'bg-slate-700/30 border-slate-600/30 hover:border-slate-500/50 cursor-pointer'
                         }`}>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                          <div className={`flex items-center space-x-4 transition-transform duration-500 flex-1 min-w-0 ${method.isAvailable === false ? '' : 'group-hover/item:transform group-hover/item:translate-x-2'
+                          <div className={`flex flex-col sm:flex-row items-center sm:space-x-4 space-y-2 sm:space-y-0 transition-transform duration-500 flex-1 min-w-0 ${method.isAvailable === false ? '' : 'group-hover/item:transform group-hover/item:translate-x-2'
                             }`}>
                             <div className={`w-12 h-12 bg-gradient-to-br ${method.isAvailable === false ? 'from-red-600/50 to-red-700/50' : 'from-emerald-500 to-green-500'
                               } rounded-xl flex items-center justify-center shadow-lg flex-shrink-0`}>
                               {method.icon}
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <h3 className={`text-left font-bold transition-colors duration-300 ${method.isAvailable === false
+                            <div className="min-w-0 flex-1 text-center sm:text-left">
+                              <h3 className={`font-bold transition-colors duration-300 ${method.isAvailable === false
                                 ? 'text-red-300'
                                 : 'text-white group-hover/item:text-blue-100'
                                 }`} style={{ fontSize: '1rem' }}>{method.name}</h3>
-                              <p className={`text-left transition-colors duration-300 ${method.isAvailable === false
+                              <p className={`transition-colors duration-300 ${method.isAvailable === false
                                 ? 'text-red-400'
                                 : 'text-slate-400 group-hover/item:text-slate-300'
                                 }`}>{method.description}</p>
                             </div>
                           </div>
-                          <div className="flex items-center justify-between sm:justify-end space-x-2 sm:space-x-4 flex-shrink-0 min-w-0">
-                            <span className={`text-sm font-semibold flex-shrink-0 ${method.isAvailable === false
-                              ? 'text-red-400 bg-red-500/10 border border-red-500/30 px-2 py-1 rounded'
-                              : selectedMethod === method.id ? 'text-blue-400' : 'text-slate-400'
-                              }`}>
-                              {method.isAvailable === false
-                                ? 'Unavailable'
-                                : selectedMethod === method.id ? 'Selected' : 'Available'
-                              }
-                            </span>
-                            {method.isAvailable !== false && (
-                              <input
-                                type="radio"
-                                id={method.id}
-                                name="paymentMethod"
-                                value={method.id}
-                                checked={selectedMethod === method.id}
-                                onClick={(e) => {
+                          <div className="flex items-center justify-center sm:justify-end space-x-2 sm:space-x-4 flex-shrink-0 min-w-0">
+                            {method.isAvailable === false ? (
+                              <span className="text-red-400 bg-red-500/10 border border-red-500/30 px-2 py-1 rounded text-sm font-semibold flex-shrink-0">
+                                Unavailable
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
                                   if (selectedMethod === method.id) {
                                     setSelectedMethod('');
-                                    e.preventDefault();
                                   } else {
                                     setSelectedMethod(method.id);
                                   }
                                 }}
-                                onChange={() => { }}
-                                className={`relative inline-flex h-8 w-16 items-center rounded-full transition-all duration-300 shadow-lg flex-shrink-0 cursor-pointer appearance-none ${selectedMethod === method.id ? 'bg-gradient-to-r from-blue-500 to-indigo-500' : 'bg-slate-600'
-                                  }`}
-                              />
+                                className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 w-20 sm:w-20 w-full ${
+                                  selectedMethod === method.id
+                                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
+                                    : 'bg-slate-600/50 hover:bg-slate-500/50 text-slate-300 hover:text-white border border-slate-500/30 hover:border-slate-400/50'
+                                }`}
+                              >
+                                {selectedMethod === method.id ? 'Selected' : 'Select'}
+                              </button>
                             )}
                           </div>
                         </div>
@@ -355,7 +405,7 @@ const AddFunds: React.FC = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Amount Input Section */}
                 {selectedMethod && selectedMethod !== 'static-wallets' && (
-                    <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/section">
+                    <div ref={amountSectionRef} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/section">
                       <div className="flex items-center space-x-3 mb-4 group-hover/section:transform group-hover/section:translate-y-1 transition-transform duration-300">
                         <p className="font-bold bg-gradient-to-r from-white via-blue-100 to-cyan-100 bg-clip-text text-transparent group-hover/section:from-cyan-300 group-hover/section:to-blue-300 transition-all duration-500" style={{ fontSize: '1.2rem' }}>Amount to Add</p>
                       </div>
@@ -431,12 +481,23 @@ const AddFunds: React.FC = () => {
                         </div>
 
                         {/* Quick Amount Buttons */}
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           {[10, 25, 50, 100].map((quickAmount) => (
                             <button
                               key={quickAmount}
                               type="button"
-                              onClick={() => setAmount(quickAmount.toString())}
+                              onClick={() => {
+                                setAmount(quickAmount.toString());
+                                // Auto-scroll to submit button after quick amount is selected
+                                setTimeout(() => {
+                                  if (submitButtonRef.current) {
+                                    submitButtonRef.current.scrollIntoView({ 
+                                      behavior: 'smooth',
+                                      block: 'start'
+                                    });
+                                  }
+                                }, 150);
+                              }}
                               className="px-4 py-2 bg-slate-700/50 hover:bg-blue-600/20 text-slate-300 hover:text-blue-400 rounded-lg transition-all duration-300 border border-slate-600/30 hover:border-blue-500/50 text-sm font-medium"
                             >
                               ${quickAmount}
@@ -449,7 +510,7 @@ const AddFunds: React.FC = () => {
 
                   {/* Static Wallets Selection */}
                   {selectedMethod === 'static-wallets' && (
-                    <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/section">
+                    <div ref={staticWalletsSectionRef} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/section">
                       <div className="flex items-center space-x-3 mb-4 group-hover/section:transform group-hover/section:translate-y-1 transition-transform duration-300">
                         <p className="font-bold bg-gradient-to-r from-white via-blue-100 to-cyan-100 bg-clip-text text-transparent group-hover/section:from-cyan-300 group-hover/section:to-blue-300 transition-all duration-500" style={{ fontSize: '1.2rem' }}>Select Cryptocurrency</p>
                       </div>
@@ -458,37 +519,33 @@ const AddFunds: React.FC = () => {
                         {staticWallets.map((wallet) => (
                           <div key={wallet.id} className="p-6 bg-slate-700/30 rounded-xl border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/item">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                              <div className="flex items-center space-x-4 group-hover/item:transform group-hover/item:translate-x-2 transition-transform duration-500 flex-1 min-w-0">
+                              <div className="flex flex-col sm:flex-row items-center sm:space-x-4 space-y-2 sm:space-y-0 group-hover/item:transform group-hover/item:translate-x-2 transition-transform duration-500 flex-1 min-w-0">
                                 <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-500 rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
                                   {wallet.icon}
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                  <h4 className="text-left font-bold text-white group-hover/item:text-blue-100 transition-colors duration-300" style={{ fontSize: '1rem' }}>{wallet.name}</h4>
-                                  <p className="text-left text-slate-400 group-hover/item:text-slate-300 transition-colors duration-300">{wallet.network}</p>
+                                <div className="min-w-0 flex-1 text-center sm:text-left">
+                                  <h4 className="font-bold text-white group-hover/item:text-blue-100 transition-colors duration-300" style={{ fontSize: '1rem' }}>{wallet.name}</h4>
+                                  <p className="text-slate-400 group-hover/item:text-slate-300 transition-colors duration-300">{wallet.network}</p>
                                 </div>
                               </div>
                               <div className="flex items-center justify-between sm:justify-end space-x-2 sm:space-x-4 flex-shrink-0 min-w-0">
-                                <span className={`text-sm font-semibold flex-shrink-0 ${selectedWallet === wallet.id ? 'text-blue-400' : 'text-slate-400'}`}>
-                                  {selectedWallet === wallet.id ? 'Selected' : 'Available'}
-                                </span>
-                                <input
-                                  type="radio"
-                                  id={wallet.id}
-                                  name="staticWallet"
-                                  value={wallet.id}
-                                  checked={selectedWallet === wallet.id}
-                                  onClick={(e) => {
+                                <button
+                                  type="button"
+                                  onClick={() => {
                                     if (selectedWallet === wallet.id) {
                                       setSelectedWallet('');
-                                      e.preventDefault();
                                     } else {
                                       setSelectedWallet(wallet.id);
                                     }
                                   }}
-                                  onChange={() => { }}
-                                  className={`relative inline-flex h-8 w-16 items-center rounded-full transition-all duration-300 shadow-lg flex-shrink-0 cursor-pointer appearance-none ${selectedWallet === wallet.id ? 'bg-gradient-to-r from-blue-500 to-indigo-500' : 'bg-slate-600'
-                                    }`}
-                                />
+                                  className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 w-20 sm:w-20 w-full ${
+                                    selectedWallet === wallet.id
+                                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
+                                      : 'bg-slate-600/50 hover:bg-slate-500/50 text-slate-300 hover:text-white border border-slate-500/30 hover:border-slate-400/50'
+                                  }`}
+                                >
+                                  {selectedWallet === wallet.id ? 'Selected' : 'Select'}
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -497,33 +554,65 @@ const AddFunds: React.FC = () => {
 
                       {/* Wallet Address Display */}
                       {selectedWallet && (
-                        <div className="mt-6 p-6 bg-slate-700/50 rounded-xl border border-slate-600/50">
+                        <div ref={walletAddressRef} className="mt-6 p-6 bg-slate-700/50 rounded-xl border border-slate-600/50">
                           <div className="text-center space-y-4">
                             {(() => {
                               const wallet = staticWallets.find(w => w.id === selectedWallet);
                               return wallet ? (
                                 <>
-                                  <div className="flex items-center justify-center space-x-3 mb-4">
+                                  <div className="flex flex-col sm:flex-row items-center justify-center sm:space-x-3 space-y-2 sm:space-y-0 mb-4">
                                     <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-500 rounded-lg flex items-center justify-center">
                                       {wallet.icon}
                                     </div>
-                                    <h3 className="text-white font-bold text-lg">{wallet.name} Wallet Address</h3>
+                                    <h3 className="text-white font-bold text-lg text-center sm:text-left">{wallet.name} Wallet Address</h3>
                                   </div>
 
                                   <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-600/30">
-                                    <p className="text-slate-400 text-sm mb-2">Send {wallet.name} to this address:</p>
-                                    <div className="flex items-center justify-between bg-slate-700/50 rounded-lg p-3">
-                                      <code className="text-blue-400 font-mono text-sm break-all">{wallet.address}</code>
-                                      <button
+                                    <p className="text-slate-400 text-sm mb-2">
+                                      <span className="block sm:hidden">Copy the wallet:</span>
+                                      <span className="hidden sm:block">Send {wallet.name} to this address:</span>
+                                    </p>
+                                    <div className="bg-slate-700/50 rounded-lg p-3">
+                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                        <code className="text-blue-400 font-mono text-sm break-all">{wallet.address}</code>
+                                        <button
                                         type="button"
-                                        onClick={() => navigator.clipboard.writeText(wallet.address)}
-                                        className="ml-2 p-2 bg-blue-600/20 hover:bg-blue-600/30 rounded-lg transition-colors duration-200"
-                                        title="Copy address"
+                                        onClick={async () => {
+                                          try {
+                                            await navigator.clipboard.writeText(wallet.address);
+                                            setCopiedAddress(true);
+                                            setTimeout(() => setCopiedAddress(false), 2000);
+                                          } catch (err) {
+                                            console.error('Failed to copy: ', err);
+                                            // Fallback for older browsers
+                                            const textArea = document.createElement('textarea');
+                                            textArea.value = wallet.address;
+                                            document.body.appendChild(textArea);
+                                            textArea.select();
+                                            document.execCommand('copy');
+                                            document.body.removeChild(textArea);
+                                            setCopiedAddress(true);
+                                            setTimeout(() => setCopiedAddress(false), 2000);
+                                          }
+                                        }}
+                                        className={`sm:ml-2 p-2 rounded-lg transition-all duration-200 self-center sm:self-auto ${
+                                          copiedAddress 
+                                            ? 'bg-green-600/30 text-green-400' 
+                                            : 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400'
+                                        }`}
+                                        title={copiedAddress ? "Copied!" : "Copy address"}
                                       >
-                                        <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                        </svg>
+                                        {copiedAddress ? (
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                          </svg>
+                                        ) : (
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                          </svg>
+                                        )}
                                       </button>
+                                      </div>
                                     </div>
                                     <p className="text-yellow-400 text-xs mt-2">
                                       ⚠️ Only send {wallet.name} on <span className='font-bold'>{wallet.network} network</span>. Other tokens or networks will result in permanent loss.
@@ -554,7 +643,7 @@ const AddFunds: React.FC = () => {
 
                   {/* Submit Button */}
                   {selectedMethod && selectedMethod !== 'static-wallets' && amount && parseFloat(amount) > 0 && !(amount.startsWith('0') && amount.length > 1 && !amount.includes('.')) && !(selectedMethod === 'binance' && showBinanceInstructions) && (
-                    <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/section">
+                    <div ref={submitButtonRef} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/section">
                       <button
                         type="submit"
                         disabled={isProcessing}
@@ -579,7 +668,7 @@ const AddFunds: React.FC = () => {
                           <p className="text-blue-300 text-sm font-semibold">Important Instructions:</p>
                           <ul className="text-blue-200 text-xs mt-1 space-y-1">
                             <li>• Send ${amount} to <span className='font-bold'>payments@majorphones.com</span></li>
-                            <li>• Contact us on Telegram (@majorphones), email (support@majorphones.com) or open a <a href="/tickets" className="text-blue-400 hover:text-blue-300 underline font-semibold">ticket</a></li>
+                            <li>• Contact us on <a href="https://t.me/MajorPhones" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-semibold">Telegram</a>, <a href="mailto:support@majorphones.com" className="text-blue-400 hover:text-blue-300 underline font-semibold">email</a> or open a <a href="/tickets" className="text-blue-400 hover:text-blue-300 underline font-semibold">ticket</a></li>
                             <li>• Send Binance image of the transaction where we can see the order ID</li>
                             <li className='font-bold text-lg'>Deposits above $1 get extra $0.5</li>
                           </ul>
