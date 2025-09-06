@@ -9,7 +9,6 @@ interface NumberOption {
   countryCode: string;
   isReusable: boolean;
   successRate: number;
-  service: string;
 }
 
 const ShortNumbers: React.FC = () => {
@@ -135,17 +134,16 @@ const ShortNumbers: React.FC = () => {
       
       const countryCode = countries.find(c => c.name === selectedCountry)?.code || 'US';
       
-      // Mock data - replace with actual API response
-      const mockResults: NumberOption[] = [
+      // Mock results for reusable numbers
+      const reusableNumbers: NumberOption[] = [
         {
           id: '1',
-          number: '+1-555-0123',
+          number: '+1-5550123',
           price: 0.15,
           country: selectedCountry,
           countryCode: countryCode,
           isReusable: true,
-          successRate: 95,
-          service: searchTerm
+          successRate: 95
         },
         {
           id: '2',
@@ -153,9 +151,8 @@ const ShortNumbers: React.FC = () => {
           price: 0.12,
           country: selectedCountry,
           countryCode: countryCode,
-          isReusable: false,
-          successRate: 88,
-          service: searchTerm
+          isReusable: true,
+          successRate: 88
         },
         {
           id: '3',
@@ -163,11 +160,44 @@ const ShortNumbers: React.FC = () => {
           price: 0.18,
           country: selectedCountry,
           countryCode: countryCode,
-          isReusable: reuseEnabled,
-          successRate: 92,
-          service: searchTerm
+          isReusable: true,
+          successRate: 92
         }
       ];
+
+      // Mock results for non-reusable numbers
+      const nonReusableNumbers: NumberOption[] = [
+        {
+          id: '4',
+          number: '+1-555-1001',
+          price: 0.08,
+          country: selectedCountry,
+          countryCode: countryCode,
+          isReusable: false,
+          successRate: 98
+        },
+        {
+          id: '5',
+          number: '+1-555-1002',
+          price: 0.06,
+          country: selectedCountry,
+          countryCode: countryCode,
+          isReusable: false,
+          successRate: 94
+        },
+        {
+          id: '6',
+          number: '+1-555-1003',
+          price: 0.10,
+          country: selectedCountry,
+          countryCode: countryCode,
+          isReusable: false,
+          successRate: 91
+        }
+      ];
+
+      // Select appropriate array based on toggle switch
+      const mockResults = reuseEnabled ? reusableNumbers : nonReusableNumbers;
 
       setSearchResults(mockResults);
     } catch (error) {
@@ -183,16 +213,10 @@ const ShortNumbers: React.FC = () => {
     <DashboardLayout currentPath="/short">
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-purple-600/5 to-cyan-600/10"></div>
-          
+        <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
+                    
           <div className="relative z-10">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-500 rounded-2xl flex items-center justify-center shadow-lg">
-                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M3 6h18M3 14h18M3 18h18" />
-                </svg>
-              </div>
               <div>
                 <h1 className="text-left text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent">
                   Short Numbers
@@ -220,21 +244,14 @@ const ShortNumbers: React.FC = () => {
         </div>
 
         {/* Main Content Section */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl shadow-2xl border border-slate-700/50 relative overflow-hidden">
-          {/* Background Effects */}
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/10 via-green-600/5 to-teal-600/10"></div>
+        <div className={`rounded-3xl shadow-2xl border border-slate-700/50 relative ${isCountryDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
           
           {!hasSearched ? (
             /* SEARCH VIEW */
             <div className="p-6">
-              <div className="relative z-10 max-w-5xl mx-auto">
+              <div className="relative z-10 mx-auto">
                 {/* Search Header */}
-                <div className="text-center mb-7">
-                  <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-500 rounded-2xl mb-4 shadow-xl">
-                    <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
+                <div className="text-left mb-9">
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent mb-2">
                     Search & Configure
                   </h1>
@@ -242,7 +259,7 @@ const ShortNumbers: React.FC = () => {
                 </div>
                 
                 {/* Search Form */}
-                <div className="space-y-8">
+                <div className="space-y-6">
                   {/* Form Elements Container */}
                   <div className="space-y-6">
                     {/* Service Input and Country Selection Row */}
@@ -316,75 +333,80 @@ const ShortNumbers: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Toggle Switch Row */}
-                    <div className="space-y-3">
+                  </div>
+
+                  {/* Number Type Toggle and Search Button Row */}
+                  <div className="flex flex-col sm:flex-row items-center justify-center">
+                    {/* Number Type Toggle */}
+                    <div className="flex-1 flex flex-col items-center space-y-3">
                       <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider text-center">
                         Number Type
                       </label>
-                      <div className="flex justify-center">
-                        <div className="flex items-center bg-slate-700/50 rounded-full p-2 border border-slate-600/50">
-                          <button
-                            onClick={() => setReuseEnabled(false)}
-                            className={`px-4 sm:px-5 lg:px-6 py-2 rounded-full text-xs font-semibold transition-all duration-300 ${
-                              !reuseEnabled 
-                                ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg' 
-                                : 'text-slate-400 hover:text-slate-300'
-                            }`}
-                          >
-                            Non reusable
-                          </button>
-                          <button
-                            onClick={() => setReuseEnabled(true)}
-                            className={`px-4 sm:px-5 lg:px-6 py-2 rounded-full text-xs font-semibold transition-all duration-300 ${
-                              reuseEnabled 
-                                ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg' 
-                                : 'text-slate-400 hover:text-slate-300'
-                            }`}
-                          >
-                            Reusable
-                          </button>
-                        </div>
+                      <div className="flex items-center bg-slate-700/50 rounded-full p-2 border border-slate-600/50">
+                        <button
+                          onClick={() => setReuseEnabled(false)}
+                          className={`px-4 sm:px-5 lg:px-8 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
+                            !reuseEnabled 
+                              ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg' 
+                              : 'text-slate-400 hover:text-slate-300'
+                          }`}
+                        >
+                          Non reusable
+                        </button>
+                        <button
+                          onClick={() => setReuseEnabled(true)}
+                          className={`px-4 sm:px-5 lg:px-8 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
+                            reuseEnabled 
+                              ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg' 
+                              : 'text-slate-400 hover:text-slate-300'
+                          }`}
+                        >
+                          Reusable
+                        </button>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Search Button */}
-                  <div className="text-center">
-                    <button 
-                      onClick={handleSearch}
-                      disabled={!searchTerm.trim() || isSearching}
-                      className="group px-5 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      
-                      <div className="relative z-10 flex items-center space-x-4">
-                        {isSearching ? (
-                          <svg className="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                        ) : (
-                          <svg className="w-6 h-6 group-hover:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                        )}
-                        <span className="group-hover:tracking-wide transition-all duration-300">
-                          {isSearching ? 'Searching...' : 'Search numbers'}
-                        </span>
-                      </div>
-                    </button>
+                    {/* Search Button */}
+                    <div className="flex-1 flex flex-col items-center space-y-3">
+                      <div className="h-2"></div>
+                      <button 
+                        onClick={handleSearch}
+                        disabled={!searchTerm.trim() || isSearching}
+                        className="group px-5 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[200px]"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        
+                        <div className="relative z-10 flex items-center justify-center">
+                          {isSearching ? (
+                            <svg className="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                          ) : (
+                            <>
+                              <svg className="w-6 h-6 group-hover:rotate-12 transition-transform duration-300 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                              </svg>
+                              <span className="group-hover:tracking-wide transition-all duration-300">
+                                Search for numbers
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
             /* RESULTS VIEW */
-            <div className="p-8">
+            <div className="p-6">
               <div className="relative z-10">
                 {/* Back Button */}
-                <div className="mb-8">
+                <div className="mb-5">
                   <button 
                     onClick={() => setHasSearched(false)}
-                    className="group flex items-center space-x-3 px-6 py-3 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
+                    className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
                   >
                     <svg className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -396,18 +418,13 @@ const ShortNumbers: React.FC = () => {
                 </div>
 
                 {/* Results Header */}
-                <div className="text-center mb-10">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl mb-6 shadow-xl">
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  </div>
-                  <h3 className="text-3xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent mb-3">
+                <div className="text-left mb-7">
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
                     Available Numbers
-                  </h3>
-                  <p className="text-slate-300 text-lg">
+                  </h1>
+                  <p className="text-slate-300 text-md">
                     {searchResults.length > 0 
-                      ? `Found ${searchResults.length} numbers for "${searchTerm}" in ${selectedCountry}`
+                      ? `Found ${searchResults.length} numbers for "${searchTerm}" from ${selectedCountry}`
                       : `No numbers found for "${searchTerm}" in ${selectedCountry}`
                     }
                   </p>
@@ -422,29 +439,44 @@ const ShortNumbers: React.FC = () => {
                         className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 hover:border-blue-500/50 transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02]"
                       >
                         {/* Number Header */}
-                        <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center space-x-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center text-xl">
-                              {countries.find(c => c.code === option.countryCode)?.flag || (
-                                <svg className="w-5 h-4" viewBox="0 0 60 40">
-                                  <rect width="60" height="40" fill="#666"/>
-                                  <text x="30" y="20" textAnchor="middle" fill="white" fontSize="12">🌍</text>
-                                </svg>
-                              )}
+                            <div className="w-10 h-10 bg-blue-300/10 rounded-xl flex items-center justify-center text-xl">
+                              {(() => {
+                                const country = countries.find(c => c.code === option.countryCode);
+                                if (country?.flag) {
+                                  // Clone the flag element and replace classes
+                                  const flagElement = React.cloneElement(country.flag, {
+                                    className: 'w-7 h-7'
+                                  });
+                                  return flagElement;
+                                }
+                                return (
+                                  <svg className="w-7 h-7" viewBox="0 0 60 40">
+                                    <rect width="60" height="40" fill="#666"/>
+                                    <text x="30" y="20" textAnchor="middle" fill="white" fontSize="12">🌍</text>
+                                  </svg>
+                                );
+                              })()}
                             </div>
                             <div>
                               <p className="text-white font-bold text-lg">{option.number}</p>
-                              <p className="text-slate-400 text-sm">{option.country}</p>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-emerald-400 font-bold text-2xl">${option.price}</p>
-                            <p className="text-slate-400 text-xs">per SMS</p>
                           </div>
                         </div>
 
                         {/* Details */}
-                        <div className="space-y-4 mb-6">
+                        <div className="space-y-2 mb-6">
+                          {/* Price */}
+                          <div className="flex items-center justify-between py-2">
+                            <span className="text-slate-300 font-medium">Price</span>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-emerald-400 font-semibold">
+                                ${option.price}{option.isReusable ? ' (per SMS)' : ''}
+                              </span>
+                            </div>
+                          </div>
+
                           {/* Reusability */}
                           <div className="flex items-center justify-between py-2">
                             <span className="text-slate-300 font-medium">Reusable</span>
@@ -470,18 +502,11 @@ const ShortNumbers: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* Service */}
-                          <div className="flex items-center justify-between py-2">
-                            <span className="text-slate-300 font-medium">Service</span>
-                            <span className="text-blue-400 font-semibold bg-blue-500/10 px-3 py-1 rounded-lg">
-                              {option.service}
-                            </span>
-                          </div>
                         </div>
 
                         {/* Purchase Button */}
-                        <button className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02]">
-                          Purchase Number
+                        <button className="w-full py-3 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02]">
+                          Purchase
                         </button>
                       </div>
                     ))}
