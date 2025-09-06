@@ -1,17 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 
 interface NumberOption {
   id: string;
   number: string;
   price: number;
+  extraSmsPrice?: number;
   country: string;
   countryCode: string;
+  countryPrefix: string;
   isReusable: boolean;
   successRate: number;
 }
 
 const ShortNumbers: React.FC = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('United States');
   const [reuseEnabled, setReuseEnabled] = useState(false);
@@ -24,7 +28,8 @@ const ShortNumbers: React.FC = () => {
   const countries = [
     { 
       code: 'US', 
-      name: 'United States', 
+      name: 'United States',
+      prefix: '+1',
       flag: (
         <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
           <rect width="60" height="40" fill="#B22234"/>
@@ -40,7 +45,8 @@ const ShortNumbers: React.FC = () => {
     },
     { 
       code: 'GB', 
-      name: 'United Kingdom', 
+      name: 'United Kingdom',
+      prefix: '+44',
       flag: (
         <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
           <rect width="60" height="40" fill="#012169"/>
@@ -53,7 +59,8 @@ const ShortNumbers: React.FC = () => {
     },
     { 
       code: 'ES', 
-      name: 'Spain', 
+      name: 'Spain',
+      prefix: '+34',
       flag: (
         <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
           <rect width="60" height="40" fill="#C60B1E"/>
@@ -63,7 +70,8 @@ const ShortNumbers: React.FC = () => {
     },
     { 
       code: 'DE', 
-      name: 'Germany', 
+      name: 'Germany',
+      prefix: '+49',
       flag: (
         <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
           <rect width="60" height="13" fill="#000000"/>
@@ -74,7 +82,8 @@ const ShortNumbers: React.FC = () => {
     },
     { 
       code: 'FR', 
-      name: 'France', 
+      name: 'France',
+      prefix: '+33',
       flag: (
         <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
           <rect width="20" height="40" fill="#002395"/>
@@ -85,7 +94,8 @@ const ShortNumbers: React.FC = () => {
     },
     { 
       code: 'IT', 
-      name: 'Italy', 
+      name: 'Italy',
+      prefix: '+39',
       flag: (
         <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
           <rect width="20" height="40" fill="#009246"/>
@@ -96,7 +106,8 @@ const ShortNumbers: React.FC = () => {
     },
     { 
       code: 'IN', 
-      name: 'India', 
+      name: 'India',
+      prefix: '+91',
       flag: (
         <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
           <rect width="60" height="13" fill="#FF9933"/>
@@ -132,34 +143,42 @@ const ShortNumbers: React.FC = () => {
       // Simulate API call - replace with actual API endpoint
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const countryCode = countries.find(c => c.name === selectedCountry)?.code || 'US';
+      const selectedCountryData = countries.find(c => c.name === selectedCountry);
+      const countryCode = selectedCountryData?.code || 'US';
+      const countryPrefix = selectedCountryData?.prefix || '+1';
       
       // Mock results for reusable numbers
       const reusableNumbers: NumberOption[] = [
         {
           id: '1',
-          number: '+1-5550123',
-          price: 0.15,
+          number: '555-0123',
+          price: 1.2,
+          extraSmsPrice: 0.6,
           country: selectedCountry,
           countryCode: countryCode,
+          countryPrefix: countryPrefix,
           isReusable: true,
           successRate: 95
         },
         {
           id: '2',
-          number: '+1-555-0456',
-          price: 0.12,
+          number: '555-0456',
+          price: 1.2,
+          extraSmsPrice: 0.6,
           country: selectedCountry,
           countryCode: countryCode,
+          countryPrefix: countryPrefix,
           isReusable: true,
           successRate: 88
         },
         {
           id: '3',
-          number: '+1-555-0789',
-          price: 0.18,
+          number: '555-0789',
+          price: 1.2,
+          extraSmsPrice: 0.6,
           country: selectedCountry,
           countryCode: countryCode,
+          countryPrefix: countryPrefix,
           isReusable: true,
           successRate: 92
         }
@@ -169,28 +188,31 @@ const ShortNumbers: React.FC = () => {
       const nonReusableNumbers: NumberOption[] = [
         {
           id: '4',
-          number: '+1-555-1001',
+          number: '555-1001',
           price: 0.08,
           country: selectedCountry,
           countryCode: countryCode,
+          countryPrefix: countryPrefix,
           isReusable: false,
           successRate: 98
         },
         {
           id: '5',
-          number: '+1-555-1002',
+          number: '555-1002',
           price: 0.06,
           country: selectedCountry,
           countryCode: countryCode,
+          countryPrefix: countryPrefix,
           isReusable: false,
           successRate: 94
         },
         {
           id: '6',
-          number: '+1-555-1003',
+          number: '555-1003',
           price: 0.10,
           country: selectedCountry,
           countryCode: countryCode,
+          countryPrefix: countryPrefix,
           isReusable: false,
           successRate: 91
         }
@@ -234,7 +256,7 @@ const ShortNumbers: React.FC = () => {
               <p className="text-blue-300 text-sm font-semibold">Important Information about these numbers:</p>
               <ul className="text-blue-200 text-xs mt-1 space-y-1 text-left">
                 <li>• They can only be reused if you enable the reuse option</li>
-                <li>• Reusable numbers last 12 hours and each verification (after the 1st) costs half the initial price</li>
+                <li>• Reusable numbers last 12 hours</li>
                 <li>• They can't be refunded once a code arrives</li>
                 <li>• If they don't receive codes they are automatically refunded</li>
                 <li>• Cancelled and timed out numbers are automatically refunded</li>
@@ -420,12 +442,26 @@ const ShortNumbers: React.FC = () => {
                 {/* Results Header */}
                 <div className="text-left mb-7">
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
-                    Available Numbers
+                    Number options
                   </h1>
                   <p className="text-slate-300 text-md">
                     {searchResults.length > 0 
-                      ? `Found ${searchResults.length} numbers for "${searchTerm}" from ${selectedCountry}`
-                      : `No numbers found for "${searchTerm}" in ${selectedCountry}`
+                      ? (
+                          <span className="flex items-center flex-wrap">
+                            Found {searchResults.length} numbers for "{searchTerm}" from {selectedCountry}
+                            <span className="ml-2 hidden sm:inline">
+                              {countries.find(c => c.name === selectedCountry)?.flag}
+                            </span>
+                          </span>
+                        )
+                      : (
+                          <span className="flex items-center flex-wrap">
+                            No numbers found for "{searchTerm}" in {selectedCountry}
+                            <span className="ml-2 hidden sm:inline">
+                              {countries.find(c => c.name === selectedCountry)?.flag}
+                            </span>
+                          </span>
+                        )
                     }
                   </p>
                 </div>
@@ -440,27 +476,12 @@ const ShortNumbers: React.FC = () => {
                       >
                         {/* Number Header */}
                         <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-blue-300/10 rounded-xl flex items-center justify-center text-xl">
-                              {(() => {
-                                const country = countries.find(c => c.code === option.countryCode);
-                                if (country?.flag) {
-                                  // Clone the flag element and replace classes
-                                  const flagElement = React.cloneElement(country.flag, {
-                                    className: 'w-7 h-7'
-                                  });
-                                  return flagElement;
-                                }
-                                return (
-                                  <svg className="w-7 h-7" viewBox="0 0 60 40">
-                                    <rect width="60" height="40" fill="#666"/>
-                                    <text x="30" y="20" textAnchor="middle" fill="white" fontSize="12">🌍</text>
-                                  </svg>
-                                );
-                              })()}
+                          <div className="flex items-center space-x-2">
+                            <div className="w-9 h-9 bg-blue-300/10 rounded-xl flex items-center justify-center">
+                              <span className="text-emerald-400 font-bold text-sm">{option.countryPrefix}</span>
                             </div>
                             <div>
-                              <p className="text-white font-bold text-lg">{option.number}</p>
+                              <p className="text-white font-bold text-md">{option.number}</p>
                             </div>
                           </div>
                         </div>
@@ -468,13 +489,21 @@ const ShortNumbers: React.FC = () => {
                         {/* Details */}
                         <div className="space-y-2 mb-6">
                           {/* Price */}
-                          <div className="flex items-center justify-between py-2">
-                            <span className="text-slate-300 font-medium">Price</span>
-                            <div className="flex items-center space-x-2">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between py-1">
+                              <span className="text-slate-300 font-medium">Price</span>
                               <span className="text-emerald-400 font-semibold">
-                                ${option.price}{option.isReusable ? ' (per SMS)' : ''}
+                                ${option.price.toFixed(2)}
                               </span>
                             </div>
+                            {option.isReusable && option.extraSmsPrice && (
+                              <div className="flex items-center justify-between py-1">
+                                <span className="text-slate-300 font-medium">Each reuse</span>
+                                <span className="text-emerald-400 font-semibold">
+                                  ${option.extraSmsPrice.toFixed(2)}
+                                </span>
+                              </div>
+                            )}
                           </div>
 
                           {/* Reusability */}
@@ -505,7 +534,10 @@ const ShortNumbers: React.FC = () => {
                         </div>
 
                         {/* Purchase Button */}
-                        <button className="w-full py-3 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02]">
+                        <button 
+                          onClick={() => navigate('/history')}
+                          className="w-full py-3 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02]"
+                        >
                           Purchase
                         </button>
                       </div>
