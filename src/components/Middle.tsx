@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 
 interface NumberOption {
@@ -143,6 +143,7 @@ const Middle: React.FC = () => {
                 <li>• Their duration can't be extended</li>
                 <li>• They can't be refunded once purchased</li>
                 <li>• Users that deposit through Amazon Pay can't purchase them</li>
+                <li>• If you want to verify more than 1 service with the same number, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
               </ul>
             </div>
           </div>
