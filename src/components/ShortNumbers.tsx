@@ -253,7 +253,7 @@ const ShortNumbers: React.FC = () => {
         <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4">
           <div className="flex items-center justify-center">
             <div className="text-center">
-              <p className="text-blue-300 text-sm font-semibold">Important Information about these numbers:</p>
+              <p className="text-blue-300 text-sm font-semibold">Important information about these numbers:</p>
               <ul className="text-blue-200 text-xs mt-1 space-y-1 text-left">
                 <li>• They can only be reused if you enable the reuse option</li>
                 <li>• Reusable numbers last 12 hours</li>
@@ -389,7 +389,7 @@ const ShortNumbers: React.FC = () => {
                     </div>
 
                     {/* Search Button */}
-                    <div className="flex-1 flex flex-col items-center space-y-3">
+                    <div className="flex-1 flex flex-col items-center space-y-6">
                       <div className="h-2"></div>
                       <button 
                         onClick={handleSearch}
@@ -409,7 +409,8 @@ const ShortNumbers: React.FC = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                               </svg>
                               <span className="group-hover:tracking-wide transition-all duration-300">
-                                Search for numbers
+                                <span className="hidden sm:inline">Search for numbers</span>
+                                <span className="sm:hidden">Search numbers</span>
                               </span>
                             </>
                           )}

@@ -622,7 +622,7 @@ const AddFunds: React.FC = () => {
                                   <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 mt-4">
                                     <div className="flex items-center justify-center">
                                       <div className="text-center">
-                                        <p className="text-blue-300 text-sm font-semibold">Important Instructions:</p>
+                                        <p className="text-blue-300 text-sm font-semibold">Important instructions:</p>
                                         <ul className="text-blue-200 text-xs mt-1 space-y-1 text-left">
                                           <li>• Send any amount you want to add to your balance and make sure you are sending funds through the correct network</li>
                                           <li>• Minimum confirmations required vary by network, as well as the time the funds arrive</li>
@@ -665,7 +665,7 @@ const AddFunds: React.FC = () => {
                     <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 mt-4">
                       <div className="flex items-center justify-center">
                         <div className="text-center">
-                          <p className="text-blue-300 text-sm font-semibold">Important Instructions:</p>
+                          <p className="text-blue-300 text-sm font-semibold">Important instructions:</p>
                           <ul className="text-blue-200 text-xs mt-1 space-y-1 text-left">
                             <li>• Send ${amount} to <span className='font-bold'>payments@majorphones.com</span> (do not translate the email)</li>
                             <li>• Contact us on <a href="https://t.me/MajorPhones" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-semibold">Telegram</a>, <a href="mailto:support@majorphones.com" className="text-blue-400 hover:text-blue-300 underline font-semibold">email</a> or open a <a href="/tickets" className="text-blue-400 hover:text-blue-300 underline font-semibold">ticket</a></li>

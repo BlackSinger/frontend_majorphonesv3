@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 
 interface NumberOption {
@@ -7,21 +8,54 @@ interface NumberOption {
   price: number;
   country: string;
   countryCode: string;
-  duration: number; // 1 or 7 days
+  countryPrefix: string;
+  duration: number;
   successRate: number;
-  service: string;
 }
 
 const Middle: React.FC = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('United States');
   const [searchResults, setSearchResults] = useState<NumberOption[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const countries = [
-    { code: 'US', name: 'United States', flag: '🇺🇸' }
+    { 
+      code: 'US', 
+      name: 'United States',
+      prefix: '+1',
+      flag: (
+        <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
+          <rect width="60" height="40" fill="#B22234"/>
+          <rect width="60" height="3" y="3" fill="white"/>
+          <rect width="60" height="3" y="9" fill="white"/>
+          <rect width="60" height="3" y="15" fill="white"/>
+          <rect width="60" height="3" y="21" fill="white"/>
+          <rect width="60" height="3" y="27" fill="white"/>
+          <rect width="60" height="3" y="33" fill="white"/>
+          <rect width="24" height="21" fill="#3C3B6E"/>
+        </svg>
+      )
+    }
   ];
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsCountryDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
@@ -33,39 +67,41 @@ const Middle: React.FC = () => {
       // Simulate API call - replace with actual API endpoint
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const countryCode = countries.find(c => c.name === selectedCountry)?.code || 'US';
+      const selectedCountryData = countries.find(c => c.name === selectedCountry);
+      const countryCode = selectedCountryData?.code || 'US';
+      const countryPrefix = selectedCountryData?.prefix || '+1';
       
       // Mock data with duration instead of reusability
       const mockResults: NumberOption[] = [
         {
           id: '1',
-          number: '+1-555-0123',
-          price: 2.50,
-          country: selectedCountry,
-          countryCode: countryCode,
-          duration: 7,
-          successRate: 95,
-          service: searchTerm
-        },
-        {
-          id: '2',
-          number: '+1-555-0456',
+          number: '555-0456',
           price: 1.80,
           country: selectedCountry,
           countryCode: countryCode,
+          countryPrefix: countryPrefix,
           duration: 1,
-          successRate: 88,
-          service: searchTerm
+          successRate: 88
+        },
+        {
+          id: '2',
+          number: '555-0123',
+          price: 2.50,
+          country: selectedCountry,
+          countryCode: countryCode,
+          countryPrefix: countryPrefix,
+          duration: 7,
+          successRate: 95
         },
         {
           id: '3',
-          number: '+1-555-0789',
+          number: '555-0789',
           price: 3.20,
           country: selectedCountry,
           countryCode: countryCode,
-          duration: 7,
-          successRate: 92,
-          service: searchTerm
+          countryPrefix: countryPrefix,
+          duration: 14,
+          successRate: 92
         }
       ];
 
@@ -83,133 +119,171 @@ const Middle: React.FC = () => {
     <DashboardLayout currentPath="/middle">
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl shadow-2xl border border-slate-700/50 p-8 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-600/10 via-amber-600/5 to-yellow-600/10"></div>
-          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-orange-400/20 to-amber-500/20 rounded-full blur-3xl animate-pulse"></div>
-          
+        <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
+                    
           <div className="relative z-10">
-            <div className="flex items-center space-x-4 mb-6">
-              <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center shadow-lg">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
+            <div className="flex items-center space-x-4">
               <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-orange-100 to-amber-100 bg-clip-text text-transparent">
+                <h1 className="text-left text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent">
                   Middle Numbers
                 </h1>
-                <p className="text-slate-300 text-lg">Temporary numbers with extended duration</p>
+                <p className="text-slate-300 text-md text-left">Temporary numbers with extended duration</p>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Information Section */}
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4">
+          <div className="flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-blue-300 text-sm font-semibold">Important information about these numbers:</p>
+              <ul className="text-blue-200 text-xs mt-1 space-y-1 text-left">
+                <li>• These numbers last 1, 7 or 14 days depending on the option specified</li>
+                <li>• Their duration can't be extended</li>
+                <li>• They can't be refunded once purchased</li>
+                <li>• Users that deposit through Amazon Pay can't purchase them</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         {/* Main Content Section */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl shadow-2xl border border-slate-700/50 relative overflow-hidden">
-          {/* Background Effects */}
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-600/10 via-amber-600/5 to-yellow-600/10"></div>
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-orange-400/20 to-amber-500/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-yellow-400/15 to-orange-400/15 rounded-full blur-2xl animate-pulse delay-1000"></div>
+        <div className={`rounded-3xl shadow-2xl border border-slate-700/50 relative ${isCountryDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
           
           {!hasSearched ? (
             /* SEARCH VIEW */
-            <div className="p-10">
-              <div className="relative z-10 max-w-5xl mx-auto">
+            <div className="p-6">
+              <div className="relative z-10 mx-auto">
                 {/* Search Header */}
-                <div className="text-center mb-12">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl mb-6 shadow-xl">
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
-                  <h2 className="text-3xl font-bold bg-gradient-to-r from-white via-orange-100 to-amber-100 bg-clip-text text-transparent mb-3">
+                <div className="text-left mb-9">
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent mb-2">
                     Search & Configure
-                  </h2>
-                  <p className="text-slate-300 text-lg">Find middle-term numbers with extended validity</p>
+                  </h1>
+                  <p className="text-slate-300 text-md">Find middle-term numbers with extended validity</p>
                 </div>
                 
                 {/* Search Form */}
-                <div className="space-y-8">
-                  {/* Search Input - Centered */}
-                  <div className="max-w-lg mx-auto">
-                    <div className="space-y-3">
-                      <label className="block text-sm font-semibold text-orange-300 uppercase tracking-wider text-center">
-                        Search Services
-                      </label>
-                      <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                          <svg className="h-6 w-6 text-orange-400 group-focus-within:text-orange-300 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
+                <div className="space-y-4">
+                  {/* Form Elements Container */}
+                  <div className="space-y-6">
+                    {/* Service Input and Country Selection Row */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Search Input */}
+                      <div className="space-y-3">
+                        <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
+                          Search Service
+                        </label>
+                        <div className="relative group">
+                          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                            <svg className="h-6 w-6 text-emerald-400 group-focus-within:text-emerald-300 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                            </svg>
+                          </div>
+                          <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-14 pr-3 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50"
+                            placeholder="Enter service name"
+                          />
                         </div>
-                        <input
-                          type="text"
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-full pl-14 pr-6 py-5 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500/50 transition-all duration-300 backdrop-blur-sm text-lg shadow-inner hover:border-slate-500/50"
-                          placeholder="Enter service name..."
-                        />
+                      </div>
+
+                      {/* Country Selection */}
+                      <div className="space-y-3">
+                        <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
+                          Select Country
+                        </label>
+                        <div className="relative group" ref={dropdownRef}>
+                          <div
+                            onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                            className="w-full pl-12 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                          >
+                            <div className="flex items-center">
+                              <div className="absolute left-4">
+                                {countries.find(c => c.name === selectedCountry)?.flag}
+                              </div>
+                              <span>{selectedCountry}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+
+                          {/* Custom Dropdown Options */}
+                          {isCountryDropdownOpen && (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
+                              {countries.map((country) => (
+                                <div
+                                  key={country.code}
+                                  onClick={() => {
+                                    setSelectedCountry(country.name);
+                                    setIsCountryDropdownOpen(false);
+                                  }}
+                                  className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                                >
+                                  <div className="mr-1">
+                                    {country.flag}
+                                  </div>
+                                  <span className="text-white">{country.name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
+
                   </div>
 
-                  {/* Country Information */}
-                  <div className="flex justify-center">
-                    <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-orange-500/30 transition-all duration-300 shadow-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center text-2xl shadow-lg">
-                          🇺🇸
+                  {/* Search Button Row */}
+                  <div className="flex flex-col items-center justify-center">
+                    {/* Search Button */}
+                    <div className="flex flex-col items-center space-y-3">
+                      <div className="h-2"></div>
+                      <button 
+                        onClick={handleSearch}
+                        disabled={!searchTerm.trim() || isSearching}
+                        className="group px-5 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[200px]"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        
+                        <div className="relative z-10 flex items-center justify-center">
+                          {isSearching ? (
+                            <svg className="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                          ) : (
+                            <>
+                              <svg className="w-6 h-6 group-hover:rotate-12 transition-transform duration-300 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                              </svg>
+                              <span className="group-hover:tracking-wide transition-all duration-300">
+                                <span className="hidden sm:inline">Search for numbers</span>
+                                <span className="sm:hidden">Search numbers</span>
+                              </span>
+                            </>
+                          )}
                         </div>
-                        <div>
-                          <span className="text-white font-semibold text-lg">United States Only</span>
-                          <p className="text-slate-400 text-sm mt-1">All middle numbers are from the United States</p>
-                        </div>
-                      </div>
+                      </button>
                     </div>
-                  </div>
-
-                  {/* Search Button */}
-                  <div className="text-center pt-4">
-                    <button 
-                      onClick={handleSearch}
-                      disabled={!searchTerm.trim() || isSearching}
-                      className="group px-12 py-5 bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-600 hover:from-orange-500 hover:via-amber-500 hover:to-yellow-500 text-white font-bold text-xl rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-orange-500/25 hover:scale-105 border border-orange-500/30 hover:border-orange-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-amber-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      
-                      <div className="relative z-10 flex items-center space-x-4">
-                        {isSearching ? (
-                          <svg className="w-7 h-7 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                        ) : (
-                          <svg className="w-7 h-7 group-hover:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                        )}
-                        <span className="group-hover:tracking-wide transition-all duration-300">
-                          {isSearching ? 'Searching...' : 'Search Available Numbers'}
-                        </span>
-                        {!isSearching && (
-                          <svg className="w-5 h-5 opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                          </svg>
-                        )}
-                      </div>
-                    </button>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
             /* RESULTS VIEW */
-            <div className="p-8">
+            <div className="p-6">
               <div className="relative z-10">
                 {/* Back Button */}
-                <div className="mb-8">
+                <div className="mb-5">
                   <button 
                     onClick={() => setHasSearched(false)}
-                    className="group flex items-center space-x-3 px-6 py-3 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
+                    className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
                   >
                     <svg className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -221,19 +295,28 @@ const Middle: React.FC = () => {
                 </div>
 
                 {/* Results Header */}
-                <div className="text-center mb-10">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl mb-6 shadow-xl">
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  </div>
-                  <h3 className="text-3xl font-bold bg-gradient-to-r from-white via-orange-100 to-amber-100 bg-clip-text text-transparent mb-3">
-                    Available Numbers
-                  </h3>
-                  <p className="text-slate-300 text-lg">
+                <div className="text-left mb-7">
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
+                    Number options
+                  </h1>
+                  <p className="text-slate-300 text-md">
                     {searchResults.length > 0 
-                      ? `Found ${searchResults.length} numbers for "${searchTerm}" in ${selectedCountry}`
-                      : `No numbers found for "${searchTerm}" in ${selectedCountry}`
+                      ? (
+                          <span className="flex items-center flex-wrap">
+                            Found {searchResults.length} numbers for "{searchTerm}" from {selectedCountry}
+                            <span className="ml-2 hidden sm:inline">
+                              {countries.find(c => c.name === selectedCountry)?.flag}
+                            </span>
+                          </span>
+                        )
+                      : (
+                          <span className="flex items-center flex-wrap">
+                            No numbers found for "{searchTerm}" in {selectedCountry}
+                            <span className="ml-2 hidden sm:inline">
+                              {countries.find(c => c.name === selectedCountry)?.flag}
+                            </span>
+                          </span>
+                        )
                     }
                   </p>
                 </div>
@@ -244,33 +327,38 @@ const Middle: React.FC = () => {
                     {searchResults.map((option) => (
                       <div
                         key={option.id}
-                        className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 hover:border-orange-500/50 transition-all duration-300 shadow-lg hover:shadow-orange-500/25 hover:scale-[1.02]"
+                        className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 hover:border-blue-500/50 transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02]"
                       >
                         {/* Number Header */}
-                        <div className="flex items-center justify-between mb-6">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center text-xl">
-                              {countries.find(c => c.code === option.countryCode)?.flag || '🌍'}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-9 h-9 bg-blue-300/10 rounded-xl flex items-center justify-center">
+                              <span className="text-emerald-400 font-bold text-sm">{option.countryPrefix}</span>
                             </div>
                             <div>
-                              <p className="text-white font-bold text-lg">{option.number}</p>
-                              <p className="text-slate-400 text-sm">{option.country}</p>
+                              <p className="text-white font-bold text-md">{option.number}</p>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-emerald-400 font-bold text-2xl">${option.price}</p>
-                            <p className="text-slate-400 text-xs">total price</p>
                           </div>
                         </div>
 
                         {/* Details */}
-                        <div className="space-y-4 mb-6">
+                        <div className="space-y-2 mb-6">
+                          {/* Price */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between py-1">
+                              <span className="text-slate-300 font-medium">Price</span>
+                              <span className="text-emerald-400 font-semibold">
+                                ${option.price.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+
                           {/* Duration */}
                           <div className="flex items-center justify-between py-2">
                             <span className="text-slate-300 font-medium">Duration</span>
                             <div className="flex items-center space-x-2">
-                              <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-                              <span className="font-semibold text-orange-400">
+                              <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                              <span className="text-emerald-400 font-semibold">
                                 {option.duration} {option.duration === 1 ? 'day' : 'days'}
                               </span>
                             </div>
@@ -290,18 +378,14 @@ const Middle: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* Service */}
-                          <div className="flex items-center justify-between py-2">
-                            <span className="text-slate-300 font-medium">Service</span>
-                            <span className="text-orange-400 font-semibold bg-orange-500/10 px-3 py-1 rounded-lg">
-                              {option.service}
-                            </span>
-                          </div>
                         </div>
 
                         {/* Purchase Button */}
-                        <button className="w-full py-4 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-orange-500/25 hover:scale-[1.02]">
-                          Purchase Number
+                        <button 
+                          onClick={() => navigate('/history')}
+                          className="w-full py-3 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02]"
+                        >
+                          Purchase
                         </button>
                       </div>
                     ))}
