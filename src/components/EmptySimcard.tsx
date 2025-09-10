@@ -147,7 +147,7 @@ const EmptySimcard: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
                       {/* Country Selection */}
                       <div className="space-y-3">
-                        <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider text-center md:text-left">
+                        <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider text-center">
                           Select Country
                         </label>
                         <div className="relative group" ref={dropdownRef}>
