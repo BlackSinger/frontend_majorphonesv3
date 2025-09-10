@@ -137,8 +137,8 @@ const Middle: React.FC = () => {
         <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4">
           <div className="flex items-center justify-center">
             <div className="text-center">
-              <p className="text-blue-300 text-sm font-semibold">Important information about these numbers:</p>
-              <ul className="text-blue-200 text-xs mt-1 space-y-1 text-left">
+              <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
+              <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                 <li>• These numbers last 1, 7 or 14 days depending on the option specified</li>
                 <li>• Their duration can't be extended</li>
                 <li>• They can't be refunded once purchased</li>
@@ -324,70 +324,86 @@ const Middle: React.FC = () => {
 
                 {/* Results Grid */}
                 {searchResults.length > 0 ? (
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
+                  <div className="grid gap-6 grid-cols-1">
                     {searchResults.map((option) => (
                       <div
                         key={option.id}
-                        className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 hover:border-blue-500/50 transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02]"
+                        className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 border-blue-500/50 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:scale-[1.01]" style={{ boxShadow: '0 0 24px rgba(59, 130, 246, 0.25)' }}
                       >
                         {/* Number Header */}
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-2">
                             <div className="w-9 h-9 bg-blue-300/10 rounded-xl flex items-center justify-center">
-                              <span className="text-emerald-400 font-bold text-sm">{option.countryPrefix}</span>
+                              <span className="text-emerald-400 font-bold text-sm">
+                                {searchResults.indexOf(option) === 0 ? '1st' :
+                                 searchResults.indexOf(option) === 1 ? '2nd' : '3rd'}
+                              </span>
                             </div>
                             <div>
-                              <p className="text-white font-bold text-md">{option.number}</p>
+                              <p className="text-white font-bold text-md">Option</p>
                             </div>
                           </div>
                         </div>
 
-                        {/* Details */}
-                        <div className="space-y-2 mb-6">
-                          {/* Price */}
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between py-1">
-                              <span className="text-slate-300 font-medium">Price</span>
-                              <span className="text-emerald-400 font-semibold">
-                                ${option.price.toFixed(2)}
-                              </span>
+                        {/* Details in one line */}
+                        <div className="md:flex md:items-center md:justify-between">
+                          {/* Mobile Layout */}
+                          <div className="md:hidden space-y-3">
+                            {/* Price, Duration, Success Rate in two columns */}
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-md">
+                                <span className="text-slate-300 font-medium">Price:</span>
+                                <span className="text-emerald-400 font-semibold">
+                                  ${option.price.toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-md">
+                                <span className="text-slate-300 font-medium">Duration:</span>
+                                <span className="text-emerald-400 font-semibold">
+                                  {option.duration} {option.duration === 1 ? 'day' : 'days'}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-md">
+                                <span className="text-slate-300 font-medium">Success Rate:</span>
+                                <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
+                              </div>
                             </div>
+                            {/* Purchase Button - full width */}
+                            <button 
+                              onClick={() => navigate('/history')}
+                              className="w-full px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-md"
+                            >
+                              Purchase
+                            </button>
                           </div>
 
-                          {/* Duration */}
-                          <div className="flex items-center justify-between py-2">
-                            <span className="text-slate-300 font-medium">Duration</span>
-                            <div className="flex items-center space-x-2">
-                              <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                              <span className="text-emerald-400 font-semibold">
-                                {option.duration} {option.duration === 1 ? 'day' : 'days'}
-                              </span>
-                            </div>
+                          {/* Desktop Layout - unchanged */}
+                          <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                            <span className="text-slate-300 font-medium">Price:</span>
+                            <span className="text-emerald-400 font-semibold">
+                              ${option.price.toFixed(2)}
+                            </span>
                           </div>
 
-                          {/* Success Rate */}
-                          <div className="py-2">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-slate-300 font-medium">Success Rate</span>
-                              <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
-                            </div>
-                            <div className="w-full h-2 bg-slate-600 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-gradient-to-r from-emerald-500 to-green-500 rounded-full transition-all duration-500"
-                                style={{ width: `${option.successRate}%` }}
-                              ></div>
-                            </div>
+                          <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                            <span className="text-slate-300 font-medium">Duration:</span>
+                            <span className="text-emerald-400 font-semibold">
+                              {option.duration} {option.duration === 1 ? 'day' : 'days'}
+                            </span>
                           </div>
 
+                          <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                            <span className="text-slate-300 font-medium">Success Rate:</span>
+                            <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
+                          </div>
+
+                          <button 
+                            onClick={() => navigate('/history')}
+                            className="hidden md:block px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm"
+                          >
+                            Purchase
+                          </button>
                         </div>
-
-                        {/* Purchase Button */}
-                        <button 
-                          onClick={() => navigate('/history')}
-                          className="w-full py-3 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02]"
-                        >
-                          Purchase
-                        </button>
                       </div>
                     ))}
                   </div>

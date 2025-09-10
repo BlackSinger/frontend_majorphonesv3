@@ -13,7 +13,7 @@ interface NumberOption {
   successRate: number;
 }
 
-const LongTerm: React.FC = () => {
+const Test: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('United States');
@@ -71,17 +71,37 @@ const LongTerm: React.FC = () => {
       const countryCode = selectedCountryData?.code || 'US';
       const countryPrefix = selectedCountryData?.prefix || '+1';
       
-      // Mock data for long-term numbers (30-day duration)
+      // Mock data with duration instead of reusability
       const mockResults: NumberOption[] = [
         {
           id: '1',
-          number: '555-0123',
-          price: 15.50,
+          number: '555-0456',
+          price: 1.80,
           country: selectedCountry,
           countryCode: countryCode,
           countryPrefix: countryPrefix,
-          duration: 30,
-          successRate: 98
+          duration: 1,
+          successRate: 88
+        },
+        {
+          id: '2',
+          number: '555-0123',
+          price: 2.50,
+          country: selectedCountry,
+          countryCode: countryCode,
+          countryPrefix: countryPrefix,
+          duration: 7,
+          successRate: 95
+        },
+        {
+          id: '3',
+          number: '555-0789',
+          price: 3.20,
+          country: selectedCountry,
+          countryCode: countryCode,
+          countryPrefix: countryPrefix,
+          duration: 14,
+          successRate: 92
         }
       ];
 
@@ -96,7 +116,7 @@ const LongTerm: React.FC = () => {
   };
 
   return (
-    <DashboardLayout currentPath="/long">
+    <DashboardLayout currentPath="/middle">
       <div className="space-y-6">
         {/* Header */}
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
@@ -105,49 +125,47 @@ const LongTerm: React.FC = () => {
             <div className="flex items-center space-x-4">
               <div>
                 <h1 className="text-left text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent">
-                  Long Term Numbers
+                  Middle Numbers
                 </h1>
-                <p className="text-slate-300 text-md text-left">Extended 30-day validity numbers</p>
+                <p className="text-slate-300 text-md text-left">Temporary numbers with extended duration</p>
               </div>
             </div>
           </div>
         </div>
 
-        {!hasSearched ? (
-          /* SEARCH STATE - Information Section on top */
-          <>
-            {/* Information Section - Shows above search */}
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4 mb-6">
-              <div className="flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
-                  <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
-                    <li>• They can only be used to verify just 1 service</li>
-                    <li>• They are valid for 30 days</li>
-                    <li>• Their duration can't be extended</li>
-                    <li>• They can't be refunded once purchased</li>
-                    <li>• Users that deposit through Amazon Pay can't purchase them</li>
-                    <li>• If you want to verify more than 1 service with the same number, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
-                  </ul>
-                </div>
-              </div>
+        {/* Information Section */}
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4">
+          <div className="flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
+              <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
+                <li>• These numbers last 1, 7 or 14 days depending on the option specified</li>
+                <li>• Their duration can't be extended</li>
+                <li>• They can't be refunded once purchased</li>
+                <li>• Users that deposit through Amazon Pay can't purchase them</li>
+                <li>• If you want to verify more than 1 service with the same number, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
+              </ul>
             </div>
+          </div>
+        </div>
 
-            {/* Main Content Section */}
-            <div className={`rounded-3xl shadow-2xl border border-slate-700/50 relative ${isCountryDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
-              {/* SEARCH VIEW */}
-              <div className="p-6">
-                <div className="relative z-10 mx-auto">
+        {/* Main Content Section */}
+        <div className={`rounded-3xl shadow-2xl border border-slate-700/50 relative ${isCountryDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
+          
+          {!hasSearched ? (
+            /* SEARCH VIEW */
+            <div className="p-6">
+              <div className="relative z-10 mx-auto">
                 {/* Search Header */}
                 <div className="text-left mb-9">
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent mb-2">
                     Search & Configure
                   </h1>
-                  <p className="text-slate-300 text-md">Find long-term numbers with 30-day validity</p>
+                  <p className="text-slate-300 text-md">Find middle-term numbers with extended validity</p>
                 </div>
                 
                 {/* Search Form */}
-                <div className="space-y-9">
+                <div className="space-y-4">
                   {/* Form Elements Container */}
                   <div className="space-y-6">
                     {/* Service Input and Country Selection Row */}
@@ -223,12 +241,15 @@ const LongTerm: React.FC = () => {
 
                   </div>
 
+                  {/* Search Button Row */}
+                  <div className="flex flex-col items-center justify-center">
                     {/* Search Button */}
                     <div className="flex flex-col items-center space-y-3">
+                      <div className="h-2"></div>
                       <button 
                         onClick={handleSearch}
                         disabled={!searchTerm.trim() || isSearching}
-                        className="group px-8 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[150px]"
+                        className="group px-5 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[200px]"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         
@@ -238,9 +259,15 @@ const LongTerm: React.FC = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                           ) : (
-                            <span className="group-hover:tracking-wide transition-all duration-300">
-                              <span>Search numbers</span>
-                            </span>
+                            <>
+                              <svg className="w-6 h-6 group-hover:rotate-12 transition-transform duration-300 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                              </svg>
+                              <span className="group-hover:tracking-wide transition-all duration-300">
+                                <span className="hidden sm:inline">Search for numbers</span>
+                                <span className="sm:hidden">Search numbers</span>
+                              </span>
+                            </>
                           )}
                         </div>
                       </button>
@@ -249,30 +276,10 @@ const LongTerm: React.FC = () => {
                 </div>
               </div>
             </div>
-          </>
-        ) : (
-          <>
-            {/* Information Section - Always on top */}
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4 mb-6">
-              <div className="flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
-                  <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
-                    <li>• They can only be used to verify just 1 service</li>
-                    <li>• They are valid for 30 days</li>
-                    <li>• Their duration can't be extended</li>
-                    <li>• They can't be refunded once purchased</li>
-                    <li>• Users that deposit through Amazon Pay can't purchase them</li>
-                    <li>• If you want to verify more than 1 service with the same number, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* Results Section */}
-            <div className="rounded-3xl shadow-2xl border border-slate-700/50 relative">
-              <div className="p-6">
-                <div className="relative z-10">
+          ) : (
+            /* RESULTS VIEW */
+            <div className="p-6">
+              <div className="relative z-10">
                 {/* Back Button */}
                 <div className="mb-5">
                   <button 
@@ -317,17 +324,20 @@ const LongTerm: React.FC = () => {
 
                 {/* Results Grid */}
                 {searchResults.length > 0 ? (
-                  <div className={`grid gap-6 ${searchResults.length === 1 ? 'grid-cols-1' : 'sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'}`}>
+                  <div className="grid gap-6 grid-cols-1 max-w-6xl mx-auto">
                     {searchResults.map((option) => (
                       <div
                         key={option.id}
-                        className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 border-blue-500/50 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:scale-[1.01]" style={{ boxShadow: '0 0 24px rgba(59, 130, 246, 0.25)' }}
+                        className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 hover:border-blue-500/50 transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.01]"
                       >
                         {/* Number Header */}
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-2">
                             <div className="w-9 h-9 bg-blue-300/10 rounded-xl flex items-center justify-center">
-                              <span className="text-emerald-400 font-bold text-sm">1st</span>
+                              <span className="text-emerald-400 font-bold text-sm">
+                                {searchResults.indexOf(option) === 0 ? '1st' :
+                                 searchResults.indexOf(option) === 1 ? '2nd' : '3rd'}
+                              </span>
                             </div>
                             <div>
                               <p className="text-white font-bold text-md">Option</p>
@@ -341,55 +351,55 @@ const LongTerm: React.FC = () => {
                           <div className="md:hidden space-y-3">
                             {/* Price, Duration, Success Rate in two columns */}
                             <div className="space-y-2">
-                              <div className="flex items-center justify-between text-md">
-                                <span className="text-slate-300 font-medium">Price:</span>
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-300 font-medium text-sm">Price:</span>
                                 <span className="text-emerald-400 font-semibold">
                                   ${option.price.toFixed(2)}
                                 </span>
                               </div>
-                              <div className="flex items-center justify-between text-md">
-                                <span className="text-slate-300 font-medium">Duration:</span>
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-300 font-medium text-sm">Duration:</span>
                                 <span className="text-emerald-400 font-semibold">
-                                  {option.duration} days
+                                  {option.duration} {option.duration === 1 ? 'day' : 'days'}
                                 </span>
                               </div>
-                              <div className="flex items-center justify-between text-md">
-                                <span className="text-slate-300 font-medium">Success Rate:</span>
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-300 font-medium text-sm">Success Rate:</span>
                                 <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
                               </div>
                             </div>
                             {/* Purchase Button - full width */}
                             <button 
                               onClick={() => navigate('/history')}
-                              className="w-full px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-md"
+                              className="w-full px-4 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm"
                             >
                               Purchase
                             </button>
                           </div>
 
                           {/* Desktop Layout - unchanged */}
-                          <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                            <span className="text-slate-300 font-medium">Price:</span>
+                          <div className="hidden md:flex md:items-center md:space-x-2">
+                            <span className="text-slate-300 font-medium text-sm">Price:</span>
                             <span className="text-emerald-400 font-semibold">
                               ${option.price.toFixed(2)}
                             </span>
                           </div>
 
-                          <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                            <span className="text-slate-300 font-medium">Duration:</span>
+                          <div className="hidden md:flex md:items-center md:space-x-2">
+                            <span className="text-slate-300 font-medium text-sm">Duration:</span>
                             <span className="text-emerald-400 font-semibold">
-                              {option.duration} days
+                              {option.duration} {option.duration === 1 ? 'day' : 'days'}
                             </span>
                           </div>
 
-                          <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                            <span className="text-slate-300 font-medium">Success Rate:</span>
+                          <div className="hidden md:flex md:items-center md:space-x-2">
+                            <span className="text-slate-300 font-medium text-sm">Success Rate:</span>
                             <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
                           </div>
 
                           <button 
                             onClick={() => navigate('/history')}
-                            className="hidden md:block px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm"
+                            className="hidden md:block px-4 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm"
                           >
                             Purchase
                           </button>
@@ -409,14 +419,13 @@ const LongTerm: React.FC = () => {
                     <p className="text-slate-400 text-lg">Try searching for a different service or country.</p>
                   </div>
                 )}
-                </div>
               </div>
             </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );
 };
 
-export default LongTerm;
+export default Test;

@@ -12,6 +12,7 @@ import History from './components/History';
 import Transactions from './components/Transactions';
 import Profile from './components/Profile';
 import AddFunds from './components/AddFunds';
+import Test from './components/Test';
 import './App.css';
 
 function Home() {
@@ -75,6 +76,7 @@ function App() {
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/add-funds" element={<AddFunds />} />
+          <Route path="/test" element={<Test />} />
         </Routes>
       </div>
     </Router>

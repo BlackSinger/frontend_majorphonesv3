@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 
 interface NumberOption {
@@ -58,17 +58,6 @@ const ShortNumbers: React.FC = () => {
       )
     },
     { 
-      code: 'ES', 
-      name: 'Spain',
-      prefix: '+34',
-      flag: (
-        <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
-          <rect width="60" height="40" fill="#C60B1E"/>
-          <rect width="60" height="20" y="10" fill="#FFC400"/>
-        </svg>
-      )
-    },
-    { 
       code: 'DE', 
       name: 'Germany',
       prefix: '+49',
@@ -89,18 +78,6 @@ const ShortNumbers: React.FC = () => {
           <rect width="20" height="40" fill="#002395"/>
           <rect width="20" height="40" x="20" fill="white"/>
           <rect width="20" height="40" x="40" fill="#ED2939"/>
-        </svg>
-      )
-    },
-    { 
-      code: 'IT', 
-      name: 'Italy',
-      prefix: '+39',
-      flag: (
-        <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
-          <rect width="20" height="40" fill="#009246"/>
-          <rect width="20" height="40" x="20" fill="white"/>
-          <rect width="20" height="40" x="40" fill="#CE2B37"/>
         </svg>
       )
     },
@@ -147,7 +124,6 @@ const ShortNumbers: React.FC = () => {
       const countryCode = selectedCountryData?.code || 'US';
       const countryPrefix = selectedCountryData?.prefix || '+1';
       
-      // Mock results for reusable numbers
       const reusableNumbers: NumberOption[] = [
         {
           id: '1',
@@ -159,28 +135,6 @@ const ShortNumbers: React.FC = () => {
           countryPrefix: countryPrefix,
           isReusable: true,
           successRate: 95
-        },
-        {
-          id: '2',
-          number: '555-0456',
-          price: 1.2,
-          extraSmsPrice: 0.6,
-          country: selectedCountry,
-          countryCode: countryCode,
-          countryPrefix: countryPrefix,
-          isReusable: true,
-          successRate: 88
-        },
-        {
-          id: '3',
-          number: '555-0789',
-          price: 1.2,
-          extraSmsPrice: 0.6,
-          country: selectedCountry,
-          countryCode: countryCode,
-          countryPrefix: countryPrefix,
-          isReusable: true,
-          successRate: 92
         }
       ];
 
@@ -249,17 +203,19 @@ const ShortNumbers: React.FC = () => {
           </div>
         </div>
 
-        {/* Information Section */}
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4">
+        {/* Information Section - Always on top */}
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4 mb-6">
           <div className="flex items-center justify-center">
             <div className="text-center">
-              <p className="text-blue-300 text-sm font-semibold">Important information about these numbers:</p>
-              <ul className="text-blue-200 text-xs mt-1 space-y-1 text-left">
+              <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
+              <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                 <li>• They can only be reused if you enable the reuse option</li>
                 <li>• Reusable numbers last 12 hours</li>
                 <li>• They can't be refunded once a code arrives</li>
                 <li>• If they don't receive codes they are automatically refunded</li>
                 <li>• Cancelled and timed out numbers are automatically refunded</li>
+                <li>• If you want to verify 1 service more than once, go to <Link to="/middle" className="text-blue-400 hover:text-blue-300 underline font-semibold">Middle</Link> or <Link to="/long" className="text-blue-400 hover:text-blue-300 underline font-semibold">Long</Link> Numbers</li>
+                <li>• If you want to verify multiple services, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
               </ul>
             </div>
           </div>
@@ -267,107 +223,105 @@ const ShortNumbers: React.FC = () => {
 
         {/* Main Content Section */}
         <div className={`rounded-3xl shadow-2xl border border-slate-700/50 relative ${isCountryDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
-          
+            
           {!hasSearched ? (
             /* SEARCH VIEW */
             <div className="p-6">
-              <div className="relative z-10 mx-auto">
-                {/* Search Header */}
-                <div className="text-left mb-9">
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent mb-2">
-                    Search & Configure
-                  </h1>
-                  <p className="text-slate-300 text-md">Find and configure your short number service</p>
-                </div>
-                
-                {/* Search Form */}
-                <div className="space-y-6">
-                  {/* Form Elements Container */}
-                  <div className="space-y-6">
-                    {/* Service Input and Country Selection Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Search Input */}
-                      <div className="space-y-3">
-                        <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
-                          Search Service
-                        </label>
-                        <div className="relative group">
-                          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                            <svg className="h-6 w-6 text-emerald-400 group-focus-within:text-emerald-300 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                            </svg>
-                          </div>
-                          <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-14 pr-3 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50"
-                            placeholder="Enter service name"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Country Selection */}
-                      <div className="space-y-3">
-                        <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
-                          Select Country
-                        </label>
-                        <div className="relative group" ref={dropdownRef}>
-                          <div
-                            onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-                            className="w-full pl-12 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
-                          >
-                            <div className="flex items-center">
-                              <div className="absolute left-4">
-                                {countries.find(c => c.name === selectedCountry)?.flag}
-                              </div>
-                              <span>{selectedCountry}</span>
+                <div className="relative z-10 mx-auto">
+                  {/* Search Header */}
+                  <div className="text-left mb-9">
+                    <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent mb-2">
+                      Search & Configure
+                    </h1>
+                    <p className="text-slate-300 text-md">Find and configure your short number service</p>
+                  </div>
+                  
+                  {/* Search Form */}
+                  <div className="space-y-9">
+                    {/* Form Elements Container */}
+                    <div className="space-y-6">
+                      {/* Service Input and Country Selection Row */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Search Input */}
+                        <div className="space-y-3">
+                          <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
+                            Search Service
+                          </label>
+                          <div className="relative group">
+                            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                              <svg className="h-6 w-6 text-emerald-400 group-focus-within:text-emerald-300 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                              </svg>
                             </div>
+                            <input
+                              type="text"
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              className="w-full pl-14 pr-3 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50"
+                              placeholder="Enter service name"
+                            />
                           </div>
-                          
-                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                            <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
+                        </div>
 
-                          {/* Custom Dropdown Options */}
-                          {isCountryDropdownOpen && (
-                            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
-                              {countries.map((country) => (
-                                <div
-                                  key={country.code}
-                                  onClick={() => {
-                                    setSelectedCountry(country.name);
-                                    setIsCountryDropdownOpen(false);
-                                  }}
-                                  className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-                                >
-                                  <div className="mr-1">
-                                    {country.flag}
-                                  </div>
-                                  <span className="text-white">{country.name}</span>
+                        {/* Country Selection */}
+                        <div className="space-y-3">
+                          <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
+                            Select Country
+                          </label>
+                          <div className="relative group" ref={dropdownRef}>
+                            <div
+                              onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                              className="w-full pl-12 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                            >
+                              <div className="flex items-center">
+                                <div className="absolute left-4">
+                                  {countries.find(c => c.name === selectedCountry)?.flag}
                                 </div>
-                              ))}
+                                <span>{selectedCountry}</span>
+                              </div>
                             </div>
-                          )}
+                            
+                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                              <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+
+                            {/* Custom Dropdown Options */}
+                            {isCountryDropdownOpen && (
+                              <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
+                                {countries.map((country) => (
+                                  <div
+                                    key={country.code}
+                                    onClick={() => {
+                                      setSelectedCountry(country.name);
+                                      setIsCountryDropdownOpen(false);
+                                    }}
+                                    className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                                  >
+                                    <div className="mr-1">
+                                      {country.flag}
+                                    </div>
+                                    <span className="text-white">{country.name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
+
                     </div>
 
-                  </div>
-
-                  {/* Number Type Toggle and Search Button Row */}
-                  <div className="flex flex-col sm:flex-row items-center justify-center">
                     {/* Number Type Toggle */}
-                    <div className="flex-1 flex flex-col items-center space-y-3">
+                    <div className="flex flex-col items-center space-y-3">
                       <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider text-center">
-                        Number Type
+                        Number type
                       </label>
                       <div className="flex items-center bg-slate-700/50 rounded-full p-2 border border-slate-600/50">
                         <button
                           onClick={() => setReuseEnabled(false)}
-                          className={`px-4 sm:px-5 lg:px-8 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
+                          className={`px-8 sm:px-8 lg:px-10 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[2.5rem] flex items-center ${
                             !reuseEnabled 
                               ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg' 
                               : 'text-slate-400 hover:text-slate-300'
@@ -377,7 +331,7 @@ const ShortNumbers: React.FC = () => {
                         </button>
                         <button
                           onClick={() => setReuseEnabled(true)}
-                          className={`px-4 sm:px-5 lg:px-8 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
+                          className={`px-8 sm:px-8 lg:px-10 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[2.5rem] flex items-center ${
                             reuseEnabled 
                               ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg' 
                               : 'text-slate-400 hover:text-slate-300'
@@ -389,12 +343,11 @@ const ShortNumbers: React.FC = () => {
                     </div>
 
                     {/* Search Button */}
-                    <div className="flex-1 flex flex-col items-center space-y-6">
-                      <div className="h-2"></div>
+                    <div className="flex flex-col items-center space-y-3">
                       <button 
                         onClick={handleSearch}
                         disabled={!searchTerm.trim() || isSearching}
-                        className="group px-5 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[200px]"
+                        className="group px-8 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[150px]"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         
@@ -404,159 +357,178 @@ const ShortNumbers: React.FC = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                           ) : (
-                            <>
-                              <svg className="w-6 h-6 group-hover:rotate-12 transition-transform duration-300 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                              </svg>
-                              <span className="group-hover:tracking-wide transition-all duration-300">
-                                <span className="hidden sm:inline">Search for numbers</span>
-                                <span className="sm:hidden">Search numbers</span>
-                              </span>
-                            </>
+                            <span className="group-hover:tracking-wide transition-all duration-300">
+                              <span>Search numbers</span>
+                            </span>
                           )}
                         </div>
                       </button>
                     </div>
                   </div>
                 </div>
-              </div>
             </div>
           ) : (
             /* RESULTS VIEW */
             <div className="p-6">
-              <div className="relative z-10">
-                {/* Back Button */}
-                <div className="mb-5">
-                  <button 
-                    onClick={() => setHasSearched(false)}
-                    className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
-                  >
-                    <svg className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    <span className="text-slate-400 group-hover:text-white font-medium transition-colors duration-300">
-                      Back to Search
-                    </span>
-                  </button>
-                </div>
+                <div className="relative z-10">
+                  {/* Back Button */}
+                  <div className="mb-5">
+                    <button 
+                      onClick={() => setHasSearched(false)}
+                      className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
+                    >
+                      <svg className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                      </svg>
+                      <span className="text-slate-400 group-hover:text-white font-medium transition-colors duration-300">
+                        Back to Search
+                      </span>
+                    </button>
+                  </div>
 
-                {/* Results Header */}
-                <div className="text-left mb-7">
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
-                    Number options
-                  </h1>
-                  <p className="text-slate-300 text-md">
-                    {searchResults.length > 0 
-                      ? (
-                          <span className="flex items-center flex-wrap">
-                            Found {searchResults.length} numbers for "{searchTerm}" from {selectedCountry}
-                            <span className="ml-2 hidden sm:inline">
-                              {countries.find(c => c.name === selectedCountry)?.flag}
+                  {/* Results Header */}
+                  <div className="text-left mb-7">
+                    <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
+                      Number options
+                    </h1>
+                    <p className="text-slate-300 text-md">
+                      {searchResults.length > 0 
+                        ? (
+                            <span className="flex items-center flex-wrap">
+                              Found {searchResults.length} numbers for "{searchTerm}" from {selectedCountry}
+                              <span className="ml-2 hidden sm:inline">
+                                {countries.find(c => c.name === selectedCountry)?.flag}
+                              </span>
                             </span>
-                          </span>
-                        )
-                      : (
-                          <span className="flex items-center flex-wrap">
-                            No numbers found for "{searchTerm}" in {selectedCountry}
-                            <span className="ml-2 hidden sm:inline">
-                              {countries.find(c => c.name === selectedCountry)?.flag}
+                          )
+                        : (
+                            <span className="flex items-center flex-wrap">
+                              No numbers found for "{searchTerm}" in {selectedCountry}
+                              <span className="ml-2 hidden sm:inline">
+                                {countries.find(c => c.name === selectedCountry)?.flag}
+                              </span>
                             </span>
-                          </span>
-                        )
-                    }
-                  </p>
-                </div>
+                          )
+                      }
+                    </p>
+                  </div>
 
-                {/* Results Grid */}
-                {searchResults.length > 0 ? (
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
-                    {searchResults.map((option) => (
-                      <div
-                        key={option.id}
-                        className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 hover:border-blue-500/50 transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02]"
-                      >
-                        {/* Number Header */}
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-9 h-9 bg-blue-300/10 rounded-xl flex items-center justify-center">
-                              <span className="text-emerald-400 font-bold text-sm">{option.countryPrefix}</span>
-                            </div>
-                            <div>
-                              <p className="text-white font-bold text-md">{option.number}</p>
+                  {/* Results Grid */}
+                  {searchResults.length > 0 ? (
+                    <div className="grid gap-6 grid-cols-1">
+                      {searchResults.map((option) => (
+                        <div
+                          key={option.id}
+                          className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 border-blue-500/50 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:scale-[1.01]" style={{ boxShadow: '0 0 24px rgba(59, 130, 246, 0.25)' }}
+                        >
+                          {/* Number Header */}
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-9 h-9 bg-blue-300/10 rounded-xl flex items-center justify-center">
+                                <span className="text-emerald-400 font-bold text-sm">
+                                  {searchResults.length === 1 ? '1st' : 
+                                   searchResults.indexOf(option) === 0 ? '1st' :
+                                   searchResults.indexOf(option) === 1 ? '2nd' : '3rd'}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="text-white font-bold text-md">Option</p>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Details */}
-                        <div className="space-y-2 mb-6">
-                          {/* Price */}
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between py-1">
-                              <span className="text-slate-300 font-medium">Price</span>
+                          {/* Details in one line */}
+                          <div className="md:flex md:items-center md:justify-between">
+                            {/* Mobile Layout */}
+                            <div className="md:hidden space-y-3">
+                              {/* Price, Duration, Success Rate in two columns */}
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between text-md">
+                                  <span className="text-slate-300 font-medium">Price:</span>
+                                  <span className="text-emerald-400 font-semibold">
+                                    ${option.price.toFixed(2)}
+                                  </span>
+                                </div>
+                                {option.isReusable && option.extraSmsPrice && (
+                                  <div className="flex items-center justify-between text-md">
+                                    <span className="text-slate-300 font-medium">Each reuse:</span>
+                                    <span className="text-emerald-400 font-semibold">
+                                      ${option.extraSmsPrice.toFixed(2)}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between text-md">
+                                  <span className="text-slate-300 font-medium">Reusable:</span>
+                                  <span className={`font-semibold ${option.isReusable ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {option.isReusable ? 'Yes' : 'No'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between text-md">
+                                  <span className="text-slate-300 font-medium">Success Rate:</span>
+                                  <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
+                                </div>
+                              </div>
+                              {/* Purchase Button - full width */}
+                              <button 
+                                onClick={() => navigate('/history')}
+                                className="w-full px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-md"
+                              >
+                                Purchase
+                              </button>
+                            </div>
+
+                            {/* Desktop Layout - unchanged */}
+                            <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                              <span className="text-slate-300 font-medium">Price:</span>
                               <span className="text-emerald-400 font-semibold">
                                 ${option.price.toFixed(2)}
                               </span>
                             </div>
+
                             {option.isReusable && option.extraSmsPrice && (
-                              <div className="flex items-center justify-between py-1">
-                                <span className="text-slate-300 font-medium">Each reuse</span>
+                              <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                                <span className="text-slate-300 font-medium">Each reuse:</span>
                                 <span className="text-emerald-400 font-semibold">
                                   ${option.extraSmsPrice.toFixed(2)}
                                 </span>
                               </div>
                             )}
-                          </div>
 
-                          {/* Reusability */}
-                          <div className="flex items-center justify-between py-2">
-                            <span className="text-slate-300 font-medium">Reusable</span>
-                            <div className="flex items-center space-x-2">
-                              <div className={`w-3 h-3 rounded-full ${option.isReusable ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+                            <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                              <span className="text-slate-300 font-medium">Reusable:</span>
                               <span className={`font-semibold ${option.isReusable ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {option.isReusable ? 'Yes' : 'No'}
                               </span>
                             </div>
-                          </div>
 
-                          {/* Success Rate */}
-                          <div className="py-2">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-slate-300 font-medium">Success Rate</span>
+                            <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                              <span className="text-slate-300 font-medium">Success Rate:</span>
                               <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
                             </div>
-                            <div className="w-full h-2 bg-slate-600 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-gradient-to-r from-emerald-500 to-green-500 rounded-full transition-all duration-500"
-                                style={{ width: `${option.successRate}%` }}
-                              ></div>
-                            </div>
+
+                            <button 
+                              onClick={() => navigate('/history')}
+                              className="hidden md:block px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm"
+                            >
+                              Purchase
+                            </button>
                           </div>
-
                         </div>
-
-                        {/* Purchase Button */}
-                        <button 
-                          onClick={() => navigate('/history')}
-                          className="w-full py-3 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02]"
-                        >
-                          Purchase
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  /* No Results State */
-                  <div className="text-center py-16 max-w-md mx-auto">
-                    <div className="inline-flex items-center justify-center w-20 h-20 bg-slate-700 rounded-2xl mb-6">
-                      <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.291-1.007-5.824-2.562M15 6.306a7.962 7.962 0 00-6 0m6 0C17.742 7.324 20.467 9.45 21 12.017M9 6.306C6.258 7.324 3.533 9.45 3 12.017" />
-                      </svg>
+                      ))}
                     </div>
-                    <h4 className="text-2xl font-bold text-slate-300 mb-3">No Numbers Available</h4>
-                    <p className="text-slate-400 text-lg">Try searching for a different service or country.</p>
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    /* No Results State */
+                    <div className="text-center py-16 max-w-md mx-auto">
+                      <div className="inline-flex items-center justify-center w-20 h-20 bg-slate-700 rounded-2xl mb-6">
+                        <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.291-1.007-5.824-2.562M15 6.306a7.962 7.962 0 00-6 0m6 0C17.742 7.324 20.467 9.45 21 12.017M9 6.306C6.258 7.324 3.533 9.45 3 12.017" />
+                        </svg>
+                      </div>
+                      <h4 className="text-2xl font-bold text-slate-300 mb-3">No Numbers Available</h4>
+                      <p className="text-slate-400 text-lg">Try searching for a different service or country.</p>
+                    </div>
+                  )}
+                </div>
             </div>
           )}
         </div>
