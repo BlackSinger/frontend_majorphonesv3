@@ -159,9 +159,9 @@ const Middle: React.FC = () => {
                 {/* Search Header */}
                 <div className="text-left mb-9">
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent mb-2">
-                    Search & Configure
+                    Search For Numbers
                   </h1>
-                  <p className="text-slate-300 text-md">Find middle-term numbers with extended validity</p>
+                  <p className="text-slate-300 text-md">Find the service you are looking for</p>
                 </div>
                 
                 {/* Search Form */}
@@ -260,12 +260,8 @@ const Middle: React.FC = () => {
                             </svg>
                           ) : (
                             <>
-                              <svg className="w-6 h-6 group-hover:rotate-12 transition-transform duration-300 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                              </svg>
                               <span className="group-hover:tracking-wide transition-all duration-300">
-                                <span className="hidden sm:inline">Search for numbers</span>
-                                <span className="sm:hidden">Search numbers</span>
+                                <span>Search numbers</span>
                               </span>
                             </>
                           )}

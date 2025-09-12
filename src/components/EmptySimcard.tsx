@@ -134,9 +134,9 @@ const EmptySimcard: React.FC = () => {
                 {/* Search Header */}
                 <div className="text-left mb-9">
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent mb-2">
-                    Complete SIM Cards
+                    Search For Numbers
                   </h1>
-                  <p className="text-slate-300 text-md">Purchase complete SIM cards for multiple service verifications</p>
+                  <p className="text-slate-300 text-md">Find your multi-service SIM card</p>
                 </div>
                 
                 {/* Search Form */}
@@ -211,7 +211,7 @@ const EmptySimcard: React.FC = () => {
                               </svg>
                             ) : (
                               <span className="group-hover:tracking-wide transition-all duration-300">
-                                <span>Purchase number</span>
+                                <span>Search numbers</span>
                               </span>
                             )}
                           </div>

@@ -105,7 +105,7 @@ const LongTerm: React.FC = () => {
             <div className="flex items-center space-x-4">
               <div>
                 <h1 className="text-left text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent">
-                  Long Term Numbers
+                  Long Numbers
                 </h1>
                 <p className="text-slate-300 text-md text-left">Extended 30-day validity numbers</p>
               </div>
@@ -141,9 +141,9 @@ const LongTerm: React.FC = () => {
                 {/* Search Header */}
                 <div className="text-left mb-9">
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent mb-2">
-                    Search & Configure
+                    Search For Numbers
                   </h1>
-                  <p className="text-slate-300 text-md">Find long-term numbers with 30-day validity</p>
+                  <p className="text-slate-300 text-md">Find the service you are looking for</p>
                 </div>
                 
                 {/* Search Form */}

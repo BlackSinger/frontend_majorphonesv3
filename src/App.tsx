@@ -8,11 +8,11 @@ import ShortNumbers from './components/ShortNumbers';
 import Middle from './components/Middle';
 import LongTerm from './components/LongTerm';
 import EmptySimcard from './components/EmptySimcard';
+import VirtualCard from './components/VirtualCard';
 import History from './components/History';
 import Transactions from './components/Transactions';
 import Profile from './components/Profile';
 import AddFunds from './components/AddFunds';
-import Test from './components/Test';
 import './App.css';
 
 function Home() {
@@ -72,11 +72,11 @@ function App() {
           <Route path="/middle" element={<Middle />} />
           <Route path="/long" element={<LongTerm />} />
           <Route path="/emptysimcard" element={<EmptySimcard />} />
+          <Route path="/virtualcard" element={<VirtualCard />} />
           <Route path="/history" element={<History />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/add-funds" element={<AddFunds />} />
-          <Route path="/test" element={<Test />} />
         </Routes>
       </div>
     </Router>
