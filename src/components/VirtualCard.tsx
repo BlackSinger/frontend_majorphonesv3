@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
+import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 
 interface CardOption {
   id: string;
@@ -76,7 +77,7 @@ const VirtualCard: React.FC = () => {
                 <li>• They are randomly assigned as VISA or MasterCard, you can't choose the type of card</li>
                 <li>• They can be chosen with pre-loaded funds ($3) or with no funds ($0)</li>
                 <li>• If you want a card with more funds, contact us on <a href="https://t.me/MajorPhones" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-semibold">Telegram</a>, <a href="mailto:support@majorphones.com" className="text-blue-400 hover:text-blue-300 underline font-semibold">email</a> or open a <a href="/tickets" className="text-blue-400 hover:text-blue-300 underline font-semibold">ticket</a></li>
-                <li>• They can be used in multiple sites but may not work in some</li>
+                <li>• They can be used with any name and in multiple sites, but may not work in some</li>
                 <li>• They can't be refunded once purchased</li>
                 <li>• Expiration date varies depending on the card assigned, it can't be chosen</li>
                 <li>• You can't add extra funds, have a physical card shipped or withdraw funds as cash</li>     
@@ -204,74 +205,106 @@ const VirtualCard: React.FC = () => {
                           className="bg-gradient-to-br from-slate-800/70 to-slate-900/70 backdrop-blur-sm rounded-2xl p-8 border border-slate-600/50 border-blue-500/50 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:scale-[1.01]"
                           style={{ boxShadow: 'rgba(59, 130, 246, 0.25) 0px 0px 24px;' }}
                         >
-                          {/* Virtual Card Display */}
-                          <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-2xl p-8 mb-6 text-white relative overflow-hidden shadow-2xl border border-slate-600/50">
-                            {/* Card Background Pattern */}
-                            <div className="absolute inset-0 opacity-5">
-                              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/10 to-transparent"></div>
-                              <div className="absolute top-8 right-8 w-12 h-12 rounded-full bg-white/5"></div>
-                              <div className="absolute bottom-8 left-8 w-8 h-8 rounded-full bg-white/5"></div>
-                              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full bg-white/3"></div>
-                            </div>
-                            
-                            <div className="relative z-10">
-                              {/* Card Header */}
-                              <div className="flex justify-between items-start mb-8">
-                                <div>
-                                  <p className="text-sm opacity-80 font-medium">Virtual Debit Card</p>
-                                </div>
-                                <div className="w-12 h-8 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-md flex items-center justify-center shadow-lg">
-                                  <div className="w-6 h-4 bg-yellow-600 rounded-sm"></div>
+                          {/* Card and Details Layout */}
+                          <div className="flex flex-col space-y-6">
+                            {/* Top Section: Card and Details */}
+                            <div className="flex flex-col md:flex-row md:space-x-6">
+                              {/* Virtual Card Display - Left Side on Desktop */}
+                              <div className="flex-1 md:max-w-lg">
+                                {/* Virtual Card Display */}
+                                <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-2xl p-6 text-white relative overflow-hidden shadow-2xl border border-slate-600/50">
+                                  {/* Card Background Pattern */}
+                                  <div className="absolute inset-0 opacity-5">
+                                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/10 to-transparent"></div>
+                                    <div className="absolute top-8 right-8 w-12 h-12 rounded-full bg-white/5"></div>
+                                    <div className="absolute bottom-8 left-8 w-8 h-8 rounded-full bg-white/5"></div>
+                                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full bg-white/3"></div>
+                                  </div>
+                                  
+                                  <div className="relative z-10">
+                                    {/* Card Header */}
+                                    <div className="flex justify-center md:justify-between items-center mb-6">
+                                      <div className="text-center md:text-left">
+                                        <p className="text-md opacity-80 font-medium">Virtual Debit Card</p>
+                                      </div>
+                                      <img 
+                                        src={MajorPhonesFavIc} 
+                                        alt="MajorPhones" 
+                                        className="w-12 h-10 object-contain hidden md:block"
+                                      />
+                                    </div>
+                                    
+                                    {/* Card Number */}
+                                    <div className="mb-6">
+                                      <p className="text-sm opacity-60 mb-2 uppercase tracking-wider">Card Number</p>
+                                      <p className="text-md font-mono font-light">**** **** **** ****</p>
+                                    </div>
+                                    
+                                    {/* Card Details Row */}
+                                    <div className="grid grid-cols-2 gap-6">
+                                      <div>
+                                        <p className="text-sm opacity-60 mb-2 uppercase tracking-wider">Expires</p>
+                                        <p className="text-md font-mono font-light">**/**</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-sm opacity-60 mb-2 uppercase tracking-wider">CVV</p>
+                                        <p className="text-md font-mono font-light">***</p>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                              
-                              {/* Card Number */}
-                              <div className="mb-8">
-                                <p className="text-xs opacity-60 mb-2 uppercase tracking-wider">Card Number</p>
-                                <p className="text-xl font-mono tracking-[0.3em] font-light">**** **** **** ****</p>
-                              </div>
-                              
-                              {/* Card Details Row */}
-                              <div className="grid grid-cols-3 gap-6">
-                                <div>
-                                  <p className="text-xs opacity-60 mb-2 uppercase tracking-wider">Expiration Date</p>
-                                  <p className="text-base font-mono font-light">**/**</p>
-                                </div>
-                                <div>
-                                  <p className="text-xs opacity-60 mb-2 uppercase tracking-wider">CVV</p>
-                                  <p className="text-base font-mono font-light">***</p>
-                                </div>
-                                <div>
-                                  <p className="text-xs opacity-60 mb-2 uppercase tracking-wider">Card Funds</p>
-                                  <p className="text-base font-semibold text-emerald-400">${option.cardFunds}</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
 
-                          {/* Card Details and Purchase */}
-                          <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-                            <div className="flex flex-col space-y-2">
-                              <div className="flex items-center space-x-4">
-                                <span className="text-slate-300 font-medium">Price:</span>
-                                <span className="text-emerald-400 font-semibold text-lg">
-                                  ${option.price.toFixed(1)}
-                                </span>
-                              </div>
-                              <div className="flex items-center space-x-4">
-                                <span className="text-slate-300 font-medium">Type:</span>
-                                <span className="text-blue-400 font-semibold">
-                                  {option.hasBalance ? 'With Balance' : 'No Balance'}
-                                </span>
+                              {/* Details - Right Side on Desktop */}
+                              <div className="flex flex-col justify-center mt-6 md:mt-0 md:flex-1">
+                                {/* Card Information Panel */}
+                                <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/40">
+                                  <h3 className="text-md font-semibold text-white mb-4 flex items-center">
+                                    <svg className="w-5 h-5 mr-2 text-blue-400 hidden md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Card Details
+                                  </h3>
+                                  <div className="space-y-3">
+                                    <div className="flex justify-between items-center py-2 border-b border-slate-600/30">
+                                      <span className="text-slate-300 font-medium">Type:</span>
+                                      <span className={`font-semibold px-3 py-1 rounded-full text-xs md:text-sm ${
+                                        option.hasBalance 
+                                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                                          : 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                                      }`}>
+                                        {option.hasBalance ? 'With Balance' : 'No Balance'}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-2 border-b border-slate-600/30">
+                                      <span className="text-slate-300 font-medium">Card Funds:</span>
+                                      <span className="text-emerald-400 font-bold text-md">
+                                        ${option.cardFunds}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-2">
+                                      <span className="text-slate-300 font-medium">Price:</span>
+                                      <span className="text-emerald-400 font-bold text-md">
+                                        ${option.price}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
                             </div>
 
-                            <button 
-                              onClick={() => navigate('/history')}
-                              className="px-8 py-3 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-md"
-                            >
-                              Purchase
-                            </button>
+                            {/* Centered Purchase Button */}
+                            <div className="flex justify-center">
+                              <button 
+                                onClick={() => navigate('/history?tab=virtualCards')}
+                                className="group relative px-8 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-2xl transition-all duration-300 shadow-xl hover:shadow-blue-500/30 hover:scale-[1.02] text-md overflow-hidden max-w-xs"
+                              >
+                                <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-blue-700 hover:from-green-500 hover:to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                <div className="relative z-10 flex items-center justify-center">
+                                  Purchase
+                                </div>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))}
