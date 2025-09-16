@@ -48,8 +48,10 @@ const History: React.FC = () => {
   const [isCopied, setIsCopied] = useState(false);
   const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
   const [copiedCardNumbers, setCopiedCardNumbers] = useState<{[key: string]: boolean}>({});
+  const [openActionMenus, setOpenActionMenus] = useState<{[key: string]: boolean}>({});
   const serviceTypeDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
+  const actionMenuRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
   
   const itemsPerPage = 10;
 
@@ -69,134 +71,238 @@ const History: React.FC = () => {
       country: 'United States'
     },
     {
+      id: 'allf097f-d4cb-4257-a3da-2dcc4a35cd05',
+      date: '2024-10-13 2:28',
+      expirationDate: '2024-10-13 14:28',
+      number: '+14157358371',
+      serviceType: 'Short Numbers',
+      status: 'Completed',
+      service: 'eBay',
+      price: 0.15,
+      duration: 'Single Use',
+      code: '123456',
+      country: 'United States'
+    },
+    {
+      id: '9fk1l09q-d4cb-4257-a3da-2dcc4a35cd05',
+      date: '2024-10-13 2:28',
+      expirationDate: '2024-10-13 14:28',
+      number: '+14157358371',
+      serviceType: 'Short Numbers',
+      status: 'Completed',
+      service: 'Google',
+      price: 0.15,
+      duration: 'Receive/Respond',
+      code: '123456',
+      country: 'United States'
+    },
+    {
       id: 'f7c8d921-4b3a-4e5f-8c9d-1a2b3c4d5e6f',
       date: '2024-10-12 14:45',
       expirationDate: '2024-10-12 15:00',
-      number: '+14157358371',
+      number: '+447453011917',
       serviceType: 'Short Numbers',
       status: 'Pending',
       service: 'Service Not Listed',
       price: 0.12,
       duration: 'Single Use',
       code: 'Waiting...',
+      country: 'United Kingdom'
+    },
+    {
+      id: '1f2e3d4c-5b6a-4e7f-8c9d-0a1b2c3d4e5f',
+      date: '2024-10-07 16:12',
+      expirationDate: '2024-10-07 16:27',
+      number: '+4915511292487',
+      serviceType: 'Short Numbers',
+      status: 'Cancelled',
+      service: 'Discord',
+      price: 0.18,
+      duration: 'Single Use',
+      code: '-',
+      country: 'Germany'
+    },
+    {
+      id: '2a5c9e9f-7d6b-4c3a-918f-5b4c3d2e1f0a',
+      date: '2024-10-11 9:15',
+      expirationDate: '2024-10-18 9:15',
+      number: '+10947173371',
+      serviceType: 'Middle Numbers',
+      status: 'Cancelled',
+      service: 'Instagram',
+      price: 2.50,
+      duration: '7 days',
+      code: '-',
       country: 'United States'
     },
     {
       id: '2a5c8e9f-7d6b-4c3a-9e8f-5b4c3d2e1f0a',
       date: '2024-10-11 9:15',
       expirationDate: '2024-10-18 9:15',
-      number: '+447453011917',
+      number: '+14157358371',
       serviceType: 'Middle Numbers',
       status: 'Active',
       service: 'Instagram',
       price: 2.50,
       duration: '7 days',
-      code: '789012',
-      country: 'United Kingdom'
+      code: 'Waiting...',
+      country: 'United States'
+    },
+    {
+      id: 'alñq8e9f-7d6b-4c3a-9e8f-5b4c3d2e1f0a',
+      date: '2024-10-11 9:15',
+      expirationDate: '2024-10-18 9:15',
+      number: '+14157358371',
+      serviceType: 'Middle Numbers',
+      status: 'Inactive',
+      service: 'TikTok',
+      price: 2.50,
+      duration: '7 days',
+      code: '-',
+      country: 'United States'
     },
     {
       id: '8f3e5c7d-2b1a-4e6f-9c8d-7a5b3c1e2f4d',
       date: '2024-10-10 18:30',
       expirationDate: '2024-10-11 18:30',
-      number: '+4915511292487',
+      number: '+14157358371',
       serviceType: 'Middle Numbers',
       status: 'Expired',
       service: 'Google Voice',
       price: 1.80,
       duration: '1 day',
       code: '345678',
-      country: 'Germany'
+      country: 'United States'
+    },
+    {
+      id: '443e5c7d-2b1a-4e6f-9c8d-7a5b3c102f4d',
+      date: '2024-10-12 08:10',
+      expirationDate: '2024-10-22 08:10',
+      number: '+14157358371',
+      serviceType: 'Middle Numbers',
+      status: 'Inactive',
+      service: 'Google Messanger',
+      price: 3.20,
+      duration: '14 days',
+      code: '340078',
+      country: 'United States'
     },
     {
       id: '4d7b2e5c-8f9a-4c3d-7e6f-9a8b7c6d5e4f',
       date: '2024-10-09 7:22',
       expirationDate: '2024-11-08 7:22',
-      number: '+33614271382',
+      number: '+13361427138',
       serviceType: 'Long Numbers',
-      status: 'Active',
+      status: 'Cancelled',
       service: 'Facebook',
       price: 15.50,
       duration: '30 days',
-      code: '901234',
-      country: 'France'
-    },
-    {
-      id: '9e8f7c6d-5b4a-4e3c-8d7f-6e5d4c3b2a1f',
-      date: '2024-10-08 11:45',
-      expirationDate: '2024-11-07 11:45',
-      number: '+918090943120',
-      serviceType: 'Empty SIM card',
-      status: 'Active',
-      service: 'Empty SIM card',
-      price: 25.00,
-      duration: '30 days',
-      code: '567890',
-      country: 'India'
-    },
-    {
-      id: '1f2e3d4c-5b6a-4e7f-8c9d-0a1b2c3d4e5f',
-      date: '2024-10-07 16:12',
-      expirationDate: '2024-10-07 16:27',
-      number: '+14157358371',
-      serviceType: 'Short Numbers',
-      status: 'Cancelled',
-      service: 'Discord',
-      price: 0.18,
-      duration: 'Single Use',
-      code: 'Cancelled',
+      code: '-',
       country: 'United States'
     },
     {
       id: '6c5b4a3d-2e1f-4c7d-8e9f-5a4b3c2d1e0f',
       date: '2024-10-06 13:33',
       expirationDate: '2024-11-05 13:33',
-      number: '+447453011917',
+      number: '+14474530119',
       serviceType: 'Long Numbers',
       status: 'Inactive',
       service: 'LinkedIn',
-      price: 12.80,
+      price: 15.50,
       duration: '30 days',
-      code: 'N/A',
-      country: 'United Kingdom'
+      code: '940171',
+      country: 'United States'
+    },
+    {
+      id: '600b4a3d-2e1f-4c7d-8e9f-5a4n5c2d1e0f',
+      date: '2024-10-06 13:33',
+      expirationDate: '2024-11-05 13:33',
+      number: '+14474530119',
+      serviceType: 'Long Numbers',
+      status: 'Inactive',
+      service: 'Match',
+      price: 15.50,
+      duration: '30 days',
+      code: '-',
+      country: 'United States'
     },
     {
       id: 'a7d8e9f0-3c4b-4e5d-9f8e-7c6b5a4d3e2f',
       date: '2024-10-05 20:18',
       expirationDate: '2024-11-04 20:18',
-      number: '+447453011917',
+      number: '+14474530119',
       serviceType: 'Long Numbers',
-      status: 'Inactive',
-      service: 'LinkedIn',
-      price: 12.80,
+      status: 'Active',
+      service: 'Tinder',
+      price: 15.50,
       duration: '30 days',
-      code: 'N/A',
-      country: 'United Kingdom'
+      code: 'Waiting...',
+      country: 'United States'
     },
     {
       id: '5e4d3c2b-1a9f-4e6d-8c7f-9e8d7c6b5a4d',
       date: '2024-10-04 5:07',
       expirationDate: '2024-10-04 5:22',
       number: '+14157358371',
-      serviceType: 'Short Numbers',
-      status: 'Cancelled',
+      serviceType: 'Long Numbers',
+      status: 'Expired',
       service: 'Discord',
-      price: 0.18,
+      price: 15.50,
       duration: 'Single Use',
-      code: 'Cancelled',
+      code: '903917',
+      country: 'United States'
+    },
+    {
+      id: '9e8f7c6d-5b4a-4e3c-8d7f-6e5d4c3b2a1f',
+      date: '2024-10-08 11:45',
+      expirationDate: '2024-11-07 11:45',
+      number: '+19180909431',
+      serviceType: 'Empty SIM card',
+      status: 'Active',
+      service: 'All',
+      price: 25.00,
+      duration: '30 days',
+      code: 'Waiting...',
       country: 'United States'
     },
     {
       id: 'b8c9d0e1-4f5a-4e3c-7d8e-0f9e8d7c6b5a',
       date: '2024-10-03 12:54',
       expirationDate: '2024-11-02 12:54',
-      number: '+33614271382',
-      serviceType: 'Long Numbers',
-      status: 'Active',
+      number: '+13361427138',
+      serviceType: 'Empty SIM card',
+      status: 'Cancelled',
       service: 'Facebook',
-      price: 15.50,
+      price: 25.00,
       duration: '30 days',
-      code: '901234',
-      country: 'France'
+      code: '-',
+      country: 'United States'
+    },
+    {
+      id: 'b8c038di-4f5a-4e3c-7d8e-471jad7c6b5a',
+      date: '2024-10-03 12:54',
+      expirationDate: '2024-11-02 12:54',
+      number: '+10011222138',
+      serviceType: 'Empty SIM card',
+      status: 'Inactive',
+      service: 'WhatsApp',
+      price: 25.00,
+      duration: '30 days',
+      code: '28403',
+      country: 'United States'
+    },
+    {
+      id: '03jañ190-4f5a-4e3c-7d8e-471jad7c6b5a',
+      date: '2024-10-03 12:54',
+      expirationDate: '2024-11-02 12:54',
+      number: '+194719842138',
+      serviceType: 'Empty SIM card',
+      status: 'Expired',
+      service: 'Amazon',
+      price: 25.00,
+      duration: '30 days',
+      code: '28403',
+      country: 'United States'
     }
   ];
 
@@ -320,13 +426,21 @@ const History: React.FC = () => {
       if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
         setIsStatusDropdownOpen(false);
       }
+      
+      // Close action menus when clicking outside
+      Object.keys(openActionMenus).forEach(recordId => {
+        const ref = actionMenuRefs.current[recordId];
+        if (ref && !ref.contains(event.target as Node)) {
+          setOpenActionMenus(prev => ({ ...prev, [recordId]: false }));
+        }
+      });
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [openActionMenus]);
 
   // Get available statuses based on service type
   const getAvailableStatuses = (serviceType: string) => {
@@ -492,6 +606,57 @@ const History: React.FC = () => {
     }
   };
 
+  // Get available actions based on service type and status
+  const getAvailableActions = (record: HistoryRecord) => {
+    const { serviceType, status, duration } = record;
+    
+    switch (serviceType) {
+      case 'Short Numbers':
+        if (status === 'Completed') {
+          if (duration === 'Reusable') {
+            return ['Reuse'];
+          } else if (duration === 'Single Use') {
+            return [];
+          } else if (duration === 'Receive/Respond') {
+            return ['Send'];
+          }
+        } else if (status === 'Pending') {
+          return ['Cancel'];
+        } else if (status === 'Cancelled') {
+          return [];
+        }
+        break;
+      case 'Middle Numbers':
+      case 'Long Numbers':
+      case 'Empty SIM card':
+        if (status === 'Cancelled' || status === 'Expired') {
+          return [];
+        } else if (status === 'Active') {
+          return ['Cancel'];
+        } else if (status === 'Inactive') {
+          return ['Cancel', 'Activate'];
+        }
+        break;
+    }
+    return [];
+  };
+
+  // Handle action menu toggle
+  const handleActionMenuToggle = (recordId: string) => {
+    setOpenActionMenus(prev => ({
+      ...prev,
+      [recordId]: !prev[recordId]
+    }));
+  };
+
+  // Handle action click
+  const handleActionClick = (action: string, record: HistoryRecord) => {
+    console.log(`Action "${action}" clicked for record:`, record.id);
+    // Close the menu after clicking an action
+    setOpenActionMenus(prev => ({ ...prev, [record.id]: false }));
+    // TODO: Implement actual functionality
+  };
+
   return (
     <DashboardLayout currentPath="/history">
       <div className="space-y-6">
@@ -650,6 +815,7 @@ const History: React.FC = () => {
                       <th className="text-center py-4 px-10 text-slate-300 font-semibold">Service</th>
                       <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
                       <th className="text-center py-4 px-6 text-slate-300 font-semibold">Code</th>
+                      <th className="text-center py-4 px-4 text-slate-300 font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -704,6 +870,52 @@ const History: React.FC = () => {
                           ) : (
                             <span className="font-mono text-blue-500 font-semibold">{record.code}</span>
                           )}
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center justify-center">
+                            {(() => {
+                              const availableActions = getAvailableActions(record);
+                              const hasActions = availableActions.length > 0;
+                              
+                              return (
+                                <div className="relative" ref={(el) => { actionMenuRefs.current[record.id] = el; }}>
+                                  <button
+                                    onClick={() => hasActions && handleActionMenuToggle(record.id)}
+                                    className={`p-2 rounded-lg transition-colors duration-200 ${
+                                      hasActions
+                                        ? 'text-slate-400 hover:text-slate-300 hover:bg-slate-700/30 cursor-pointer'
+                                        : 'text-slate-600 cursor-not-allowed'
+                                    }`}
+                                    disabled={!hasActions}
+                                    title={hasActions ? "More actions" : "No actions available"}
+                                  >
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                                    </svg>
+                                  </button>
+                                  
+                                  {/* Action Menu Dropdown */}
+                                  {hasActions && openActionMenus[record.id] && (
+                                    <div className="absolute right-0 top-full mt-2 bg-slate-800 border border-slate-600/50 rounded-xl shadow-xl z-[70] min-w-[120px]">
+                                      {availableActions.map((action, index) => (
+                                        <button
+                                          key={action}
+                                          onClick={() => handleActionClick(action, record)}
+                                          className={`w-full text-center px-4 py-3 text-sm text-white hover:bg-slate-700/50 transition-colors duration-200 ${
+                                            index === 0 ? 'rounded-t-xl' : ''
+                                          } ${
+                                            index === availableActions.length - 1 ? 'rounded-b-xl' : ''
+                                          }`}
+                                        >
+                                          {action}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -799,7 +1011,7 @@ const History: React.FC = () => {
                             <th className="text-center py-4 px-6 text-slate-300 font-semibold">Card Number</th>
                             <th className="text-center py-4 px-4 text-slate-300 font-semibold">Expiration Date</th>
                             <th className="text-center py-4 px-4 text-slate-300 font-semibold">CVV</th>
-                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Card Funds</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Initial Funds</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -944,7 +1156,7 @@ const History: React.FC = () => {
                     <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
                   </div>
                 </div>
-                <h3 className="text-lg font-medium text-white mb-2">Number ID</h3>
+                <h3 className="text-lg font-medium text-white mb-2">Card ID</h3>
                 <p className="text-blue-200 mb-4 break-all">{selectedUuid}</p>
                 <div className="flex space-x-3 justify-center">
                   <button

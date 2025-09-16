@@ -8,6 +8,7 @@ import ShortNumbers from './components/ShortNumbers';
 import Middle from './components/Middle';
 import LongTerm from './components/LongTerm';
 import EmptySimcard from './components/EmptySimcard';
+import SendMessage from './components/SendMessage';
 import VirtualCard from './components/VirtualCard';
 import History from './components/History';
 import Transactions from './components/Transactions';
@@ -72,6 +73,7 @@ function App() {
           <Route path="/middle" element={<Middle />} />
           <Route path="/long" element={<LongTerm />} />
           <Route path="/emptysimcard" element={<EmptySimcard />} />
+          <Route path="/sendmessage" element={<SendMessage />} />
           <Route path="/virtualcard" element={<VirtualCard />} />
           <Route path="/history" element={<History />} />
           <Route path="/transactions" element={<Transactions />} />

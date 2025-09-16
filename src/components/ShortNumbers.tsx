@@ -11,6 +11,7 @@ interface NumberOption {
   countryCode: string;
   countryPrefix: string;
   isReusable: boolean;
+  receiveSend?: boolean;
   successRate: number;
 }
 
@@ -18,7 +19,7 @@ const ShortNumbers: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('United States');
-  const [reuseEnabled, setReuseEnabled] = useState(false);
+  const [numberType, setNumberType] = useState<'single' | 'reusable' | 'receive-send'>('single');
   const [searchResults, setSearchResults] = useState<NumberOption[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -124,9 +125,42 @@ const ShortNumbers: React.FC = () => {
       const countryCode = selectedCountryData?.code || 'US';
       const countryPrefix = selectedCountryData?.prefix || '+1';
       
-      const reusableNumbers: NumberOption[] = [
+      const singleUseNumbers: NumberOption[] = [
         {
           id: '1',
+          number: '555-1001',
+          price: 0.08,
+          country: selectedCountry,
+          countryCode: countryCode,
+          countryPrefix: countryPrefix,
+          isReusable: false,
+          successRate: 98
+        },
+        {
+          id: '2',
+          number: '555-1002',
+          price: 0.06,
+          country: selectedCountry,
+          countryCode: countryCode,
+          countryPrefix: countryPrefix,
+          isReusable: false,
+          successRate: 94
+        },
+        {
+          id: '3',
+          number: '555-1003',
+          price: 0.10,
+          country: selectedCountry,
+          countryCode: countryCode,
+          countryPrefix: countryPrefix,
+          isReusable: false,
+          successRate: 91
+        }
+      ];
+
+      const reusableNumbers: NumberOption[] = [
+        {
+          id: '4',
           number: '555-0123',
           price: 1.2,
           extraSmsPrice: 0.6,
@@ -138,42 +172,35 @@ const ShortNumbers: React.FC = () => {
         }
       ];
 
-      // Mock results for non-reusable numbers
-      const nonReusableNumbers: NumberOption[] = [
-        {
-          id: '4',
-          number: '555-1001',
-          price: 0.08,
-          country: selectedCountry,
-          countryCode: countryCode,
-          countryPrefix: countryPrefix,
-          isReusable: false,
-          successRate: 98
-        },
+      const receiveSendNumbers: NumberOption[] = [
         {
           id: '5',
-          number: '555-1002',
-          price: 0.06,
+          number: '555-2001',
+          price: 0.15,
           country: selectedCountry,
           countryCode: countryCode,
           countryPrefix: countryPrefix,
           isReusable: false,
-          successRate: 94
-        },
-        {
-          id: '6',
-          number: '555-1003',
-          price: 0.10,
-          country: selectedCountry,
-          countryCode: countryCode,
-          countryPrefix: countryPrefix,
-          isReusable: false,
-          successRate: 91
+          receiveSend: true,
+          successRate: 97
         }
       ];
 
-      // Select appropriate array based on toggle switch
-      const mockResults = reuseEnabled ? reusableNumbers : nonReusableNumbers;
+      // Select appropriate array based on number type
+      let mockResults: NumberOption[] = [];
+      switch (numberType) {
+        case 'single':
+          mockResults = singleUseNumbers;
+          break;
+        case 'reusable':
+          mockResults = reusableNumbers;
+          break;
+        case 'receive-send':
+          mockResults = receiveSendNumbers;
+          break;
+        default:
+          mockResults = singleUseNumbers;
+      }
 
       setSearchResults(mockResults);
     } catch (error) {
@@ -209,11 +236,11 @@ const ShortNumbers: React.FC = () => {
             <div className="text-center">
               <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
               <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
-                <li>• They can only be reused if you enable the reuse option</li>
-                <li>• Reusable numbers last 12 hours</li>
+                <li>• They can only be reused if you select the Reusable option, reusable numbers last 12 hours</li>
+                <li>• They can only receive/send SMS if you select the Receive/Send option, they can receive 1 code and send multiple SMS</li>
+                <li>• Receive/Send numbers last 5 minutes and you can only send SMS if the code has arrived</li>
                 <li>• They can't be refunded once a code arrives</li>
-                <li>• If they don't receive codes they are automatically refunded</li>
-                <li>• Cancelled and timed out numbers are automatically refunded</li>
+                <li>• Cancelled and timed out (no code arrived) numbers are automatically refunded</li>
                 <li>• If you want to verify 1 service more than once, go to <Link to="/middle" className="text-blue-400 hover:text-blue-300 underline font-semibold">Middle</Link> or <Link to="/long" className="text-blue-400 hover:text-blue-300 underline font-semibold">Long</Link> Numbers</li>
                 <li>• If you want to verify multiple services, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
               </ul>
@@ -320,24 +347,34 @@ const ShortNumbers: React.FC = () => {
                       </label>
                       <div className="flex items-center bg-slate-700/50 rounded-full p-2 border border-slate-600/50">
                         <button
-                          onClick={() => setReuseEnabled(false)}
-                          className={`px-8 sm:px-8 lg:px-10 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[2.5rem] flex items-center ${
-                            !reuseEnabled 
+                          onClick={() => setNumberType('single')}
+                          className={`px-4 sm:px-6 lg:px-8 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[2.5rem] flex items-center ${
+                            numberType === 'single'
                               ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg' 
                               : 'text-slate-400 hover:text-slate-300'
                           }`}
                         >
-                          Non reusable
+                          Single Use
                         </button>
                         <button
-                          onClick={() => setReuseEnabled(true)}
-                          className={`px-8 sm:px-8 lg:px-10 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[2.5rem] flex items-center ${
-                            reuseEnabled 
+                          onClick={() => setNumberType('reusable')}
+                          className={`px-4 sm:px-6 lg:px-8 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[2.5rem] flex items-center ${
+                            numberType === 'reusable'
                               ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg' 
                               : 'text-slate-400 hover:text-slate-300'
                           }`}
                         >
                           Reusable
+                        </button>
+                        <button
+                          onClick={() => setNumberType('receive-send')}
+                          className={`px-4 sm:px-6 lg:px-8 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[2.5rem] flex items-center ${
+                            numberType === 'receive-send'
+                              ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg' 
+                              : 'text-slate-400 hover:text-slate-300'
+                          }`}
+                        >
+                          Receive/Send
                         </button>
                       </div>
                     </div>
@@ -457,12 +494,21 @@ const ShortNumbers: React.FC = () => {
                                     </span>
                                   </div>
                                 )}
-                                <div className="flex items-center justify-between text-md">
-                                  <span className="text-slate-300 font-medium">Reusable:</span>
-                                  <span className={`font-semibold ${option.isReusable ? 'text-emerald-400' : 'text-red-400'}`}>
-                                    {option.isReusable ? 'Yes' : 'No'}
-                                  </span>
-                                </div>
+                                {option.receiveSend ? (
+                                  <div className="flex items-center justify-between text-md">
+                                    <span className="text-slate-300 font-medium">Receive/Send:</span>
+                                    <span className="font-semibold text-emerald-400">
+                                      Yes
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-between text-md">
+                                    <span className="text-slate-300 font-medium">Reusable:</span>
+                                    <span className={`font-semibold ${option.isReusable ? 'text-emerald-400' : 'text-red-400'}`}>
+                                      {option.isReusable ? 'Yes' : 'No'}
+                                    </span>
+                                  </div>
+                                )}
                                 <div className="flex items-center justify-between text-md">
                                   <span className="text-slate-300 font-medium">Success Rate:</span>
                                   <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
@@ -494,12 +540,21 @@ const ShortNumbers: React.FC = () => {
                               </div>
                             )}
 
-                            <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                              <span className="text-slate-300 font-medium">Reusable:</span>
-                              <span className={`font-semibold ${option.isReusable ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {option.isReusable ? 'Yes' : 'No'}
-                              </span>
-                            </div>
+                            {option.receiveSend ? (
+                              <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                                <span className="text-slate-300 font-medium">Receive/Send:</span>
+                                <span className="font-semibold text-emerald-400">
+                                  Yes
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                                <span className="text-slate-300 font-medium">Reusable:</span>
+                                <span className={`font-semibold ${option.isReusable ? 'text-emerald-400' : 'text-red-400'}`}>
+                                  {option.isReusable ? 'Yes' : 'No'}
+                                </span>
+                              </div>
+                            )}
 
                             <div className="hidden md:flex md:items-center md:space-x-2 text-md">
                               <span className="text-slate-300 font-medium">Success Rate:</span>

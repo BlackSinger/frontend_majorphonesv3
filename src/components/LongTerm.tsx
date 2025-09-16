@@ -125,7 +125,7 @@ const LongTerm: React.FC = () => {
                     <li>• They can only be used to verify just 1 service</li>
                     <li>• They are valid for 30 days</li>
                     <li>• Their duration can't be extended</li>
-                    <li>• They can't be refunded once purchased</li>
+                    <li>• After purchased, some can be cancelled and some can't</li>
                     <li>• Users that deposit through Amazon Pay can't purchase them</li>
                     <li>• If you want to verify more than 1 service with the same number, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
                   </ul>
@@ -261,7 +261,7 @@ const LongTerm: React.FC = () => {
                     <li>• They can only be used to verify just 1 service</li>
                     <li>• They are valid for 30 days</li>
                     <li>• Their duration can't be extended</li>
-                    <li>• They can't be refunded once purchased</li>
+                    <li>• After purchased, some can be cancelled and some can't</li>
                     <li>• Users that deposit through Amazon Pay can't purchase them</li>
                     <li>• If you want to verify more than 1 service with the same number, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
                   </ul>

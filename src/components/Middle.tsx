@@ -141,7 +141,7 @@ const Middle: React.FC = () => {
               <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                 <li>• These numbers last 1, 7 or 14 days depending on the option specified</li>
                 <li>• Their duration can't be extended</li>
-                <li>• They can't be refunded once purchased</li>
+                <li>• After purchased, some can be cancelled and some can't</li>
                 <li>• Users that deposit through Amazon Pay can't purchase them</li>
                 <li>• If you want to verify more than 1 service with the same number, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
               </ul>

@@ -13,20 +13,23 @@ interface NumberOption {
   successRate: number;
 }
 
-const EmptySimcard: React.FC = () => {
+const SendMessage: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedCountry, setSelectedCountry] = useState('United States');
+  const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<NumberOption[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const countries = [
+  const numbers = [
     { 
       code: 'US', 
-      name: 'United States',
-      prefix: '+1',
+      number: '+14157358371',
+      service: 'Google',
+      codeReceived: true,
+      messageReceived: '123456',
       flag: (
         <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
           <rect width="60" height="40" fill="#B22234"/>
@@ -57,6 +60,14 @@ const EmptySimcard: React.FC = () => {
   }, []);
 
   const handleSearch = async () => {
+    // Check if code has been received
+    const selectedNumberData = numbers.find(n => n.number === selectedNumber);
+    
+    if (!selectedNumberData?.codeReceived) {
+      setShowErrorModal(true);
+      return;
+    }
+
     setIsSearching(true);
     setHasSearched(false);
 
@@ -64,9 +75,7 @@ const EmptySimcard: React.FC = () => {
       // Simulate API call - replace with actual API endpoint
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const selectedCountryData = countries.find(c => c.name === selectedCountry);
-      const countryCode = selectedCountryData?.code || 'US';
-      const countryPrefix = selectedCountryData?.prefix || '+1';
+      const countryCode = selectedNumberData?.code || 'US';
       
       // Mock data for empty simcard numbers
       const mockResults: NumberOption[] = [
@@ -74,9 +83,9 @@ const EmptySimcard: React.FC = () => {
           id: '1',
           number: '555-0123',
           price: 25.00,
-          country: selectedCountry,
+          country: 'United States',
           countryCode: countryCode,
-          countryPrefix: countryPrefix,
+          countryPrefix: '+1',
           duration: 30,
           successRate: 99
         }
@@ -93,7 +102,7 @@ const EmptySimcard: React.FC = () => {
   };
 
   return (
-    <DashboardLayout currentPath="/emptysimcard">
+    <DashboardLayout currentPath="/sendmessage">
       <div className="space-y-6">
         {/* Header */}
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
@@ -101,9 +110,9 @@ const EmptySimcard: React.FC = () => {
             <div className="flex items-center space-x-4">
               <div>
                 <h1 className="text-left text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent">
-                  Empty SIM cards
+                  Send message
                 </h1>
-                <p className="text-slate-300 text-md text-left">30-day validity numbers for multiple verifications</p>
+                <p className="text-slate-300 text-md text-left">Reply multiple times to short numbers</p>
               </div>
             </div>
           </div>
@@ -115,11 +124,13 @@ const EmptySimcard: React.FC = () => {
             <div className="text-center">
               <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
               <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
-                <li>• They can be used to verify more than 1 service</li>
-                <li>• They are valid for 30 days</li>
+                <li>• They can send SMS only to the number selected</li>
+                <li>• They can send SMS only if a code has arrived</li>
+                <li>• They can send multiple SMS in 5 minutes</li>
                 <li>• Their duration can't be extended</li>
-                <li>• After purchased, some can be cancelled and some can't</li>
-                <li>• Users that deposit through Amazon Pay can't purchase them</li>
+                <li>• They can't be cancelled</li>
+                <li>• Sent SMS can't be edited or cancelled</li>
+                <li>• SMS can't contain images, videos, etc, only text</li>
               </ul>
             </div>
           </div>
@@ -136,7 +147,7 @@ const EmptySimcard: React.FC = () => {
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent mb-2">
                     Search For Numbers
                   </h1>
-                  <p className="text-slate-300 text-md">Find your multi-service SIM card</p>
+                  <p className="text-slate-300 text-md">Find the number to send SMS to</p>
                 </div>
                 
                 {/* Search Form */}
@@ -148,7 +159,7 @@ const EmptySimcard: React.FC = () => {
                       {/* Country Selection */}
                       <div className="space-y-3">
                         <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider text-center">
-                          Select Country
+                          Select Number
                         </label>
                         <div className="relative group" ref={dropdownRef}>
                           <div
@@ -157,9 +168,11 @@ const EmptySimcard: React.FC = () => {
                           >
                             <div className="flex items-center">
                               <div className="absolute left-4">
-                                {countries.find(c => c.name === selectedCountry)?.flag}
+                                {numbers[0]?.flag}
                               </div>
-                              <span>{selectedCountry}</span>
+                              <span className={selectedNumber ? '' : 'text-slate-400'}>
+                                {selectedNumber || 'Choose'}
+                              </span>
                             </div>
                           </div>
                           
@@ -172,19 +185,19 @@ const EmptySimcard: React.FC = () => {
                           {/* Custom Dropdown Options */}
                           {isCountryDropdownOpen && (
                             <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
-                              {countries.map((country) => (
+                              {numbers.map((numberOption) => (
                                 <div
-                                  key={country.code}
+                                  key={numberOption.code}
                                   onClick={() => {
-                                    setSelectedCountry(country.name);
+                                    setSelectedNumber(numberOption.number);
                                     setIsCountryDropdownOpen(false);
                                   }}
                                   className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
                                 >
                                   <div className="mr-1">
-                                    {country.flag}
+                                    {numberOption.flag}
                                   </div>
-                                  <span className="text-white">{country.name}</span>
+                                  <span className="text-white">{numberOption.number}</span>
                                 </div>
                               ))}
                             </div>
@@ -199,7 +212,7 @@ const EmptySimcard: React.FC = () => {
                         </div>
                         <button 
                           onClick={handleSearch}
-                          disabled={isSearching}
+                          disabled={isSearching || !selectedNumber}
                           className="group px-8 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[150px]"
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -211,7 +224,7 @@ const EmptySimcard: React.FC = () => {
                               </svg>
                             ) : (
                               <span className="group-hover:tracking-wide transition-all duration-300">
-                                <span>Search numbers</span>
+                                <span>Send SMS</span>
                               </span>
                             )}
                           </div>
@@ -248,24 +261,18 @@ const EmptySimcard: React.FC = () => {
                 {/* Results Header */}
                 <div className="text-left mb-7">
                   <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
-                    Number options
+                    Send SMS
                   </h1>
                   <p className="text-slate-300 text-md">
                     {searchResults.length > 0 
                       ? (
-                          <span className="flex items-center flex-wrap">
-                            Found {searchResults.length} numbers from {selectedCountry}
-                            <span className="ml-2 hidden sm:inline">
-                              {countries.find(c => c.name === selectedCountry)?.flag}
-                            </span>
+                          <span>
+                            To number {selectedNumber} for {numbers.find(n => n.number === selectedNumber)?.service}
                           </span>
                         )
                       : (
-                          <span className="flex items-center flex-wrap">
-                            No numbers found in {selectedCountry}
-                            <span className="ml-2 hidden sm:inline">
-                              {countries.find(c => c.name === selectedCountry)?.flag}
-                            </span>
+                          <span>
+                            No numbers found for {selectedNumber}
                           </span>
                         )
                     }
@@ -280,76 +287,33 @@ const EmptySimcard: React.FC = () => {
                         key={option.id}
                         className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 border-blue-500/50 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:scale-[1.01]" style={{ boxShadow: '0 0 24px rgba(59, 130, 246, 0.25)' }}
                       >
-                        {/* Number Header */}
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-9 h-9 bg-blue-300/10 rounded-xl flex items-center justify-center">
-                              <span className="text-emerald-400 font-bold text-sm">1st</span>
-                            </div>
-                            <div>
-                              <p className="text-white font-bold text-md">Option</p>
+                        {/* Chat Interface */}
+                        <div className="flex flex-col h-96">
+                          {/* Received Message */}
+                          <div className="flex justify-start mb-4">
+                            <div className="bg-slate-700/50 rounded-lg px-4 py-2 max-w-xs">
+                              <p className="text-white text-sm">{numbers.find(n => n.number === selectedNumber)?.messageReceived}</p>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Details in one line */}
-                        <div className="md:flex md:items-center md:justify-between">
-                          {/* Mobile Layout */}
-                          <div className="md:hidden space-y-3">
-                            {/* Price, Duration, Success Rate in two columns */}
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between text-md">
-                                <span className="text-slate-300 font-medium">Price:</span>
-                                <span className="text-emerald-400 font-semibold">
-                                  ${option.price.toFixed(2)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between text-md">
-                                <span className="text-slate-300 font-medium">Duration:</span>
-                                <span className="text-emerald-400 font-semibold">
-                                  {option.duration} days
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between text-md">
-                                <span className="text-slate-300 font-medium">Success Rate:</span>
-                                <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
-                              </div>
-                            </div>
-                            {/* Purchase Button - full width */}
-                            <button 
-                              onClick={() => navigate('/history')}
-                              className="w-full px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-md"
-                            >
-                              Purchase
+                          {/* Messages Area */}
+                          <div className="flex-1 overflow-y-auto mb-4 space-y-3">
+                            {/* Sent messages will appear here */}
+                          </div>
+
+                          {/* Input Area */}
+                          <div className="flex space-x-3">
+                            <textarea
+                              placeholder="Type your message..."
+                              className="flex-1 px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 resize-none h-20 overflow-y-auto"
+                              rows={3}
+                            />
+                            <button className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-emerald-500/25 h-20 flex items-center justify-center">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                              </svg>
                             </button>
                           </div>
-
-                          {/* Desktop Layout - unchanged */}
-                          <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                            <span className="text-slate-300 font-medium">Price:</span>
-                            <span className="text-emerald-400 font-semibold">
-                              ${option.price.toFixed(2)}
-                            </span>
-                          </div>
-
-                          <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                            <span className="text-slate-300 font-medium">Duration:</span>
-                            <span className="text-emerald-400 font-semibold">
-                              {option.duration} days
-                            </span>
-                          </div>
-
-                          <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                            <span className="text-slate-300 font-medium">Success Rate:</span>
-                            <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
-                          </div>
-
-                          <button 
-                            onClick={() => navigate('/history')}
-                            className="hidden md:block px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm"
-                          >
-                            Purchase
-                          </button>
                         </div>
                       </div>
                     ))}
@@ -370,9 +334,34 @@ const EmptySimcard: React.FC = () => {
           </div>
           </>
         )}
+
+        {/* Error Modal */}
+        {showErrorModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-70 h-58">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+                <p className="text-blue-200 mb-4">You haven't received a code yet, nothing to reply</p>
+                <button
+                  onClick={() => setShowErrorModal(false)}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
 };
 
-export default EmptySimcard;
+export default SendMessage;
