@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 
 interface NumberOption {
@@ -13,14 +13,26 @@ interface NumberOption {
   successRate: number;
 }
 
+interface SentMessage {
+  id: string;
+  text: string;
+  timestamp: Date;
+}
+
 const SendMessage: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const numberFromUrl = searchParams.get('number');
+
+  const [selectedNumber, setSelectedNumber] = useState<string | null>(numberFromUrl);
   const [searchResults, setSearchResults] = useState<NumberOption[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
+  const [messageInput, setMessageInput] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const numbers = [
@@ -58,6 +70,19 @@ const SendMessage: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  const handleSendMessage = () => {
+    if (!messageInput.trim()) return;
+
+    const newMessage: SentMessage = {
+      id: Date.now().toString(),
+      text: messageInput.trim(),
+      timestamp: new Date()
+    };
+
+    setSentMessages(prev => [...prev, newMessage]);
+    setMessageInput('');
+  };
 
   const handleSearch = async () => {
     // Check if code has been received
@@ -290,25 +315,47 @@ const SendMessage: React.FC = () => {
                         {/* Chat Interface */}
                         <div className="flex flex-col h-96">
                           {/* Received Message */}
-                          <div className="flex justify-start mb-4">
-                            <div className="bg-slate-700/50 rounded-lg px-4 py-2 max-w-xs">
-                              <p className="text-white text-sm">{numbers.find(n => n.number === selectedNumber)?.messageReceived}</p>
+                          <div className="flex justify-start mb-3">
+                            <div className="relative bg-slate-700/50 rounded-lg px-4 py-2 max-w-[85%] sm:max-w-sm md:max-w-md">
+                              <p className="text-white text-sm break-words" style={{ textAlign: 'justify' }}>{numbers.find(n => n.number === selectedNumber)?.messageReceived}</p>
+                              {/* Chat bubble tail */}
+                              <div className="absolute left-0 top-3 w-0 h-0 border-t-8 border-t-transparent border-r-8 border-r-slate-700/50 border-b-8 border-b-transparent -translate-x-2"></div>
                             </div>
                           </div>
 
                           {/* Messages Area */}
-                          <div className="flex-1 overflow-y-auto mb-4 space-y-3">
-                            {/* Sent messages will appear here */}
+                          <div className="flex-1 overflow-y-auto mb-4 space-y-3 px-3">
+                            {sentMessages.map((message) => (
+                              <div key={message.id} className="flex justify-end">
+                                <div className="relative bg-emerald-600/80 rounded-lg px-4 py-2 max-w-[85%] sm:max-w-sm md:max-w-md">
+                                  <p className="text-white text-sm break-words" style={{ textAlign: 'justify' }}>{message.text}</p>
+                                  {/* Chat bubble tail for sent messages */}
+                                  <div className="absolute right-0 top-3 w-0 h-0 border-t-8 border-t-transparent border-l-8 border-l-emerald-600/80 border-b-8 border-b-transparent translate-x-2"></div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
 
                           {/* Input Area */}
                           <div className="flex space-x-3">
                             <textarea
-                              placeholder="Type your message..."
-                              className="flex-1 px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 resize-none h-20 overflow-y-auto"
+                              placeholder="Type your message"
+                              value={messageInput}
+                              onChange={(e) => setMessageInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSendMessage();
+                                }
+                              }}
+                              className="flex-1 px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 resize-none h-12 overflow-y-auto"
                               rows={3}
                             />
-                            <button className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-emerald-500/25 h-20 flex items-center justify-center">
+                            <button
+                              onClick={handleSendMessage}
+                              disabled={!messageInput.trim()}
+                              className="px-4 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-emerald-500/25 h-12 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
                               </svg>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 
@@ -29,6 +29,7 @@ interface VirtualCardRecord {
 
 const History: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const tabFromUrl = searchParams.get('tab');
   
@@ -654,7 +655,14 @@ const History: React.FC = () => {
     console.log(`Action "${action}" clicked for record:`, record.id);
     // Close the menu after clicking an action
     setOpenActionMenus(prev => ({ ...prev, [record.id]: false }));
-    // TODO: Implement actual functionality
+
+    // Handle Send action
+    if (action === 'Send') {
+      navigate(`/sendmessage?number=${encodeURIComponent(record.number)}`);
+      return;
+    }
+
+    // TODO: Implement other functionalities
   };
 
   return (
