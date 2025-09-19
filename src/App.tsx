@@ -10,6 +10,7 @@ import LongTerm from './components/LongTerm';
 import EmptySimcard from './components/EmptySimcard';
 import SendMessage from './components/SendMessage';
 import VirtualCard from './components/VirtualCard';
+import Proxies from './components/Proxies';
 import History from './components/History';
 import Transactions from './components/Transactions';
 import Profile from './components/Profile';
@@ -75,6 +76,7 @@ function App() {
           <Route path="/emptysimcard" element={<EmptySimcard />} />
           <Route path="/sendmessage" element={<SendMessage />} />
           <Route path="/virtualcard" element={<VirtualCard />} />
+          <Route path="/proxies" element={<Proxies />} />
           <Route path="/history" element={<History />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/profile" element={<Profile />} />
