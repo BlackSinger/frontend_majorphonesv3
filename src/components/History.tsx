@@ -27,14 +27,28 @@ interface VirtualCardRecord {
   funds: number;
 }
 
+interface ProxyRecord {
+  id: string;
+  purchaseDate: string;
+  expirationDate: string;
+  usaState: string;
+  price: number;
+  duration: string;
+  ip: string;
+  httpsPort: string;
+  socks5Port: string;
+  user: string;
+  password: string;
+}
+
 const History: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const tabFromUrl = searchParams.get('tab');
   
-  const [activeTab, setActiveTab] = useState<'numbers' | 'virtualCards'>(
-    tabFromUrl === 'virtualCards' ? 'virtualCards' : 'numbers'
+  const [activeTab, setActiveTab] = useState<'numbers' | 'virtualCards' | 'proxies'>(
+    tabFromUrl === 'virtualCards' ? 'virtualCards' : tabFromUrl === 'proxies' ? 'proxies' : 'numbers'
   );
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -49,6 +63,21 @@ const History: React.FC = () => {
   const [isCopied, setIsCopied] = useState(false);
   const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
   const [copiedCardNumbers, setCopiedCardNumbers] = useState<{[key: string]: boolean}>({});
+
+  // Proxy-specific state
+  const [selectedProxyState, setSelectedProxyState] = useState('All States');
+  const [selectedProxyDuration, setSelectedProxyDuration] = useState('All Durations');
+  const [isProxyStateDropdownOpen, setIsProxyStateDropdownOpen] = useState(false);
+  const [isProxyDurationDropdownOpen, setIsProxyDurationDropdownOpen] = useState(false);
+  const [proxyStateSearchTerm, setProxyStateSearchTerm] = useState('');
+  const [currentProxyPage, setCurrentProxyPage] = useState(1);
+  const [showProxyInfoModal, setShowProxyInfoModal] = useState(false);
+  const [selectedProxyRecord, setSelectedProxyRecord] = useState<ProxyRecord | null>(null);
+  const [isProxyIdCopied, setIsProxyIdCopied] = useState(false);
+  const [copiedProxyFields, setCopiedProxyFields] = useState<{[key: string]: boolean}>({});
+  const proxyStateDropdownRef = useRef<HTMLDivElement>(null);
+  const proxyDurationDropdownRef = useRef<HTMLDivElement>(null);
+  const proxyStateInputRef = useRef<HTMLInputElement>(null);
   const [openActionMenus, setOpenActionMenus] = useState<{[key: string]: boolean}>({});
   const serviceTypeDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
@@ -410,6 +439,132 @@ const History: React.FC = () => {
     }
   ];
 
+  // USA States list
+  const usaStates = [
+    { code: 'All States', name: 'All States' },
+    { code: 'AL', name: 'Alabama (AL)' },
+    { code: 'AK', name: 'Alaska (AK)' },
+    { code: 'AZ', name: 'Arizona (AZ)' },
+    { code: 'AR', name: 'Arkansas (AR)' },
+    { code: 'CA', name: 'California (CA)' },
+    { code: 'CO', name: 'Colorado (CO)' },
+    { code: 'CT', name: 'Connecticut (CT)' },
+    { code: 'DE', name: 'Delaware (DE)' },
+    { code: 'FL', name: 'Florida (FL)' },
+    { code: 'GA', name: 'Georgia (GA)' },
+    { code: 'HI', name: 'Hawaii (HI)' },
+    { code: 'ID', name: 'Idaho (ID)' },
+    { code: 'IL', name: 'Illinois (IL)' },
+    { code: 'IN', name: 'Indiana (IN)' },
+    { code: 'IA', name: 'Iowa (IA)' },
+    { code: 'KS', name: 'Kansas (KS)' },
+    { code: 'KY', name: 'Kentucky (KY)' },
+    { code: 'LA', name: 'Louisiana (LA)' },
+    { code: 'ME', name: 'Maine (ME)' },
+    { code: 'MD', name: 'Maryland (MD)' },
+    { code: 'MA', name: 'Massachusetts (MA)' },
+    { code: 'MI', name: 'Michigan (MI)' },
+    { code: 'MN', name: 'Minnesota (MN)' },
+    { code: 'MS', name: 'Mississippi (MS)' },
+    { code: 'MO', name: 'Missouri (MO)' },
+    { code: 'MT', name: 'Montana (MT)' },
+    { code: 'NE', name: 'Nebraska (NE)' },
+    { code: 'NV', name: 'Nevada (NV)' },
+    { code: 'NH', name: 'New Hampshire (NH)' },
+    { code: 'NJ', name: 'New Jersey (NJ)' },
+    { code: 'NM', name: 'New Mexico (NM)' },
+    { code: 'NY', name: 'New York (NY)' },
+    { code: 'NC', name: 'North Carolina (NC)' },
+    { code: 'ND', name: 'North Dakota (ND)' },
+    { code: 'OH', name: 'Ohio (OH)' },
+    { code: 'OK', name: 'Oklahoma (OK)' },
+    { code: 'OR', name: 'Oregon (OR)' },
+    { code: 'PA', name: 'Pennsylvania (PA)' },
+    { code: 'RI', name: 'Rhode Island (RI)' },
+    { code: 'SC', name: 'South Carolina (SC)' },
+    { code: 'SD', name: 'South Dakota (SD)' },
+    { code: 'TN', name: 'Tennessee (TN)' },
+    { code: 'TX', name: 'Texas (TX)' },
+    { code: 'UT', name: 'Utah (UT)' },
+    { code: 'VT', name: 'Vermont (VT)' },
+    { code: 'VA', name: 'Virginia (VA)' },
+    { code: 'WA', name: 'Washington (WA)' },
+    { code: 'WV', name: 'West Virginia (WV)' },
+    { code: 'WI', name: 'Wisconsin (WI)' },
+    { code: 'WY', name: 'Wyoming (WY)' }
+  ];
+
+  const proxyDurations = ['All Durations', '1 hour', '1 day', '7 days', '30 days'];
+
+  // Mock proxy data
+  const proxyData: ProxyRecord[] = [
+    {
+      id: '6b7ac1aa-192e-454e-aa92-b7885d701771',
+      purchaseDate: '2024-10-13 2:28',
+      expirationDate: '2024-10-13 3:28',
+      usaState: 'Florida (FL)',
+      price: 5,
+      duration: '1 hour',
+      ip: '85.239.54.237',
+      httpsPort: '49999',
+      socks5Port: '50000',
+      user: 'b7z3kR9',
+      password: 'm8t2YQouxI'
+    },
+    {
+      id: 'a8c5d3bb-293f-565f-bb03-c8996e812882',
+      purchaseDate: '2024-10-12 14:15',
+      expirationDate: '2024-10-13 14:15',
+      usaState: 'California (CA)',
+      price: 12,
+      duration: '1 day',
+      ip: '192.168.45.123',
+      httpsPort: '48888',
+      socks5Port: '49000',
+      user: 'b7z3kR9',
+      password: 'n5r8TPlmxK'
+    },
+    {
+      id: 'f2e9a1cc-384a-676a-cc14-d9aa7f923993',
+      purchaseDate: '2024-10-11 9:30',
+      expirationDate: '2024-10-18 9:30',
+      usaState: 'Texas (TX)',
+      price: 80,
+      duration: '7 days',
+      ip: '203.156.78.89',
+      httpsPort: '47777',
+      socks5Port: '48000',
+      user: 'b7z3kR9',
+      password: 'k6j9UMnpxL'
+    },
+    {
+      id: 'b4f6c2dd-495b-787b-dd25-eabb8g034aa4',
+      purchaseDate: '2024-10-10 16:45',
+      expirationDate: '2024-11-09 16:45',
+      usaState: 'New York (NY)',
+      price: 120,
+      duration: '30 days',
+      ip: '172.244.91.156',
+      httpsPort: '46666',
+      socks5Port: '47000',
+      user: 'b7z3kR9',
+      password: 'h2g4VQrsnM'
+    },
+    {
+      id: 'g7h3e4ee-5a6c-898c-ee36-fcc9i145bb5',
+      purchaseDate: '2024-10-09 11:20',
+      expirationDate: '2024-10-09 12:20',
+      usaState: 'Nevada (NV)',
+      price: 5,
+      duration: '1 hour',
+      ip: '98.234.67.201',
+      httpsPort: '45555',
+      socks5Port: '46000',
+      user: 'b7z3kR9',
+      password: 'p1m3WXtuvN'
+    }
+  ];
+
   const serviceTypeOptions = [
     'All',
     'Short Numbers',
@@ -417,6 +572,19 @@ const History: React.FC = () => {
     'Long Numbers',
     'Empty SIM card'
   ];
+
+  // Filter states based on search term for proxies
+  const filteredStates = usaStates.filter(state =>
+    state.name.toLowerCase().includes(proxyStateSearchTerm.toLowerCase())
+  );
+
+  // Get state name without abbreviation for proxies
+  const getStateName = (fullStateName: string) => {
+    if (fullStateName.includes('(')) {
+      return fullStateName.split(' (')[0];
+    }
+    return fullStateName;
+  };
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -427,7 +595,14 @@ const History: React.FC = () => {
       if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
         setIsStatusDropdownOpen(false);
       }
-      
+      if (proxyStateDropdownRef.current && !proxyStateDropdownRef.current.contains(event.target as Node)) {
+        setIsProxyStateDropdownOpen(false);
+        setProxyStateSearchTerm('');
+      }
+      if (proxyDurationDropdownRef.current && !proxyDurationDropdownRef.current.contains(event.target as Node)) {
+        setIsProxyDurationDropdownOpen(false);
+      }
+
       // Close action menus when clicking outside
       Object.keys(openActionMenus).forEach(recordId => {
         const ref = actionMenuRefs.current[recordId];
@@ -441,7 +616,7 @@ const History: React.FC = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [openActionMenus]);
+  }, [openActionMenus, selectedProxyState]);
 
   // Get available statuses based on service type
   const getAvailableStatuses = (serviceType: string) => {
@@ -472,6 +647,21 @@ const History: React.FC = () => {
     return filtered;
   }, [serviceTypeFilter, statusFilter]);
 
+  // Filter proxy data based on selected filters
+  const filteredProxyData = useMemo(() => {
+    let filtered = proxyData;
+
+    if (selectedProxyState !== 'All States') {
+      filtered = filtered.filter(record => record.usaState === selectedProxyState);
+    }
+
+    if (selectedProxyDuration !== 'All Durations') {
+      filtered = filtered.filter(record => record.duration === selectedProxyDuration);
+    }
+
+    return filtered;
+  }, [selectedProxyState, selectedProxyDuration]);
+
   // Calculate pagination for numbers table
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -484,10 +674,21 @@ const History: React.FC = () => {
   const virtualCardEndIndex = virtualCardStartIndex + itemsPerPage;
   const paginatedVirtualCardData = virtualCardData.slice(virtualCardStartIndex, virtualCardEndIndex);
 
+  // Calculate pagination for proxies table
+  const totalProxyPages = Math.ceil(filteredProxyData.length / itemsPerPage);
+  const proxyStartIndex = (currentProxyPage - 1) * itemsPerPage;
+  const proxyEndIndex = proxyStartIndex + itemsPerPage;
+  const paginatedProxyData = filteredProxyData.slice(proxyStartIndex, proxyEndIndex);
+
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [serviceTypeFilter, statusFilter]);
+
+  // Reset to first page when proxy filters change
+  useEffect(() => {
+    setCurrentProxyPage(1);
+  }, [selectedProxyState, selectedProxyDuration]);
 
   // Get status color
   const getStatusColor = (status: string) => {
@@ -607,6 +808,63 @@ const History: React.FC = () => {
     }
   };
 
+  // Proxy-specific handlers
+  const handleProxyStateSelect = (stateName: string) => {
+    setSelectedProxyState(stateName);
+    setIsProxyStateDropdownOpen(false);
+    setProxyStateSearchTerm('');
+  };
+
+  const handleProxyStateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setProxyStateSearchTerm(value);
+
+    if (value === '') {
+      setSelectedProxyState('');
+    }
+
+    if (!isProxyStateDropdownOpen) {
+      setIsProxyStateDropdownOpen(true);
+    }
+  };
+
+  const handleProxyStateInputClick = () => {
+    setIsProxyStateDropdownOpen(true);
+    if (proxyStateInputRef.current) {
+      proxyStateInputRef.current.focus();
+    }
+  };
+
+  const handleProxyInfoClick = (record: ProxyRecord) => {
+    setSelectedProxyRecord(record);
+    setShowProxyInfoModal(true);
+    setIsProxyIdCopied(false);
+  };
+
+  const handleCopyProxyId = async () => {
+    if (selectedProxyRecord) {
+      try {
+        await navigator.clipboard.writeText(selectedProxyRecord.id);
+        setIsProxyIdCopied(true);
+        setTimeout(() => setIsProxyIdCopied(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy Proxy ID:', err);
+      }
+    }
+  };
+
+  const handleCopyProxyField = async (fieldValue: string, fieldKey: string) => {
+    try {
+      await navigator.clipboard.writeText(fieldValue);
+      setCopiedProxyFields(prev => ({ ...prev, [fieldKey]: true }));
+      setTimeout(() => {
+        setCopiedProxyFields(prev => ({ ...prev, [fieldKey]: false }));
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy field:', err);
+    }
+  };
+
   // Get available actions based on service type and status
   const getAvailableActions = (record: HistoryRecord) => {
     const { serviceType, status, duration } = record;
@@ -707,6 +965,16 @@ const History: React.FC = () => {
                   }`}
                 >
                   Virtual Debit Cards
+                </button>
+                <button
+                  onClick={() => {setActiveTab('proxies'); setCurrentProxyPage(1);}}
+                  className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${
+                    activeTab === 'proxies'
+                      ? 'text-emerald-400 border-emerald-400'
+                      : 'text-slate-400 border-transparent hover:text-slate-300'
+                  }`}
+                >
+                  Proxies
                 </button>
               </div>
             </div>
@@ -1151,6 +1419,261 @@ const History: React.FC = () => {
                 </div>
               </>
             )}
+
+            {/* Proxies Tab Content */}
+            {activeTab === 'proxies' && (
+              <>
+                {/* Proxy Filters */}
+                <div className="mb-6">
+                  <div className="flex flex-col lg:flex-row gap-6">
+                    {/* USA State Filter */}
+                    <div className="flex-1">
+                      <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                        USA State
+                      </label>
+                      <div className="relative group" ref={proxyStateDropdownRef}>
+                        <div className="relative">
+                          <input
+                            ref={proxyStateInputRef}
+                            type="text"
+                            value={proxyStateSearchTerm || selectedProxyState || ''}
+                            onChange={handleProxyStateInputChange}
+                            onClick={handleProxyStateInputClick}
+                            placeholder="Type or choose state"
+                            className="w-full pl-4 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 placeholder-slate-400"
+                          />
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isProxyStateDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+
+                        {/* Custom Dropdown Options */}
+                        {isProxyStateDropdownOpen && (
+                          <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
+                            {filteredStates.length > 0 ? (
+                              filteredStates.map((state) => (
+                                <div
+                                  key={state.code}
+                                  onClick={() => handleProxyStateSelect(state.name)}
+                                  className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                                >
+                                  <span className="text-white">{state.name}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="px-4 py-3 text-slate-400 text-center">
+                                No states found
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Duration Filter */}
+                    <div className="flex-1">
+                      <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                        Duration
+                      </label>
+                      <div className="relative group" ref={proxyDurationDropdownRef}>
+                        <div
+                          onClick={() => setIsProxyDurationDropdownOpen(!isProxyDurationDropdownOpen)}
+                          className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                        >
+                          <span>{selectedProxyDuration}</span>
+                        </div>
+
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isProxyDurationDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+
+                        {/* Custom Dropdown Options */}
+                        {isProxyDurationDropdownOpen && (
+                          <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
+                            {proxyDurations.map((duration) => (
+                              <div
+                                key={duration}
+                                onClick={() => {
+                                  setSelectedProxyDuration(duration);
+                                  setIsProxyDurationDropdownOpen(false);
+                                }}
+                                className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                              >
+                                <span className="text-white">{duration}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Proxies Table */}
+                <div className="overflow-x-auto overflow-y-visible">
+                  {filteredProxyData.length > 0 ? (
+                    <>
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-700/50">
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Duration</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">IP</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">HTTPS/Port</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">SOCKS5/Port	</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Password</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginatedProxyData.map((record, index) => (
+                            <tr
+                              key={record.id}
+                              className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${
+                                index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
+                              }`}
+                            >
+                              <td className="py-4 px-6">
+                                <div className="flex items-center justify-center">
+                                  <button
+                                    onClick={() => handleProxyInfoClick(record)}
+                                    className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
+                                    title="View Information"
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-emerald-400 font-semibold">${record.price}</span>
+                              </td>
+                              <td className="py-4 px-6 text-white text-center">{record.duration}</td>
+                              <td className="py-4 px-6">
+                                <div className="font-mono text-white text-center">
+                                  {record.ip}
+                                  <button
+                                    onClick={() => handleCopyProxyField(record.ip, `ip-${record.id}`)}
+                                    className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                                    title={copiedProxyFields[`ip-${record.id}`] ? "Copied!" : "Copy IP"}
+                                  >
+                                    {copiedProxyFields[`ip-${record.id}`] ? (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    ) : (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                      </svg>
+                                    )}
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="font-mono text-white text-center">
+                                  {record.httpsPort}
+                                </div>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="font-mono text-white text-center">
+                                  {record.socks5Port}
+                                </div>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="font-mono text-white text-center">
+                                  {record.user}
+                                </div>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="font-mono text-white text-center">
+                                  {record.password}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      {/* Proxies Pagination */}
+                      {totalProxyPages > 1 && (
+                        <div className="mt-6">
+                          {/* Results info - shown above pagination on small screens */}
+                          <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
+                            Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, filteredProxyData.length)} of {filteredProxyData.length} results
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            {/* Results info - shown on left side on larger screens */}
+                            <div className="hidden md:block text-sm text-slate-400">
+                              Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, filteredProxyData.length)} of {filteredProxyData.length} results
+                            </div>
+
+                            <div className="flex items-center space-x-2 mx-auto md:mx-0">
+                              {/* Previous Button */}
+                              <button
+                                onClick={() => setCurrentProxyPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentProxyPage === 1}
+                                className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                </svg>
+                              </button>
+
+                              {/* Page Numbers */}
+                              <div className="flex space-x-1">
+                                {Array.from({ length: totalProxyPages }, (_, i) => i + 1).map((page) => (
+                                  <button
+                                    key={page}
+                                    onClick={() => setCurrentProxyPage(page)}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                                      currentProxyPage === page
+                                        ? 'bg-emerald-500 text-white'
+                                        : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                                    }`}
+                                  >
+                                    {page}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* Next Button */}
+                              <button
+                                onClick={() => setCurrentProxyPage(prev => Math.min(prev + 1, totalProxyPages))}
+                                disabled={currentProxyPage === totalProxyPages}
+                                className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    /* Empty State for Proxies */
+                    <div className="text-center py-16">
+                      <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
+                        <svg className="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </div>
+                      <h1 className="text-xl font-bold text-slate-300 mb-3">No Proxies Found</h1>
+                      <p className="text-slate-400 text-lg">No proxies match your current filters</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -1242,6 +1765,64 @@ const History: React.FC = () => {
                 <div className="flex justify-center mt-6">
                   <button
                     onClick={() => setShowInfoModal(false)}
+                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Proxy Information Modal */}
+        {showProxyInfoModal && selectedProxyRecord && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto flex items-center justify-center">
+                    <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-6">Proxy Information</h3>
+                <div className="space-y-4 text-left">
+                  <div>
+                    <span className="text-slate-300">Proxy ID: </span>
+                    <span className="text-emerald-400 break-all">{selectedProxyRecord.id}
+                      <button
+                        onClick={handleCopyProxyId}
+                        className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                        title={isProxyIdCopied ? "Copied!" : "Copy Proxy ID"}
+                      >
+                        {isProxyIdCopied ? (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                      </button>
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-300">Purchase Date: </span>
+                    <span className="text-emerald-400">{selectedProxyRecord.purchaseDate}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-300">Expiration Date: </span>
+                    <span className="text-emerald-400">{selectedProxyRecord.expirationDate}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-300">USA State: </span>
+                    <span className="text-emerald-400">{selectedProxyRecord.usaState}</span>
+                  </div>
+                </div>
+                <div className="flex justify-center mt-6">
+                  <button
+                    onClick={() => setShowProxyInfoModal(false)}
                     className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
                   >
                     Close

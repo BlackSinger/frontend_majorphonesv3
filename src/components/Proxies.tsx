@@ -19,12 +19,14 @@ const Proxies: React.FC = () => {
   const [searchResults, setSearchResults] = useState<CardOption[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [selectedState, setSelectedState] = useState('Any State');
+  const [selectedState, setSelectedState] = useState('');
   const [selectedDuration, setSelectedDuration] = useState('1 hour');
   const [isStateDropdownOpen, setIsStateDropdownOpen] = useState(false);
   const [isDurationDropdownOpen, setIsDurationDropdownOpen] = useState(false);
+  const [stateSearchTerm, setStateSearchTerm] = useState('');
   const stateDropdownRef = useRef<HTMLDivElement>(null);
   const durationDropdownRef = useRef<HTMLDivElement>(null);
+  const stateInputRef = useRef<HTMLInputElement>(null);
 
   const usaStates = [
     { code: 'NA', name: 'Any State' },
@@ -87,11 +89,22 @@ const Proxies: React.FC = () => {
     { value: '30days', name: '30 days' }
   ];
 
+  // Filter states based on search term
+  const filteredStates = usaStates.filter(state =>
+    state.name.toLowerCase().includes(stateSearchTerm.toLowerCase())
+  );
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (stateDropdownRef.current && !stateDropdownRef.current.contains(event.target as Node)) {
         setIsStateDropdownOpen(false);
+        // Solo limpiar el search term si no hay un estado seleccionado
+        if (!selectedState) {
+          setStateSearchTerm('');
+        } else {
+          setStateSearchTerm('');
+        }
       }
       if (durationDropdownRef.current && !durationDropdownRef.current.contains(event.target as Node)) {
         setIsDurationDropdownOpen(false);
@@ -102,7 +115,52 @@ const Proxies: React.FC = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [selectedState]);
+
+  const handleStateSelect = (stateName: string) => {
+    setSelectedState(stateName);
+    setIsStateDropdownOpen(false);
+    setStateSearchTerm('');
+  };
+
+  const handleStateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setStateSearchTerm(value);
+
+    // Si el input está vacío, limpiar también selectedState
+    if (value === '') {
+      setSelectedState('');
+    }
+
+    if (!isStateDropdownOpen) {
+      setIsStateDropdownOpen(true);
+    }
+  };
+
+  const handleStateInputClick = () => {
+    setIsStateDropdownOpen(true);
+    if (stateInputRef.current) {
+      stateInputRef.current.focus();
+    }
+  };
+
+  const getProxyPrice = (duration: string) => {
+    const prices = {
+      '1 hour': 5,
+      '1 day': 12,
+      '7 days': 80,
+      '30 days': 120
+    };
+    return prices[duration as keyof typeof prices] || 5;
+  };
+
+  const getStateName = (fullStateName: string) => {
+    // Extract state name without abbreviation
+    if (fullStateName.includes('(')) {
+      return fullStateName.split(' (')[0];
+    }
+    return fullStateName;
+  };
 
   const handleSearch = async () => {
     setIsSearching(true);
@@ -111,23 +169,23 @@ const Proxies: React.FC = () => {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock data for virtual card
+
+      // Mock data for proxy
       const mockResults: CardOption[] = [
         {
           id: '1',
-          cardNumber: '4532 1234 5678 9012',
-          expirationDate: '12/27',
-          cvv: '123',
-          cardFunds: hasBalance ? 3 : 0,
-          price: hasBalance ? 7 : 4.5,
-          hasBalance: hasBalance
+          cardNumber: selectedState, // Keep full state name with abbreviation
+          expirationDate: selectedDuration,
+          cvv: '',
+          cardFunds: 0,
+          price: getProxyPrice(selectedDuration),
+          hasBalance: false
         }
       ];
 
       setSearchResults(mockResults);
     } catch (error) {
-      console.error('Error searching cards:', error);
+      console.error('Error searching proxies:', error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -193,34 +251,41 @@ const Proxies: React.FC = () => {
                             Select USA State
                           </label>
                           <div className="relative group" ref={stateDropdownRef}>
-                            <div
-                              onClick={() => setIsStateDropdownOpen(!isStateDropdownOpen)}
-                              className="w-full pl-4 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
-                            >
-                              <span>{selectedState}</span>
-                            </div>
-
-                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                              <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isStateDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                              </svg>
+                            <div className="relative">
+                              <input
+                                ref={stateInputRef}
+                                type="text"
+                                value={stateSearchTerm || selectedState || ''}
+                                onChange={handleStateInputChange}
+                                onClick={handleStateInputClick}
+                                placeholder="Type or choose state"
+                                className="w-full pl-4 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 placeholder-slate-400"
+                              />
+                              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isStateDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
                             </div>
 
                             {/* Custom Dropdown Options */}
                             {isStateDropdownOpen && (
                               <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
-                                {usaStates.map((state) => (
-                                  <div
-                                    key={state.code}
-                                    onClick={() => {
-                                      setSelectedState(state.name);
-                                      setIsStateDropdownOpen(false);
-                                    }}
-                                    className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-                                  >
-                                    <span className="text-white">{state.name}</span>
+                                {filteredStates.length > 0 ? (
+                                  filteredStates.map((state) => (
+                                    <div
+                                      key={state.code}
+                                      onClick={() => handleStateSelect(state.name)}
+                                      className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                                    >
+                                      <span className="text-white">{state.name}</span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="px-4 py-3 text-slate-400 text-center">
+                                    No states found
                                   </div>
-                                ))}
+                                )}
                               </div>
                             )}
                           </div>
@@ -270,7 +335,7 @@ const Proxies: React.FC = () => {
                       <div className="flex flex-col items-center space-y-3">
                         <button
                           onClick={handleSearch}
-                          disabled={isSearching}
+                          disabled={isSearching || !selectedState}
                           className="group px-8 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[150px]"
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -318,12 +383,12 @@ const Proxies: React.FC = () => {
                   {/* Results Header */}
                   <div className="text-left mb-7">
                     <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
-                      Card options
+                      Proxy options
                     </h1>
                     <p className="text-slate-300 text-md">
                       {searchResults.length > 0 
-                        ? `Found 1 virtual debit card`
-                        : 'No cards available'
+                        ? `Found 1 USA proxy`
+                        : 'No proxies available'
                       }
                     </p>
                   </div>
@@ -334,109 +399,81 @@ const Proxies: React.FC = () => {
                       {searchResults.map((option) => (
                         <div
                           key={option.id}
-                          className="bg-gradient-to-br from-slate-800/70 to-slate-900/70 backdrop-blur-sm rounded-2xl p-8 border border-slate-600/50 border-blue-500/50 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:scale-[1.01]"
-                          style={{ boxShadow: 'rgba(59, 130, 246, 0.25) 0px 0px 24px;' }}
+                          className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 border-blue-500/50 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:scale-[1.01]"
+                          style={{ boxShadow: 'rgba(59, 130, 246, 0.25) 0px 0px 24px' }}
                         >
-                          {/* Card and Details Layout */}
-                          <div className="flex flex-col space-y-6">
-                            {/* Top Section: Card and Details */}
-                            <div className="flex flex-col md:flex-row md:space-x-6">
-                              {/* Virtual Card Display - Left Side on Desktop */}
-                              <div className="flex-1 md:max-w-lg">
-                                {/* Virtual Card Display */}
-                                <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-2xl p-6 text-white relative overflow-hidden shadow-2xl border border-slate-600/50">
-                                  {/* Card Background Pattern */}
-                                  <div className="absolute inset-0 opacity-5">
-                                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/10 to-transparent"></div>
-                                    <div className="absolute top-8 right-8 w-12 h-12 rounded-full bg-white/5"></div>
-                                    <div className="absolute bottom-8 left-8 w-8 h-8 rounded-full bg-white/5"></div>
-                                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full bg-white/3"></div>
-                                  </div>
-                                  
-                                  <div className="relative z-10">
-                                    {/* Card Header */}
-                                    <div className="flex justify-center md:justify-between items-center mb-6">
-                                      <div className="text-center md:text-left">
-                                        <p className="text-md opacity-80 font-medium">Virtual Debit Card</p>
-                                      </div>
-                                      <img 
-                                        src={MajorPhonesFavIc} 
-                                        alt="MajorPhones" 
-                                        className="w-12 h-10 object-contain hidden md:block"
-                                      />
-                                    </div>
-                                    
-                                    {/* Card Number */}
-                                    <div className="mb-6">
-                                      <p className="text-sm opacity-60 mb-2 uppercase tracking-wider">Card Number</p>
-                                      <p className="text-md font-mono font-light">**** **** **** ****</p>
-                                    </div>
-                                    
-                                    {/* Card Details Row */}
-                                    <div className="grid grid-cols-2 gap-6">
-                                      <div>
-                                        <p className="text-sm opacity-60 mb-2 uppercase tracking-wider">Expires</p>
-                                        <p className="text-md font-mono font-light">**/**</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-sm opacity-60 mb-2 uppercase tracking-wider">CVV</p>
-                                        <p className="text-md font-mono font-light">***</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
+                          {/* Proxy Header */}
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-9 h-9 bg-blue-300/10 rounded-xl flex items-center justify-center">
+                                <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
                               </div>
-
-                              {/* Details - Right Side on Desktop */}
-                              <div className="flex flex-col justify-center mt-6 md:mt-0 md:flex-1">
-                                {/* Card Information Panel */}
-                                <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/40">
-                                  <h3 className="text-md font-semibold text-white mb-4 flex items-center">
-                                    <svg className="w-5 h-5 mr-2 text-blue-400 hidden md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    Card Details
-                                  </h3>
-                                  <div className="space-y-3">
-                                    <div className="flex justify-between items-center py-2 border-b border-slate-600/30">
-                                      <span className="text-slate-300 font-medium">Type:</span>
-                                      <span className={`font-semibold px-3 py-1 rounded-full text-xs md:text-sm ${
-                                        option.hasBalance 
-                                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
-                                          : 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
-                                      }`}>
-                                        {option.hasBalance ? 'With Balance' : 'No Balance'}
-                                      </span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2 border-b border-slate-600/30">
-                                      <span className="text-slate-300 font-medium">Card Funds:</span>
-                                      <span className="text-emerald-400 font-bold text-md">
-                                        ${option.cardFunds}
-                                      </span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2">
-                                      <span className="text-slate-300 font-medium">Price:</span>
-                                      <span className="text-emerald-400 font-bold text-md">
-                                        ${option.price}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
+                              <div>
+                                <p className="text-white font-bold text-md">Proxy Details</p>
                               </div>
                             </div>
+                          </div>
 
-                            {/* Centered Purchase Button */}
-                            <div className="flex justify-center">
-                              <button 
-                                onClick={() => navigate('/history?tab=proxies')}
-                                className="group relative px-8 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-2xl transition-all duration-300 shadow-xl hover:shadow-blue-500/30 hover:scale-[1.02] text-md overflow-hidden max-w-xs"
-                              >
-                                <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-blue-700 hover:from-green-500 hover:to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                <div className="relative z-10 flex items-center justify-center">
-                                  Purchase
+                          {/* Details in one line */}
+                          <div className="md:flex md:items-center md:justify-between">
+                            {/* Mobile Layout */}
+                            <div className="md:hidden space-y-3">
+                              {/* Price, Duration, USA State in columns */}
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between text-md">
+                                  <span className="text-slate-300 font-medium">Price:</span>
+                                  <span className="text-emerald-400 font-semibold">
+                                    ${option.price}
+                                  </span>
                                 </div>
+                                <div className="flex items-center justify-between text-md">
+                                  <span className="text-slate-300 font-medium">Duration:</span>
+                                  <span className="text-emerald-400 font-semibold">
+                                    {option.expirationDate}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between text-md">
+                                  <span className="text-slate-300 font-medium">State:</span>
+                                  <span className="text-emerald-400 font-semibold">{getStateName(option.cardNumber)}</span>
+                                </div>
+                              </div>
+                              {/* Purchase Button - full width */}
+                              <button
+                                onClick={() => navigate('/history?tab=proxies')}
+                                className="w-full px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-md"
+                              >
+                                Purchase
                               </button>
                             </div>
+
+                            {/* Desktop Layout */}
+                            <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                              <span className="text-slate-300 font-medium">Price:</span>
+                              <span className="text-emerald-400 font-semibold">
+                                ${option.price}
+                              </span>
+                            </div>
+
+                            <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                              <span className="text-slate-300 font-medium">Duration:</span>
+                              <span className="text-emerald-400 font-semibold">
+                                {option.expirationDate}
+                              </span>
+                            </div>
+
+                            <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                              <span className="text-slate-300 font-medium">State:</span>
+                              <span className="text-emerald-400 font-semibold">{option.cardNumber}</span>
+                            </div>
+
+                            <button
+                              onClick={() => navigate('/history?tab=proxies')}
+                              className="hidden md:block px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm"
+                            >
+                              Purchase
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -445,10 +482,10 @@ const Proxies: React.FC = () => {
                     <div className="text-center py-16 max-w-md mx-auto">
                       <div className="inline-flex items-center justify-center w-20 h-20 bg-slate-700 rounded-2xl mb-6">
                         <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                       </div>
-                      <h4 className="text-2xl font-bold text-slate-300 mb-3">No Cards Available</h4>
+                      <h4 className="text-2xl font-bold text-slate-300 mb-3">No Proxies Available</h4>
                       <p className="text-slate-400 text-lg">Please try again later.</p>
                     </div>
                   )}
