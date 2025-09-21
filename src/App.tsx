@@ -13,6 +13,7 @@ import VirtualCard from './components/VirtualCard';
 import Proxies from './components/Proxies';
 import History from './components/History';
 import Transactions from './components/Transactions';
+import Tickets from './components/Tickets';
 import Profile from './components/Profile';
 import AddFunds from './components/AddFunds';
 import './App.css';
@@ -79,6 +80,7 @@ function App() {
           <Route path="/proxies" element={<Proxies />} />
           <Route path="/history" element={<History />} />
           <Route path="/transactions" element={<Transactions />} />
+          <Route path="/tickets" element={<Tickets />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/add-funds" element={<AddFunds />} />
         </Routes>
