@@ -326,6 +326,21 @@ const AddFunds: React.FC = () => {
           </div>
         </div>
 
+        {/* Information Section - Always on top */}
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4 mb-6">
+          <div className="flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-blue-300 text-sm font-semibold mb-3">Important information before depositing:</p>
+              <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
+                <li>• If you deposit $10 or more with crypto or Payeer, you get 1 free number</li>
+                <li>• You can't withdrawal your balance from your Major Phones account</li>
+                <li>• We have a refund policy which allows us to accept/deny refund requests</li>
+                <li>• Refunds are made only in Amazon Pay, Binance Pay or LTC, fees are covered by the user</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         {/* Payment Methods and Form */}
         <div 
           className="group rounded-3xl shadow-2xl border border-slate-600/50 p-6 relative overflow-hidden hover:shadow-3xl transition-all duration-500"
@@ -723,7 +738,7 @@ const AddFunds: React.FC = () => {
               </div>
             </div>
             <h3 className="text-lg font-medium text-white mb-2">Wait</h3>
-            <p className="text-blue-200 mb-4 text-justify" style={{ maxWidth: '16rem' }}>If you deposit through Amazon Pay, you won't be able to purchase middle/long term numbers.</p>
+            <p className="text-blue-200 mb-4 text-justify" style={{ maxWidth: '16rem' }}>If you deposit through Amazon Pay, you can't purchase middle/long numbers, virtual debit cards or proxies.</p>
             <div className="flex space-x-4">
               <button
                 onClick={() => setShowAmazonModal(false)}

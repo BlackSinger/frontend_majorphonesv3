@@ -52,8 +52,10 @@ const History: React.FC = () => {
   );
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [numberTypeFilter, setNumberTypeFilter] = useState<string>('All');
   const [isServiceTypeDropdownOpen, setIsServiceTypeDropdownOpen] = useState(false);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const [isNumberTypeDropdownOpen, setIsNumberTypeDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [currentVirtualCardPage, setCurrentVirtualCardPage] = useState(1);
   const [showUuidModal, setShowUuidModal] = useState(false);
@@ -63,6 +65,11 @@ const History: React.FC = () => {
   const [isCopied, setIsCopied] = useState(false);
   const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
   const [copiedCardNumbers, setCopiedCardNumbers] = useState<{[key: string]: boolean}>({});
+
+  // Virtual card filters
+  const [cardNumberSearch, setCardNumberSearch] = useState<string>('');
+  const [fundsFilter, setFundsFilter] = useState<string>('All');
+  const [isFundsDropdownOpen, setIsFundsDropdownOpen] = useState(false);
 
   // Proxy-specific state
   const [selectedProxyState, setSelectedProxyState] = useState('All States');
@@ -81,6 +88,8 @@ const History: React.FC = () => {
   const [openActionMenus, setOpenActionMenus] = useState<{[key: string]: boolean}>({});
   const serviceTypeDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
+  const numberTypeDropdownRef = useRef<HTMLDivElement>(null);
+  const fundsDropdownRef = useRef<HTMLDivElement>(null);
   const actionMenuRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
   
   const itemsPerPage = 10;
@@ -568,10 +577,21 @@ const History: React.FC = () => {
   const serviceTypeOptions = [
     'All',
     'Short Numbers',
-    'Middle Numbers', 
+    'Middle Numbers',
     'Long Numbers',
     'Empty SIM card'
   ];
+
+  const getNumberTypeOptions = (serviceType: string) => {
+    switch (serviceType) {
+      case 'Short Numbers':
+        return ['All', 'Single Use', 'Reusable', 'Receive/Respond'];
+      case 'Middle Numbers':
+        return ['All', '1 day', '7 days', '14 days'];
+      default:
+        return ['All'];
+    }
+  };
 
   // Filter states based on search term for proxies
   const filteredStates = usaStates.filter(state =>
@@ -594,6 +614,9 @@ const History: React.FC = () => {
       }
       if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
         setIsStatusDropdownOpen(false);
+      }
+      if (numberTypeDropdownRef.current && !numberTypeDropdownRef.current.contains(event.target as Node)) {
+        setIsNumberTypeDropdownOpen(false);
       }
       if (proxyStateDropdownRef.current && !proxyStateDropdownRef.current.contains(event.target as Node)) {
         setIsProxyStateDropdownOpen(false);
@@ -644,8 +667,13 @@ const History: React.FC = () => {
       filtered = filtered.filter(record => record.status === statusFilter);
     }
 
+    // Apply Number Type filter when Short Numbers or Middle Numbers is selected
+    if ((serviceTypeFilter === 'Short Numbers' || serviceTypeFilter === 'Middle Numbers') && numberTypeFilter !== 'All') {
+      filtered = filtered.filter(record => record.duration === numberTypeFilter);
+    }
+
     return filtered;
-  }, [serviceTypeFilter, statusFilter]);
+  }, [serviceTypeFilter, statusFilter, numberTypeFilter]);
 
   // Filter proxy data based on selected filters
   const filteredProxyData = useMemo(() => {
@@ -662,6 +690,30 @@ const History: React.FC = () => {
     return filtered;
   }, [selectedProxyState, selectedProxyDuration]);
 
+  // Filter virtual card data based on selected filters
+  const filteredVirtualCardData = useMemo(() => {
+    let filtered = virtualCardData;
+
+    // Filter by card number (normalize spaces)
+    if (cardNumberSearch.trim()) {
+      const searchTerm = cardNumberSearch.replace(/\s/g, '').toLowerCase();
+      filtered = filtered.filter(record =>
+        record.cardNumber.replace(/\s/g, '').toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Filter by funds
+    if (fundsFilter !== 'All') {
+      if (fundsFilter === '$0') {
+        filtered = filtered.filter(record => record.funds === 0);
+      } else if (fundsFilter === '$3') {
+        filtered = filtered.filter(record => record.funds === 3);
+      }
+    }
+
+    return filtered;
+  }, [cardNumberSearch, fundsFilter]);
+
   // Calculate pagination for numbers table
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -669,10 +721,10 @@ const History: React.FC = () => {
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
   // Calculate pagination for virtual cards table
-  const totalVirtualCardPages = Math.ceil(virtualCardData.length / itemsPerPage);
+  const totalVirtualCardPages = Math.ceil(filteredVirtualCardData.length / itemsPerPage);
   const virtualCardStartIndex = (currentVirtualCardPage - 1) * itemsPerPage;
   const virtualCardEndIndex = virtualCardStartIndex + itemsPerPage;
-  const paginatedVirtualCardData = virtualCardData.slice(virtualCardStartIndex, virtualCardEndIndex);
+  const paginatedVirtualCardData = filteredVirtualCardData.slice(virtualCardStartIndex, virtualCardEndIndex);
 
   // Calculate pagination for proxies table
   const totalProxyPages = Math.ceil(filteredProxyData.length / itemsPerPage);
@@ -683,7 +735,7 @@ const History: React.FC = () => {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [serviceTypeFilter, statusFilter]);
+  }, [serviceTypeFilter, statusFilter, numberTypeFilter]);
 
   // Reset to first page when proxy filters change
   useEffect(() => {
@@ -781,7 +833,7 @@ const History: React.FC = () => {
         setIsInfoIdCopied(true);
         setTimeout(() => setIsInfoIdCopied(false), 2000);
       } catch (err) {
-        console.error('Failed to copy Number ID:', err);
+        console.error('Failed to copy Order ID:', err);
       }
     }
   };
@@ -848,7 +900,7 @@ const History: React.FC = () => {
         setIsProxyIdCopied(true);
         setTimeout(() => setIsProxyIdCopied(false), 2000);
       } catch (err) {
-        console.error('Failed to copy Proxy ID:', err);
+        console.error('Failed to copy Order ID:', err);
       }
     }
   };
@@ -997,7 +1049,7 @@ const History: React.FC = () => {
                         >
                           <span>{serviceTypeFilter === 'All' ? 'All Services' : serviceTypeFilter}</span>
                         </div>
-                        
+
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                           <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isServiceTypeDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -1013,6 +1065,7 @@ const History: React.FC = () => {
                                 onClick={() => {
                                   setServiceTypeFilter(option);
                                   setStatusFilter('All'); // Reset status filter when service type changes
+                                  setNumberTypeFilter('All'); // Reset number type filter
                                   setIsServiceTypeDropdownOpen(false);
                                 }}
                                 className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
@@ -1023,7 +1076,48 @@ const History: React.FC = () => {
                           </div>
                         )}
                       </div>
-                </div>
+                    </div>
+
+                    {/* Number Type Filter - Conditional for Short and Middle Numbers */}
+                    {(serviceTypeFilter === 'Short Numbers' || serviceTypeFilter === 'Middle Numbers') && (
+                      <div className="flex-1">
+                        <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                          Number Type
+                        </label>
+                        <div className="relative group" ref={numberTypeDropdownRef}>
+                          <div
+                            onClick={() => setIsNumberTypeDropdownOpen(!isNumberTypeDropdownOpen)}
+                            className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                          >
+                            <span>{numberTypeFilter === 'All' ? 'All Types' : numberTypeFilter}</span>
+                          </div>
+
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isNumberTypeDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+
+                          {/* Custom Dropdown Options */}
+                          {isNumberTypeDropdownOpen && (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
+                              {getNumberTypeOptions(serviceTypeFilter).map((option) => (
+                                <div
+                                  key={option}
+                                  onClick={() => {
+                                    setNumberTypeFilter(option);
+                                    setIsNumberTypeDropdownOpen(false);
+                                  }}
+                                  className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                                >
+                                  <span className="text-white">{option === 'All' ? 'All Types' : option}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Status Filter */}
                     <div className="flex-1">
@@ -1037,7 +1131,7 @@ const History: React.FC = () => {
                         >
                           <span>{statusFilter === 'All' ? 'All Statuses' : statusFilter}</span>
                         </div>
-                        
+
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                           <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isStatusDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -1274,9 +1368,78 @@ const History: React.FC = () => {
             {/* Virtual Cards Tab Content */}
             {activeTab === 'virtualCards' && (
               <>
+                {/* Virtual Cards Filters */}
+                <div className="mb-6">
+                  <div className="flex flex-col lg:flex-row gap-6">
+                    {/* Card Number Search */}
+                    <div className="flex-1">
+                      <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                        Card Number Search
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={cardNumberSearch}
+                          onChange={(e) => {
+                            setCardNumberSearch(e.target.value);
+                            setCurrentVirtualCardPage(1);
+                          }}
+                          placeholder="Enter card number"
+                          className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300"
+                        />
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Funds Filter */}
+                    <div className="flex-1">
+                      <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                        Initial Funds
+                      </label>
+                      <div className="relative group" ref={fundsDropdownRef}>
+                        <div
+                          onClick={() => setIsFundsDropdownOpen(!isFundsDropdownOpen)}
+                          className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                        >
+                          <span>{fundsFilter === 'All' ? 'All Funds' : fundsFilter}</span>
+                        </div>
+
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isFundsDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+
+                        {/* Custom Dropdown Options */}
+                        {isFundsDropdownOpen && (
+                          <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
+                            {['All', '$0', '$3'].map((option) => (
+                              <div
+                                key={option}
+                                onClick={() => {
+                                  setFundsFilter(option);
+                                  setIsFundsDropdownOpen(false);
+                                  setCurrentVirtualCardPage(1);
+                                }}
+                                className="px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 text-white first:rounded-t-2xl last:rounded-b-2xl text-left"
+                              >
+                                {option === 'All' ? 'All Funds' : option}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Virtual Cards Table */}
                 <div className="overflow-x-auto overflow-y-visible">
-                  {virtualCardData.length > 0 ? (
+                  {filteredVirtualCardData.length > 0 ? (
                     <>
                       <table className="w-full">
                         <thead>
@@ -1351,13 +1514,13 @@ const History: React.FC = () => {
                         <div className="mt-6">
                           {/* Results info - shown above pagination on small screens */}
                           <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
-                            Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, virtualCardData.length)} of {virtualCardData.length} results
+                            Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, filteredVirtualCardData.length)} of {filteredVirtualCardData.length} results
                           </div>
                           
                           <div className="flex items-center justify-between">
                             {/* Results info - shown on left side on larger screens */}
                             <div className="hidden md:block text-sm text-slate-400">
-                              Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, virtualCardData.length)} of {virtualCardData.length} results
+                              Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, filteredVirtualCardData.length)} of {filteredVirtualCardData.length} results
                             </div>
                             
                             <div className="flex items-center space-x-2 mx-auto md:mx-0">
@@ -1687,7 +1850,7 @@ const History: React.FC = () => {
                     <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
                   </div>
                 </div>
-                <h3 className="text-lg font-medium text-white mb-2">Card ID</h3>
+                <h3 className="text-lg font-medium text-white mb-2">Order ID</h3>
                 <p className="text-blue-200 mb-4 break-all">{selectedUuid}</p>
                 <div className="flex space-x-3 justify-center">
                   <button
@@ -1730,12 +1893,12 @@ const History: React.FC = () => {
                 <h3 className="text-lg font-medium text-white mb-6">Information</h3>
                 <div className="space-y-4 text-left">
                   <div>
-                    <span className="text-slate-300">Number ID: </span>
+                    <span className="text-slate-300">Order ID: </span>
                     <span className="text-emerald-400 break-all">{selectedRecord.id}
                       <button
                         onClick={handleCopyInfoId}
                         className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
-                        title={isInfoIdCopied ? "Copied!" : "Copy Number ID"}
+                        title={isInfoIdCopied ? "Copied!" : "Copy Order ID"}
                       >
                         {isInfoIdCopied ? (
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1788,12 +1951,12 @@ const History: React.FC = () => {
                 <h3 className="text-lg font-medium text-white mb-6">Proxy Information</h3>
                 <div className="space-y-4 text-left">
                   <div>
-                    <span className="text-slate-300">Proxy ID: </span>
+                    <span className="text-slate-300">Order ID: </span>
                     <span className="text-emerald-400 break-all">{selectedProxyRecord.id}
                       <button
                         onClick={handleCopyProxyId}
                         className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
-                        title={isProxyIdCopied ? "Copied!" : "Copy Proxy ID"}
+                        title={isProxyIdCopied ? "Copied!" : "Copy Order ID"}
                       >
                         {isProxyIdCopied ? (
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
