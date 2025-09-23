@@ -1,4 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider } from 'firebase/auth';
+import { auth } from '../firebase/config';
+import { useAuth } from '../contexts/AuthContext';
 import LogoMajor from '../LogoMajor.png';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 
@@ -9,6 +13,15 @@ const SignIn: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+
+  useEffect(() => {
+    document.title = 'Major Phones LLC';
+    if (currentUser) {
+      navigate('/dashboard');
+    }
+  }, [currentUser, navigate]);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -17,30 +30,122 @@ const SignIn: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Custom validation
     if (!email.trim()) {
       setModalMessage('Please enter your email address.');
       setShowModal(true);
       return;
     }
-    
+
     if (!password.trim()) {
       setModalMessage('Please enter your password.');
       setShowModal(true);
       return;
     }
-    
+
     if (!validateEmail(email)) {
       setModalMessage('Please enter a valid email address.');
       setShowModal(true);
       return;
     }
-    
+
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsLoading(false);
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      console.log('User signed in:', user);
+
+      // Check if email is verified
+      if (user.emailVerified) {
+        navigate('/dashboard');
+      } else {
+        setModalMessage('Your account has not been verified yet');
+        setShowModal(true);
+        // User stays logged in but can't access dashboard until verified
+      }
+    } catch (error: any) {
+      console.error('Error signing in:', error);
+      console.log('Error code:', error.code);
+      let errorMessage = 'An error occurred during sign in';
+
+      switch (error.code) {
+        case 'auth/user-not-found':
+          errorMessage = 'This user does not exist';
+          break;
+        case 'auth/invalid-password':
+          errorMessage = 'This password is incorrect';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'This email address is invalid';
+          break;
+        case 'auth/invalid-credential':
+          errorMessage = 'These credentials are invalid';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many failed attempts, please try again later';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'You are experiencing network errors, please try again';
+          break;
+        case 'auth/internal-error':
+          errorMessage = 'An unexpected error occurred, please try again';
+          break;
+        case 'auth/session-cookie-expired':
+          errorMessage = 'An unexpected error occurred, please refresh';
+          break;
+        case 'auth/user-disabled':
+          errorMessage = 'Your account has been suspended';
+          break;
+        case 'auth/invalid-action-code':
+          errorMessage = 'You have not verified your account through your email';
+          break;
+        default:
+          errorMessage = 'An unexpected error occurred';
+      }
+
+      setModalMessage(errorMessage);
+      setShowModal(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      console.log('User signed in with Google:', user);
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Error signing in with Google:', error);
+      setModalMessage('Error signing in with Google. Please try again.');
+      setShowModal(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFacebookSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const provider = new FacebookAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      console.log('User signed in with Facebook:', user);
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Error signing in with Facebook:', error);
+      setModalMessage('Error signing in with Facebook. Please try again.');
+      setShowModal(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center p-4">
@@ -53,7 +158,7 @@ const SignIn: React.FC = () => {
             <div className="inline-flex items-center justify-center">
               <img src={LogoMajor} alt="Major Phones Logo" className="w-30 h-20" />
             </div>
-            <h1 className="text-3xl font-bold text-white">Welcome Back</h1>
+            <h1 className="text-2xl font-bold text-white">Welcome Back</h1>
             <p className="text-blue-200">Sign in to your Major Phones account</p>
           </div>
 
@@ -76,7 +181,8 @@ const SignIn: React.FC = () => {
                   type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-300 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="john@example.com"
                   autoComplete="off"
                 />
@@ -100,7 +206,8 @@ const SignIn: React.FC = () => {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-300 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="••••••••"
                 />
                 <button
@@ -142,7 +249,7 @@ const SignIn: React.FC = () => {
                 <div className="flex items-center justify-center">
                   <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 </div>
               ) : (
@@ -161,7 +268,9 @@ const SignIn: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                className="flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-300 group"
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
+                className="flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-5 h-5 text-white group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -173,7 +282,9 @@ const SignIn: React.FC = () => {
               </button>
               <button
                 type="button"
-                className="flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-300 group"
+                onClick={handleFacebookSignIn}
+                disabled={isLoading}
+                className="flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-5 h-5 text-white group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>

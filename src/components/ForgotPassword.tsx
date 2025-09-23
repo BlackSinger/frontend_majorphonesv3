@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LogoMajor from '../LogoMajor.png';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 
@@ -8,6 +8,10 @@ const ForgotPassword: React.FC = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+
+  useEffect(() => {
+    document.title = 'Major Phones LLC';
+  }, []);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -95,7 +99,7 @@ const ForgotPassword: React.FC = () => {
             <div className="inline-flex items-center justify-center">
               <img src={LogoMajor} alt="Major Phones Logo" className="w-30 h-20" />
             </div>
-            <h1 className="text-3xl font-bold text-white">Forgot Password</h1>
+            <h1 className="text-2xl font-bold text-white">Forgot Password</h1>
             <p className="text-blue-200">
             Enter your email to recover your account
             </p>

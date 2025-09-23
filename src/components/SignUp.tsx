@@ -1,4 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider, sendEmailVerification, signOut } from 'firebase/auth';
+import { auth } from '../firebase/config';
+import { useAuth } from '../contexts/AuthContext';
 import LogoMajor from '../LogoMajor.png';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 
@@ -11,6 +15,16 @@ const SignUp: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+  const [modalType, setModalType] = useState<'error' | 'success'>('error');
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+
+  useEffect(() => {
+    document.title = 'Major Phones LLC';
+    if (currentUser) {
+      navigate('/dashboard');
+    }
+  }, [currentUser, navigate]);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -22,44 +36,144 @@ const SignUp: React.FC = () => {
     
     // Custom validation
     if (!email.trim()) {
+      setModalType('error');
       setModalMessage('Please enter your email address.');
       setShowModal(true);
       return;
     }
     
     if (!validateEmail(email)) {
+      setModalType('error');
       setModalMessage('Please enter a valid email address.');
       setShowModal(true);
       return;
     }
     
     if (!password.trim()) {
+      setModalType('error');
       setModalMessage('Please enter your password.');
       setShowModal(true);
       return;
     }
     
     if (password.length < 6) {
+      setModalType('error');
       setModalMessage('Password must be at least 6 characters long.');
       setShowModal(true);
       return;
     }
     
     if (!confirmPassword.trim()) {
+      setModalType('error');
       setModalMessage('Please confirm your password.');
       setShowModal(true);
       return;
     }
     
     if (password !== confirmPassword) {
+      setModalType('error');
       setModalMessage('Passwords do not match.');
       setShowModal(true);
       return;
     }
     
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsLoading(false);
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Send email verification
+      await sendEmailVerification(user);
+
+      console.log('User created and verification email sent');
+
+      // Clear form fields
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+
+      // Show success message - user stays on signup page
+      // AuthContext will ignore this user until email is verified
+      setModalType('success');
+      setModalMessage('An account verification email has been sent to you');
+      setShowModal(true);
+    } catch (error: any) {
+      console.error('Error signing up:', error);
+      console.log('Error code:', error.code);
+      let errorMessage = 'An error occurred during sign up';
+
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'This email address is already registered';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'This email address is invalid';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'This password is too weak';
+          break;
+        case 'auth/invalid-password':
+          errorMessage = 'This password is invalid';
+          break;
+        case 'auth/operation-not-allowed':
+          errorMessage = 'The signup is currently unavailable, please try again';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'You are experiencing network errors, please try again';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many failed attempts, please try again later';
+          break;
+        case 'auth/internal-error':
+          errorMessage = 'An unexpected error occurred, please try again';
+          break;
+        default:
+          errorMessage = 'An unexpected error occurred';
+      }
+
+      setModalType('error');
+      setModalMessage(errorMessage);
+      setShowModal(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      console.log('User signed up with Google:', user);
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Error signing up with Google:', error);
+      setModalType('error');
+      setModalMessage('Error signing up with Google. Please try again.');
+      setShowModal(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFacebookSignUp = async () => {
+    setIsLoading(true);
+    try {
+      const provider = new FacebookAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      console.log('User signed up with Facebook:', user);
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Error signing up with Facebook:', error);
+      setModalType('error');
+      setModalMessage('Error signing up with Facebook. Please try again.');
+      setShowModal(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -73,7 +187,7 @@ const SignUp: React.FC = () => {
             <div className="inline-flex items-center justify-center">
               <img src={LogoMajor} alt="Major Phones Logo" className="w-30 h-20" />
             </div>
-            <h1 className="text-3xl font-bold text-white">Create Account</h1>
+            <h1 className="text-2xl font-bold text-white">Create Account</h1>
             <p className="text-blue-200">Join Major Phones today</p>
           </div>
 
@@ -92,16 +206,19 @@ const SignUp: React.FC = () => {
                 </div>
                 <input
                   id="email"
-                  name="email"
+                  name="email-signup"
                   type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-300 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="john@example.com"
-                  autoComplete="new-password"
+                  autoComplete="nope"
                   autoCorrect="off"
                   autoCapitalize="off"
                   spellCheck="false"
+                  data-lpignore="true"
+                  data-form-type="other"
                 />
               </div>
             </div>
@@ -123,7 +240,8 @@ const SignUp: React.FC = () => {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-300 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="Minimum 6 characters"
                 />
                 <button
@@ -162,7 +280,8 @@ const SignUp: React.FC = () => {
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-300 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="Repeat your password"
                 />
                 <button
@@ -214,7 +333,9 @@ const SignUp: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                className="flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-300 group"
+                onClick={handleGoogleSignUp}
+                disabled={isLoading}
+                className="flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-5 h-5 text-white group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -226,7 +347,9 @@ const SignUp: React.FC = () => {
               </button>
               <button
                 type="button"
-                className="flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-300 group"
+                onClick={handleFacebookSignUp}
+                disabled={isLoading}
+                className="flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-5 h-5 text-white group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -250,19 +373,25 @@ const SignUp: React.FC = () => {
           </div>
         </div>
 
-        {/* Custom Validation Modal */}
+        {/* Custom Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-70 h-58">
               <div className="text-center">
                 <div className="mb-4">
-                  <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                  <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center ${modalType === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+                    {modalType === 'success' ? (
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    )}
                   </div>
                 </div>
-                <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+                <h3 className="text-lg font-medium text-white mb-2">{modalType === 'success' ? 'Success' : 'Error'}</h3>
                 <p className="text-blue-200 mb-4">{modalMessage}</p>
                 <button
                   onClick={() => setShowModal(false)}
