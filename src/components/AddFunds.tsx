@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import CryptomusLogo from '../CryptomusLogo.svg';
 import AmazonPayLogo from '../AmazonPayLogo.png';
@@ -642,7 +643,7 @@ const AddFunds: React.FC = () => {
                                           <li>• Send any amount you want to add to your balance and make sure you are sending funds through the correct network</li>
                                           <li>• Minimum confirmations required vary by network, as well as the time the funds arrive</li>
                                           <li>• Funds will be credited after all confirmations, so please wait for a couple of minutes</li>
-                                          <li className='font-bold text-md text-center'>Check the status of the payment in <a href="/transactions" className="text-blue-400 hover:text-blue-300 underline font-semibold">Transactions</a> if you don't have your balance reflected</li>
+                                          <li className='font-bold text-md text-center'>Check the status of the payment in <Link to="/transactions" className="text-blue-400 hover:text-blue-300 underline font-semibold">Transactions</Link> if you don't have your balance reflected</li>
                                         </ul>
                                       </div>
                                     </div>
@@ -683,7 +684,7 @@ const AddFunds: React.FC = () => {
                           <p className="text-blue-300 text-sm font-semibold mb-3">Important instructions:</p>
                           <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                             <li>• Send ${amount} to <span className='font-bold'>payments@majorphones.com</span> (do not translate the email)</li>
-                            <li>• Contact us on <a href="https://t.me/MajorPhones" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-semibold">Telegram</a>, <a href="mailto:support@majorphones.com" className="text-blue-400 hover:text-blue-300 underline font-semibold">email</a> or open a <a href="/tickets" className="text-blue-400 hover:text-blue-300 underline font-semibold">ticket</a></li>
+                            <li>• Contact us on <a href="https://t.me/MajorPhones" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-semibold">Telegram</a>, <a href="mailto:support@majorphones.com" className="text-blue-400 hover:text-blue-300 underline font-semibold">email</a> or open a <Link to="/tickets" className="text-blue-400 hover:text-blue-300 underline font-semibold">ticket</Link></li>
                             <li>• Send Binance image of the transaction where we can see the order ID</li>
                             <li className='font-bold text-md text-center'>Deposits above $1 get extra $0.5</li>
                           </ul>

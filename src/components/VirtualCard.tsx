@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 
@@ -76,7 +76,7 @@ const VirtualCard: React.FC = () => {
               <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                 <li>• They are randomly assigned as VISA or MasterCard, you can't choose the type of card</li>
                 <li>• They can be chosen with pre-loaded funds ($3) or with no funds ($0)</li>
-                <li>• If you want a card with more funds, contact us on <a href="https://t.me/MajorPhones" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-semibold">Telegram</a>, <a href="mailto:support@majorphones.com" className="text-blue-400 hover:text-blue-300 underline font-semibold">email</a> or open a <a href="/tickets" className="text-blue-400 hover:text-blue-300 underline font-semibold">ticket</a></li>
+                <li>• If you want a card with more funds, contact us on <a href="https://t.me/MajorPhones" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-semibold">Telegram</a>, <a href="mailto:support@majorphones.com" className="text-blue-400 hover:text-blue-300 underline font-semibold">email</a> or open a <Link to="/tickets" className="text-blue-400 hover:text-blue-300 underline font-semibold">ticket</Link></li>
                 <li>• They can be used with any name and in multiple sites, but may not work in some</li>
                 <li>• They can't be refunded once purchased</li>
                 <li>• Expiration date varies depending on the card assigned, it can't be chosen</li>

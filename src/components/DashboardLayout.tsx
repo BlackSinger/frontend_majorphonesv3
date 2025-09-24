@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 
 interface DashboardLayoutProps {
@@ -44,7 +45,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
             {/* Right side - Combined User Actions */}
             <div className="flex items-center">
               {/* Desktop Version - Full layout */}
-              <a href="/profile" className="hidden md:block group bg-slate-700/50 hover:bg-slate-600/50 rounded-2xl p-2 border border-slate-600/50 hover:border-blue-500/50 backdrop-blur-sm transition-all duration-300 hover:scale-104">
+              <Link to="/profile" className="hidden md:block group bg-slate-700/50 hover:bg-slate-600/50 rounded-2xl p-2 border border-slate-600/50 hover:border-blue-500/50 backdrop-blur-sm transition-all duration-300 hover:scale-104">
                 <div className="flex items-center space-x-4">
                   {/* Profile Section */}
                   <div className="flex items-center space-x-3">
@@ -78,7 +79,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
                   <div className="w-px h-12 bg-slate-600/50 group-hover:bg-emerald-500/30 transition-colors duration-300"></div>
 
                   {/* Add Funds Section */}
-                  <a href="/add-funds" className="flex items-center space-x-2 text-slate-300 group-hover:text-purple-300 transition-colors duration-300">
+                  <Link to="/add-funds" className="flex items-center space-x-2 text-slate-300 group-hover:text-purple-300 transition-colors duration-300">
                     <div className="w-10 h-10 bg-slate-600/50 group-hover:bg-purple-500/20 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110">
                       <svg className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -87,20 +88,20 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
                     <div>
                       <p className="text-sm font-semibold">Add Funds</p>
                     </div>
-                  </a>
+                  </Link>
                 </div>
-              </a>
+              </Link>
 
               {/* Mobile/Tablet Version - Compact icons only */}
               <div className="md:hidden flex items-center space-x-2">
                 {/* Profile Icon */}
-                <a href="/profile" className="p-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl border border-slate-600/50 hover:border-blue-500/50 transition-all duration-300">
+                <Link to="/profile" className="p-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl border border-slate-600/50 hover:border-blue-500/50 transition-all duration-300">
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
                     <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
-                </a>
+                </Link>
 
                 {/* Balance Display */}
                 <div className="p-2 bg-slate-700/50 rounded-xl border border-slate-600/50">
@@ -115,13 +116,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
                 </div>
 
                 {/* Add Funds Icon */}
-                <a href="/add-funds" className="p-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl border border-slate-600/50 hover:border-blue-500/50 transition-all duration-300">
+                <Link to="/add-funds" className="p-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl border border-slate-600/50 hover:border-blue-500/50 transition-all duration-300">
                   <div className="w-8 h-8 bg-slate-600/50 hover:bg-slate-500/50 rounded-lg flex items-center justify-center transition-all duration-300">
                     <svg className="w-4 h-4 text-white hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
                   </div>
-                </a>
+                </Link>
               </div>
             </div>
           </div>

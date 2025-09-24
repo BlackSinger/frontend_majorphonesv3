@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider, sendEmailVerification, signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,7 +20,6 @@ const SignUp: React.FC = () => {
   const { currentUser } = useAuth();
 
   useEffect(() => {
-    document.title = 'Major Phones LLC';
     if (currentUser) {
       navigate('/dashboard');
     }
@@ -363,12 +362,12 @@ const SignUp: React.FC = () => {
           <div className="text-center mt-4 relative z-10">
             <p className="text-blue-200">
               You have an account?{' '}
-              <a 
-                href="/signin" 
+              <Link
+                to="/signin"
                 className="text-green-400 hover:text-green-300 font-medium transition-colors"
               >
                 Sign in
-              </a>
+              </Link>
             </p>
           </div>
         </div>

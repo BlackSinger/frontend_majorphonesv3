@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import LogoMajor from '../LogoMajor.png';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 
@@ -8,10 +9,8 @@ const ForgotPassword: React.FC = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    document.title = 'Major Phones LLC';
-  }, []);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -41,7 +40,7 @@ const ForgotPassword: React.FC = () => {
   };
 
   const handleBackToSignIn = () => {
-    window.location.href = '/signin';
+    navigate('/signin');
   };
 
   if (isSuccess) {
@@ -163,19 +162,19 @@ const ForgotPassword: React.FC = () => {
 
             {/* Alternative Actions */}
             <div className="flex flex-col space-y-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
-              <a
-                href="/signin"
+              <Link
+                to="/signin"
                 className="flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 text-blue-200 hover:text-white transition-all duration-300 group"
               >
                 Back to Sign In
-              </a>
-              
-              <a
-                href="/signup"
+              </Link>
+
+              <Link
+                to="/signup"
                 className="flex items-center justify-center px-4 py-2 border border-white/20 rounded-xl bg-white/5 hover:bg-white/10 text-blue-200 hover:text-white transition-all duration-300 group"
               >
                 Create New Account
-              </a>
+              </Link>
             </div>
           </form>
         </div>

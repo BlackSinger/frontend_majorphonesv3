@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
@@ -22,6 +22,10 @@ import AddFunds from './components/AddFunds';
 import './App.css';
 
 function App() {
+  useEffect(() => {
+    document.title = 'Major Phones LLC';
+  }, []);
+
   return (
     <AuthProvider>
       <Router>
