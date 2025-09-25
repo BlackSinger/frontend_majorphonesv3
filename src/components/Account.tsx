@@ -134,6 +134,9 @@ const Account: React.FC = () => {
         case 'auth/network-request-failed':
           errorMessage = 'You are experiencing network errors, please try again';
           break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many failed attempts, please try again later';
+          break;
         default:
           errorMessage = 'An unexpected error occurred';
       }

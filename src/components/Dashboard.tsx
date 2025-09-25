@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { useAuth } from '../contexts/AuthContext';
 import DashboardLayout from './DashboardLayout';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 
@@ -10,6 +13,183 @@ const Dashboard: React.FC = () => {
   const [animatedDeposit, setAnimatedDeposit] = useState(0);
   const [animatedTickets, setAnimatedTickets] = useState(0);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [totalPurchases, setTotalPurchases] = useState<number | null>(null);
+  const [isLoadingPurchases, setIsLoadingPurchases] = useState(true);
+  const [purchasesError, setPurchasesError] = useState<string | null>(null);
+  const [showPurchasesModal, setShowPurchasesModal] = useState(false);
+  const [totalSpent, setTotalSpent] = useState<number | null>(null);
+  const [isLoadingSpent, setIsLoadingSpent] = useState(true);
+  const [spentError, setSpentError] = useState<string | null>(null);
+  const [showSpentModal, setShowSpentModal] = useState(false);
+  const [totalDeposited, setTotalDeposited] = useState<number | null>(null);
+  const [isLoadingDeposited, setIsLoadingDeposited] = useState(true);
+  const [depositedError, setDepositedError] = useState<string | null>(null);
+  const [showDepositedModal, setShowDepositedModal] = useState(false);
+  const [unreadTickets, setUnreadTickets] = useState<number | null>(null);
+  const [isLoadingTickets, setIsLoadingTickets] = useState(true);
+  const [ticketsError, setTicketsError] = useState<string | null>(null);
+  const [showTicketsModal, setShowTicketsModal] = useState(false);
+
+  const { currentUser } = useAuth();
+
+  // Fetch purchases data from Firestore
+  useEffect(() => {
+    const fetchPurchases = async () => {
+      if (!currentUser) {
+        setTotalPurchases(null);
+        setIsLoadingPurchases(false);
+        return;
+      }
+
+      try {
+        setIsLoadingPurchases(true);
+        setPurchasesError(null);
+
+        // Calculate date 30 days ago
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const thirtyDaysTimestamp = Timestamp.fromDate(thirtyDaysAgo);
+
+        let totalCount = 0;
+        let totalSpentAmount = 0;
+
+        // Query orders collection
+        const ordersQuery = query(
+          collection(db, 'orders'),
+          where('uid', '==', currentUser.uid),
+          where('createdAt', '>=', thirtyDaysTimestamp)
+        );
+        const ordersSnapshot = await getDocs(ordersQuery);
+
+        ordersSnapshot.forEach((doc) => {
+          const data = doc.data();
+          const type = data.type;
+          const status = data.status;
+
+          // Filter by status based on type
+          if (type === 'Short' && status === 'Completed') {
+            totalCount++;
+            totalSpentAmount += parseFloat(data.price) || 0;
+          } else if ((type === 'Middle' || type === 'Long' || type === 'Empty Simcard') && status !== 'Cancelled') {
+            totalCount++;
+            totalSpentAmount += parseFloat(data.price) || 0;
+          }
+        });
+
+        // Query proxyOrders collection
+        const proxyOrdersQuery = query(
+          collection(db, 'proxyOrders'),
+          where('uid', '==', currentUser.uid),
+          where('createdAt', '>=', thirtyDaysTimestamp)
+        );
+        const proxyOrdersSnapshot = await getDocs(proxyOrdersQuery);
+        totalCount += proxyOrdersSnapshot.size;
+
+        proxyOrdersSnapshot.forEach((doc) => {
+          const data = doc.data();
+          totalSpentAmount += parseFloat(data.price) || 0;
+        });
+
+        // Query vccOrders collection
+        const vccOrdersQuery = query(
+          collection(db, 'vccOrders'),
+          where('uid', '==', currentUser.uid),
+          where('createdAt', '>=', thirtyDaysTimestamp)
+        );
+        const vccOrdersSnapshot = await getDocs(vccOrdersQuery);
+        totalCount += vccOrdersSnapshot.size;
+
+        vccOrdersSnapshot.forEach((doc) => {
+          const data = doc.data();
+          totalSpentAmount += parseFloat(data.price) || 0;
+        });
+
+        // Query recharges collection
+        const rechargesQuery = query(
+          collection(db, 'recharges'),
+          where('uid', '==', currentUser.uid),
+          where('createdAt', '>=', thirtyDaysTimestamp),
+          where('status', '==', 'Completed')
+        );
+        const rechargesSnapshot = await getDocs(rechargesQuery);
+
+        let totalDepositedAmount = 0;
+        rechargesSnapshot.forEach((doc) => {
+          const data = doc.data();
+          totalDepositedAmount += parseFloat(data.amount) || 0;
+        });
+
+        // Query tickets collection
+        const ticketsQuery = query(
+          collection(db, 'tickets'),
+          where('uid', '==', currentUser.uid)
+        );
+        const ticketsSnapshot = await getDocs(ticketsQuery);
+
+        console.log('Total tickets found:', ticketsSnapshot.size);
+        let unreadTicketsCount = 0;
+        ticketsSnapshot.forEach((doc) => {
+          const data = doc.data();
+          console.log('Ticket data:', doc.id, data);
+          const responses = data.response || [];
+          console.log('Responses array:', responses);
+
+          // Check if responses array is not empty
+          if (responses.length > 0) {
+            // Get the last response object
+            const lastResponse = responses[responses.length - 1];
+            console.log('Last response:', lastResponse);
+            console.log('readUser value:', lastResponse.readUser);
+
+            // Check if readUser is false in the last response
+            if (lastResponse.readUser === false) {
+              console.log('Found unread ticket:', doc.id);
+              unreadTicketsCount++;
+            }
+          } else {
+            console.log('No responses for ticket:', doc.id);
+          }
+        });
+        console.log('Total unread tickets count:', unreadTicketsCount);
+
+        setTotalPurchases(totalCount);
+        setTotalSpent(totalSpentAmount);
+        setTotalDeposited(totalDepositedAmount);
+        setUnreadTickets(unreadTicketsCount);
+      } catch (error: any) {
+        console.error('Error fetching purchases:', error);
+        let errorMessage = 'Failed to load purchases data';
+
+        if (error.code === 'permission-denied') {
+          errorMessage = 'Access denied to purchases information';
+        } else if (error.code === 'unavailable') {
+          errorMessage = 'Service temporarily unavailable, try again later';
+        } else if (error.code === 'unauthenticated') {
+          errorMessage = 'Authentication required';
+        }
+
+        setPurchasesError(errorMessage);
+        setShowPurchasesModal(true);
+        setTotalPurchases(null);
+        setSpentError(errorMessage);
+        setShowSpentModal(true);
+        setTotalSpent(null);
+        setDepositedError(errorMessage);
+        setShowDepositedModal(true);
+        setTotalDeposited(null);
+        setTicketsError(errorMessage);
+        setShowTicketsModal(true);
+        setUnreadTickets(null);
+      } finally {
+        setIsLoadingPurchases(false);
+        setIsLoadingSpent(false);
+        setIsLoadingDeposited(false);
+        setIsLoadingTickets(false);
+      }
+    };
+
+    fetchPurchases();
+  }, [currentUser]);
 
   // Page load animation
   useEffect(() => {
@@ -21,7 +201,13 @@ const Dashboard: React.FC = () => {
 
   // Animated counter effect
   useEffect(() => {
-    if (isLoaded) {
+    if (isLoaded && totalPurchases !== null && totalSpent !== null && totalDeposited !== null && unreadTickets !== null) {
+      // Reset animated counters when values change
+      setAnimatedPurchases(0);
+      setAnimatedSpent(0);
+      setAnimatedDeposit(0);
+      setAnimatedTickets(0);
+
       // Animate purchases counter
       const purchasesTimer = setInterval(() => {
         setAnimatedPurchases(prev => {
@@ -36,35 +222,35 @@ const Dashboard: React.FC = () => {
       // Animate spending counter
       const spentTimer = setInterval(() => {
         setAnimatedSpent(prev => {
-          if (prev < userStats.totalSpent) {
-            const increment = userStats.totalSpent / 20;
-            return Math.min(prev + increment, userStats.totalSpent);
+          if (prev < totalSpent) {
+            const increment = totalSpent / 20;
+            return Math.min(prev + increment, totalSpent);
           }
           clearInterval(spentTimer);
-          return userStats.totalSpent;
+          return totalSpent;
         });
       }, 100);
 
       // Animate deposit counter
       const depositTimer = setInterval(() => {
         setAnimatedDeposit(prev => {
-          if (prev < userStats.totalDeposit) {
-            const increment = userStats.totalDeposit / 20;
-            return Math.min(prev + increment, userStats.totalDeposit);
+          if (prev < totalDeposited) {
+            const increment = totalDeposited / 20;
+            return Math.min(prev + increment, totalDeposited);
           }
           clearInterval(depositTimer);
-          return userStats.totalDeposit;
+          return totalDeposited;
         });
       }, 100);
 
       // Animate tickets counter
       const ticketsTimer = setInterval(() => {
         setAnimatedTickets(prev => {
-          if (prev < userStats.totalTickets) {
+          if (prev < unreadTickets) {
             return prev + 1;
           }
           clearInterval(ticketsTimer);
-          return userStats.totalTickets;
+          return unreadTickets;
         });
       }, 200);
 
@@ -75,7 +261,7 @@ const Dashboard: React.FC = () => {
         clearInterval(ticketsTimer);
       };
     }
-  }, [isLoaded]);
+  }, [isLoaded, totalPurchases, totalSpent, totalDeposited, unreadTickets]);
 
 
   // Update time every minute
@@ -103,7 +289,121 @@ const Dashboard: React.FC = () => {
     ticketsIncrease: 18.9
   };
 
-  const totalPurchases = userStats.purchases.short + userStats.purchases.middle + userStats.purchases.long + userStats.purchases.emptysim + userStats.purchases.prepaid;
+  const handlePurchasesModalClose = () => {
+    setShowPurchasesModal(false);
+  };
+
+  const handleSpentModalClose = () => {
+    setShowSpentModal(false);
+  };
+
+  const handleDepositedModalClose = () => {
+    setShowDepositedModal(false);
+  };
+
+  const handleTicketsModalClose = () => {
+    setShowTicketsModal(false);
+  };
+
+  const formatSpentAmount = (amount: number | null) => {
+    if (amount === null) return '-';
+
+    // Check if the number is an integer
+    if (Number.isInteger(amount)) {
+      return `$${amount.toLocaleString('en-US')}`;
+    } else {
+      // Show up to 2 decimal places, removing trailing zeros
+      return `$${amount.toFixed(2).replace(/\.00$/, '')}`;
+    }
+  };
+
+  const formatDepositedAmount = (amount: number | null) => {
+    if (amount === null) return '-';
+
+    // Check if the number is an integer
+    if (Number.isInteger(amount)) {
+      return `$${amount.toLocaleString('en-US')}`;
+    } else {
+      // Show up to 2 decimal places, removing trailing zeros
+      return `$${amount.toFixed(2).replace(/\.00$/, '')}`;
+    }
+  };
+
+  const renderPurchasesContent = () => {
+    if (isLoadingPurchases) {
+      return (
+        <div className="flex justify-center">
+          <svg className="animate-spin h-6 w-6 text-white" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      );
+    }
+
+    if (purchasesError) {
+      return '-';
+    }
+
+    return animatedPurchases;
+  };
+
+  const renderSpentContent = () => {
+    if (isLoadingSpent) {
+      return (
+        <div className="flex justify-center">
+          <svg className="animate-spin h-6 w-6 text-white" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      );
+    }
+
+    if (spentError) {
+      return '-';
+    }
+
+    return formatSpentAmount(animatedSpent);
+  };
+
+  const renderDepositedContent = () => {
+    if (isLoadingDeposited) {
+      return (
+        <div className="flex justify-center">
+          <svg className="animate-spin h-6 w-6 text-white" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      );
+    }
+
+    if (depositedError) {
+      return '-';
+    }
+
+    return formatDepositedAmount(animatedDeposit);
+  };
+
+  const renderTicketsContent = () => {
+    if (isLoadingTickets) {
+      return (
+        <div className="flex justify-center">
+          <svg className="animate-spin h-6 w-6 text-white" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      );
+    }
+
+    if (ticketsError) {
+      return '-';
+    }
+
+    return unreadTickets || 0;
+  };
 
   const newsItems = [
     {
@@ -261,8 +561,33 @@ const Dashboard: React.FC = () => {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6" style={{ marginTop: '1rem' }}>
+          {/* Total Tickets */}
+          <div
+            className="group/stats bg-gradient-to-br from-orange-600 via-red-600 to-pink-600 rounded-2xl shadow-xl p-3 text-white relative overflow-hidden hover:shadow-2xl transition-all duration-300 hover:scale-104 cursor-pointer border border-orange-500/20"
+          >
+
+            <div className="relative z-10">
+              <div className="flex items-center justify-center mb-3 group-hover/stats:transform group-hover/stats:translate-y-1 transition-transform duration-300">
+                <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl group-hover/stats:bg-white/30 group-hover/stats:scale-110 transition-all duration-300 shadow-lg">
+                  <svg className="w-6 h-6 group-hover/stats:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                  </svg>
+                </div>
+              </div>
+
+              <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
+                <p className="text-orange-100 text-sm font-semibold mb-2 uppercase tracking-wider">Tickets</p>
+                <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-orange-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderTicketsContent()}</p>
+                <p className="text-orange-200 text-sm font-medium">Unread</p>
+              </div>
+            </div>
+
+            {/* Hover gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          </div>
+
           {/* Total Purchases */}
-          <div 
+          <div
             className="group/stats bg-gradient-to-br from-emerald-600 via-green-600 to-teal-600 rounded-2xl shadow-xl p-3 text-white relative overflow-hidden hover:shadow-2xl transition-all duration-300 hover:scale-104 cursor-pointer border border-emerald-500/20"
           >
             
@@ -278,7 +603,7 @@ const Dashboard: React.FC = () => {
               <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
                 <p className="text-emerald-100 text-sm font-semibold mb-1 uppercase tracking-wider">Purchases</p>
                 <div className="mb-1">
-                  <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{animatedPurchases}</p>
+                  <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderPurchasesContent()}</p>
                 </div>
                 <p className="text-emerald-200 text-sm font-medium">Last 30 days</p>
               </div>
@@ -304,7 +629,7 @@ const Dashboard: React.FC = () => {
               
               <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
                 <p className="text-blue-100 text-sm font-semibold mb-2 uppercase tracking-wider">Total Spent</p>
-                <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{formatCurrency(animatedSpent)}</p>
+                <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderSpentContent()}</p>
                 <p className="text-blue-200 text-sm font-medium">Last 30 days</p>
               </div>
             </div>
@@ -329,7 +654,7 @@ const Dashboard: React.FC = () => {
               
               <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
                 <p className="text-purple-100 text-sm font-semibold mb-2 uppercase tracking-wider">Deposited</p>
-                <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{formatCurrency(animatedDeposit)}</p>
+                <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderDepositedContent()}</p>
                 <p className="text-purple-200 text-sm font-medium">Last 30 days</p>
               </div>
             </div>
@@ -338,30 +663,6 @@ const Dashboard: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-br from-purple-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
           </div>
 
-          {/* Total Tickets */}
-          <div 
-            className="group/stats bg-gradient-to-br from-orange-600 via-red-600 to-pink-600 rounded-2xl shadow-xl p-3 text-white relative overflow-hidden hover:shadow-2xl transition-all duration-300 hover:scale-104 cursor-pointer border border-orange-500/20"
-          >
-
-            <div className="relative z-10">
-              <div className="flex items-center justify-center mb-3 group-hover/stats:transform group-hover/stats:translate-y-1 transition-transform duration-300">
-                <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl group-hover/stats:bg-white/30 group-hover/stats:scale-110 transition-all duration-300 shadow-lg">
-                  <svg className="w-6 h-6 group-hover/stats:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                  </svg>
-                </div>
-              </div>
-              
-              <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
-                <p className="text-orange-100 text-sm font-semibold mb-2 uppercase tracking-wider">Tickets</p>
-                <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-orange-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{animatedTickets}</p>
-                <p className="text-orange-200 text-sm font-medium">Last 30 days</p>
-              </div>
-            </div>
-            
-            {/* Hover gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-orange-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          </div>
             </div>
           </div>
         </div>
@@ -488,6 +789,106 @@ const Dashboard: React.FC = () => {
 
         {/* Quick Actions */}
       </div>
+
+      {/* Purchases Error Modal */}
+      {showPurchasesModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Purchases Error</h3>
+              <p className="text-blue-200 mb-4">{purchasesError}</p>
+              <button
+                onClick={handlePurchasesModalClose}
+                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Spent Error Modal */}
+      {showSpentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Total Spent Error</h3>
+              <p className="text-blue-200 mb-4">{spentError}</p>
+              <button
+                onClick={handleSpentModalClose}
+                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deposited Error Modal */}
+      {showDepositedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Deposited Error</h3>
+              <p className="text-blue-200 mb-4">{depositedError}</p>
+              <button
+                onClick={handleDepositedModalClose}
+                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tickets Error Modal */}
+      {showTicketsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Tickets Error</h3>
+              <p className="text-blue-200 mb-4">{ticketsError}</p>
+              <button
+                onClick={handleTicketsModalClose}
+                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
     </>
   );

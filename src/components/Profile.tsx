@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { useAuth } from '../contexts/AuthContext';
 import DashboardLayout from './DashboardLayout';
 
 const Profile: React.FC = () => {
@@ -7,8 +10,57 @@ const Profile: React.FC = () => {
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const [show2FAConfirmation, setShow2FAConfirmation] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isLoadingEmail, setIsLoadingEmail] = useState(true);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
-  const userEmail = 'user@example.com';
+  const { currentUser } = useAuth();
+
+  // Fetch user email from Firestore
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      if (!currentUser) {
+        setUserEmail(null);
+        setIsLoadingEmail(false);
+        return;
+      }
+
+      try {
+        setIsLoadingEmail(true);
+        setEmailError(null);
+
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+          setUserEmail(userData.email || 'No email found');
+        } else {
+          setUserEmail('No email found');
+        }
+      } catch (error: any) {
+        console.error('Error fetching user email:', error);
+        let errorMessage = 'Failed to load email';
+
+        if (error.code === 'permission-denied') {
+          errorMessage = 'Access denied to email information';
+        } else if (error.code === 'unavailable') {
+          errorMessage = 'Service temporarily unavailable, try again later';
+        } else if (error.code === 'unauthenticated') {
+          errorMessage = 'Authentication required';
+        }
+
+        setEmailError(errorMessage);
+        setShowEmailModal(true);
+        setUserEmail(null);
+      } finally {
+        setIsLoadingEmail(false);
+      }
+    };
+
+    fetchUserEmail();
+  }, [currentUser]);
 
   // Page load animation
   useEffect(() => {
@@ -26,10 +78,33 @@ const Profile: React.FC = () => {
   const handle2FAToggle = () => {
     setIs2FAEnabled(!is2FAEnabled);
     setShow2FAConfirmation(true);
-    
+
     setTimeout(() => {
       setShow2FAConfirmation(false);
     }, 3000);
+  };
+
+  const handleEmailModalClose = () => {
+    setShowEmailModal(false);
+  };
+
+  const renderEmailContent = () => {
+    if (isLoadingEmail) {
+      return (
+        <div className="flex justify-center">
+          <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      );
+    }
+
+    if (emailError) {
+      return '-';
+    }
+
+    return userEmail || '-';
   };
 
   return (
@@ -105,7 +180,7 @@ const Profile: React.FC = () => {
                         <svg className="w-5 h-5 text-slate-400 group-hover/email:text-blue-400 transition-colors duration-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
-                        <span className="text-white font-mono text-md group-hover/email:text-blue-100 transition-colors duration-300 truncate">{userEmail}</span>
+                        <span className="text-white font-mono text-md group-hover/email:text-blue-100 transition-colors duration-300 truncate">{renderEmailContent()}</span>
                       </div>
                       <div className="flex-shrink-0 ml-3">
                         <span className="px-3 py-1 bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg text-sm font-semibold group-hover/email:bg-green-500/20 group-hover/email:border-green-500/40 transition-all duration-300">
@@ -255,6 +330,31 @@ const Profile: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Email Error Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Email Error</h3>
+              <p className="text-blue-200 mb-4">{emailError}</p>
+              <button
+                onClick={handleEmailModalClose}
+                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
     </>
   );
