@@ -1,15 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged } from 'firebase/auth';
+import { User, onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
 
 interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   currentUser: null,
   loading: true,
+  logout: async () => {},
 });
 
 export const useAuth = () => {
@@ -34,9 +36,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, []);
 
+  const logout = async () => {
+    await signOut(auth);
+  };
+
   const value = {
     currentUser,
     loading,
+    logout,
   };
 
   return (

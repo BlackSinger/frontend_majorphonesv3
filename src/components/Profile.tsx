@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { db, auth } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 import DashboardLayout from './DashboardLayout';
 
@@ -14,8 +15,11 @@ const Profile: React.FC = () => {
   const [isLoadingEmail, setIsLoadingEmail] = useState(true);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [isLoadingPasswordReset, setIsLoadingPasswordReset] = useState(false);
+  const [showPasswordResetErrorModal, setShowPasswordResetErrorModal] = useState(false);
+  const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
 
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
 
   // Fetch user email from Firestore
   useEffect(() => {
@@ -70,9 +74,40 @@ const Profile: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const handlePasswordChangeRequest = () => {
-    setIsPasswordChangeRequested(true);
-    setShowPasswordConfirmation(true);
+  const handlePasswordChangeRequest = async () => {
+    if (!userEmail || !currentUser || isLoadingPasswordReset || isPasswordChangeRequested) return;
+
+    try {
+      setIsLoadingPasswordReset(true);
+      await sendPasswordResetEmail(auth, userEmail);
+      setIsPasswordChangeRequested(true);
+      setShowPasswordConfirmation(true);
+      setIsLoadingPasswordReset(false);
+
+      // Close session after 8 seconds
+      setTimeout(async () => {
+        await logout();
+      }, 8000);
+    } catch (error: any) {
+      console.error('Error sending password reset email:', error);
+      setIsLoadingPasswordReset(false);
+
+      // Handle different error types
+      let errorMessage = 'Failed to send password reset email. Please try again.';
+
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No user found with this email address';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed attempts, please try again later';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'You are experiencing network errors, please try again';
+      }
+
+      setPasswordResetError(errorMessage);
+      setShowPasswordResetErrorModal(true);
+    }
   };
 
   const handle2FAToggle = () => {
@@ -86,6 +121,10 @@ const Profile: React.FC = () => {
 
   const handleEmailModalClose = () => {
     setShowEmailModal(false);
+  };
+
+  const handlePasswordResetErrorModalClose = () => {
+    setShowPasswordResetErrorModal(false);
   };
 
   const renderEmailContent = () => {
@@ -212,14 +251,24 @@ const Profile: React.FC = () => {
                         <div className="flex-shrink-0">
                           <button
                             onClick={handlePasswordChangeRequest}
-                            disabled={isPasswordChangeRequested}
-                            className={`p-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-xl hover:scale-105 w-full sm:w-auto ${
-                              isPasswordChangeRequested
-                                ? 'bg-green-500/20 text-green-400 border border-green-500/30 cursor-not-allowed'
+                            disabled={isPasswordChangeRequested || isLoadingPasswordReset}
+                            style={{ width: window.innerWidth < 640 ? '100%' : '140px' }}
+                            className={`p-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-xl hover:scale-105 text-sm ${
+                              isPasswordChangeRequested || isLoadingPasswordReset
+                                ? 'bg-gray-500/20 text-gray-400 border border-gray-500/30 cursor-not-allowed'
                                 : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg'
                             }`}
                           >
-                            {isPasswordChangeRequested ? 'Send Email' : 'Request Change'}
+                            {isLoadingPasswordReset ? (
+                              <div className="flex justify-center items-center">
+                                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                              </div>
+                            ) : (
+                              'Request Change'
+                            )}
                           </button>
                         </div>
                       )}
@@ -231,7 +280,7 @@ const Profile: React.FC = () => {
                           <svg className="hidden sm:block w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          <span className="text-green-400 font-semibold text-sm sm:text-base">Password reset email sent</span>
+                          <span className="text-green-400 font-semibold text-sm sm:text-base">Password reset email sent, your session will be closed for security purposes</span>
                         </div>
                       </div>
                     )}
@@ -350,6 +399,31 @@ const Profile: React.FC = () => {
                 className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
               >
                 OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Password Reset Error Modal */}
+      {showPasswordResetErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Password Reset Error</h3>
+              <p className="text-blue-200 mb-4">{passwordResetError}</p>
+              <button
+                onClick={handlePasswordResetErrorModalClose}
+                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+              >
+                Try Again
               </button>
             </div>
           </div>
