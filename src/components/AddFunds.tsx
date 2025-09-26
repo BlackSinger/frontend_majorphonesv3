@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
+import { useAuth } from '../contexts/AuthContext';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 import CryptomusLogo from '../CryptomusLogo.svg';
 import AmazonPayLogo from '../AmazonPayLogo.png';
 import BinancePayLogo from '../BinancePayLogo.svg';
@@ -9,6 +12,9 @@ import UsdtTheterLogo from '../UsdtTheterLogo.svg';
 import USDCLogo from '../USDCLogo.svg';
 import PolygonMaticLogo from '../PolygonMaticLogo.svg';
 import TronTrxLogo from '../TronTrxLogo.svg';
+import LtcLogo from '../LtcLogo.svg';
+import EthLogo from '../EthLogo.svg';
+import BtcLogo from '../BtcLogo.svg';
 
 interface PaymentMethod {
   id: string;
@@ -23,12 +29,13 @@ interface StaticWallet {
   id: string;
   name: string;
   network: string;
-  address: string;
   icon: React.ReactNode;
   color: string;
+  isAvailable?: boolean;
 }
 
 const AddFunds: React.FC = () => {
+  const { currentUser } = useAuth();
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [selectedWallet, setSelectedWallet] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
@@ -39,6 +46,34 @@ const AddFunds: React.FC = () => {
   const [showAmazonModal, setShowAmazonModal] = useState(false);
   const [showBinanceInstructions, setShowBinanceInstructions] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [showCryptomusErrorModal, setShowCryptomusErrorModal] = useState(false);
+  const [cryptomusErrorMessage, setCryptomusErrorMessage] = useState('');
+  const [isCryptomusProcessing, setIsCryptomusProcessing] = useState(false);
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
+  const [showPayeerErrorModal, setShowPayeerErrorModal] = useState(false);
+  const [payeerErrorMessage, setPayeerErrorMessage] = useState('');
+  const [isPayeerProcessing, setIsPayeerProcessing] = useState(false);
+  const [isPayeerUnauthorized, setIsPayeerUnauthorized] = useState(false);
+  const [isLoadingUsdtWallet, setIsLoadingUsdtWallet] = useState(false);
+  const [usdtWalletAddress, setUsdtWalletAddress] = useState('');
+  const [showStaticWalletErrorModal, setShowStaticWalletErrorModal] = useState(false);
+  const [staticWalletErrorMessage, setStaticWalletErrorMessage] = useState('');
+  const [isUsdtButtonDisabled, setIsUsdtButtonDisabled] = useState(false);
+  const [isLoadingUsdcWallet, setIsLoadingUsdcWallet] = useState(false);
+  const [usdcWalletAddress, setUsdcWalletAddress] = useState('');
+  const [isUsdcButtonDisabled, setIsUsdcButtonDisabled] = useState(false);
+  const [isLoadingPolWallet, setIsLoadingPolWallet] = useState(false);
+  const [polWalletAddress, setPolWalletAddress] = useState('');
+  const [isPolButtonDisabled, setIsPolButtonDisabled] = useState(false);
+  const [isLoadingLtcWallet, setIsLoadingLtcWallet] = useState(false);
+  const [ltcWalletAddress, setLtcWalletAddress] = useState('');
+  const [isLtcButtonDisabled, setIsLtcButtonDisabled] = useState(false);
+  const [isLoadingEthWallet, setIsLoadingEthWallet] = useState(false);
+  const [ethWalletAddress, setEthWalletAddress] = useState('');
+  const [isEthButtonDisabled, setIsEthButtonDisabled] = useState(false);
+  const [isLoadingBtcWallet, setIsLoadingBtcWallet] = useState(false);
+  const [btcWalletAddress, setBtcWalletAddress] = useState('');
+  const [isBtcButtonDisabled, setIsBtcButtonDisabled] = useState(false);
   
   const amountSectionRef = useRef<HTMLDivElement>(null);
   const staticWalletsSectionRef = useRef<HTMLDivElement>(null);
@@ -62,7 +97,8 @@ const AddFunds: React.FC = () => {
         <img src={AmazonPayLogo} alt="Amazon Pay" className="w-10 h-7" />
       ),
       description: 'Credit card payment through Amazon',
-      minAmount: 2
+      minAmount: 2,
+      isAvailable: false
     },
     {
       id: 'binance',
@@ -80,8 +116,7 @@ const AddFunds: React.FC = () => {
         <img src={PayeerLogo} alt="Payeer" className="w-9 h-9" />
       ),
       description: 'Digital wallet payments',
-      minAmount: 1,
-      isAvailable: false
+      minAmount: 1
     },
     {
       id: 'static-wallets',
@@ -101,7 +136,6 @@ const AddFunds: React.FC = () => {
       id: 'usdt',
       name: 'USDT Tether',
       network: 'Tron TRC20',
-      address: 'TQrZ4seYVQQYnXTgzMGgJG2xB9z6VJ5vPr',
       icon: (
         <img src={UsdtTheterLogo} alt="USDT Tether" className="w-8 h-8" />
       ),
@@ -110,20 +144,18 @@ const AddFunds: React.FC = () => {
     {
       id: 'usdc',
       name: 'USDC',
-      network: 'ERC-20',
-      address: '0x742d35Cc6634C0532925a3b8D9C9E4e3c5c5F0a9',
+      network: 'Polygon',
       icon: (
         <img src={USDCLogo} alt="USDC" className="w-7 h-7" />
       ),
       color: 'from-blue-500 to-indigo-500'
     },
     {
-      id: 'matic',
-      name: 'MATIC',
+      id: 'pol',
+      name: 'POL',
       network: 'Polygon',
-      address: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
       icon: (
-        <img src={PolygonMaticLogo} alt="MATIC" className="w-6 h-6" />
+        <img src={PolygonMaticLogo} alt="POL" className="w-6 h-6" />
       ),
       color: 'from-purple-500 to-violet-500'
     },
@@ -131,11 +163,38 @@ const AddFunds: React.FC = () => {
       id: 'tron',
       name: 'TRON',
       network: 'TRX',
-      address: 'TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU7',
       icon: (
         <img src={TronTrxLogo} alt="TRON" className="w-6 h-6" />
       ),
-      color: 'from-red-500 to-rose-500'
+      color: 'from-red-500 to-rose-500',
+      isAvailable: false
+    },
+    {
+      id: 'ltc',
+      name: 'LTC',
+      network: 'LTC',
+      icon: (
+        <img src={LtcLogo} alt="LTC" className="w-7 h-7" />
+      ),
+      color: 'from-gray-400 to-slate-500'
+    },
+    {
+      id: 'eth',
+      name: 'ETH',
+      network: 'ETH',
+      icon: (
+        <img src={EthLogo} alt="ETH" className="w-7 h-7" />
+      ),
+      color: 'from-blue-400 to-indigo-600'
+    },
+    {
+      id: 'btc',
+      name: 'BTC',
+      network: 'BTC',
+      icon: (
+        <img src={BtcLogo} alt="BTC" className="w-7 h-7" />
+      ),
+      color: 'from-orange-400 to-yellow-500'
     }
   ];
 
@@ -229,6 +288,396 @@ const AddFunds: React.FC = () => {
     setSelectedWallet('');
   };
 
+  const handleCryptomusErrorModalClose = () => {
+    setShowCryptomusErrorModal(false);
+    setCryptomusErrorMessage('');
+  };
+
+  const handlePayeerErrorModalClose = () => {
+    setShowPayeerErrorModal(false);
+    setPayeerErrorMessage('');
+  };
+
+  const handleStaticWalletErrorModalClose = () => {
+    setShowStaticWalletErrorModal(false);
+    setStaticWalletErrorMessage('');
+  };
+
+  // Function to fetch USDT wallet address from Firestore
+  const fetchUsdtWallet = async () => {
+    if (!currentUser) {
+      setStaticWalletErrorMessage('User not authenticated');
+      setShowStaticWalletErrorModal(true);
+      setIsUsdtButtonDisabled(true);
+      setSelectedWallet('');
+      setUsdtWalletAddress('');
+      return;
+    }
+
+    setIsLoadingUsdtWallet(true);
+
+    try {
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const usdtAddress = userData.usdt_tron;
+
+        if (usdtAddress) {
+          setUsdtWalletAddress(usdtAddress);
+          setSelectedWallet('usdt');
+        } else {
+          setStaticWalletErrorMessage('USDT wallet address not found');
+          setShowStaticWalletErrorModal(true);
+          setSelectedWallet('');
+          setUsdtWalletAddress('');
+        }
+      } else {
+        setStaticWalletErrorMessage('User data not found');
+        setShowStaticWalletErrorModal(true);
+        setSelectedWallet('');
+        setUsdtWalletAddress('');
+      }
+    } catch (error) {
+      console.error('Error fetching USDT wallet:', error);
+      setStaticWalletErrorMessage('Error loading wallet address');
+      setShowStaticWalletErrorModal(true);
+      setSelectedWallet('');
+      setUsdtWalletAddress('');
+    } finally {
+      setIsLoadingUsdtWallet(false);
+    }
+  };
+
+  // Function to fetch USDC wallet address from Firestore
+  const fetchUsdcWallet = async () => {
+    if (!currentUser) {
+      setStaticWalletErrorMessage('User not authenticated');
+      setShowStaticWalletErrorModal(true);
+      setIsUsdcButtonDisabled(true);
+      setSelectedWallet('');
+      setUsdcWalletAddress('');
+      return;
+    }
+
+    setIsLoadingUsdcWallet(true);
+
+    try {
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const usdcAddress = userData.usdc_polygon;
+
+        if (usdcAddress) {
+          setUsdcWalletAddress(usdcAddress);
+          setSelectedWallet('usdc');
+        } else {
+          setStaticWalletErrorMessage('USDC wallet address not found');
+          setShowStaticWalletErrorModal(true);
+          setSelectedWallet('');
+          setUsdcWalletAddress('');
+        }
+      } else {
+        setStaticWalletErrorMessage('User data not found');
+        setShowStaticWalletErrorModal(true);
+        setSelectedWallet('');
+        setUsdcWalletAddress('');
+      }
+    } catch (error) {
+      console.error('Error fetching USDC wallet:', error);
+      setStaticWalletErrorMessage('Error loading wallet address');
+      setShowStaticWalletErrorModal(true);
+      setSelectedWallet('');
+      setUsdcWalletAddress('');
+    } finally {
+      setIsLoadingUsdcWallet(false);
+    }
+  };
+
+  // Function to fetch POL wallet address from Firestore
+  const fetchPolWallet = async () => {
+    if (!currentUser) {
+      setStaticWalletErrorMessage('User not authenticated');
+      setShowStaticWalletErrorModal(true);
+      setIsPolButtonDisabled(true);
+      setSelectedWallet('');
+      setPolWalletAddress('');
+      return;
+    }
+
+    setIsLoadingPolWallet(true);
+
+    try {
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const polAddress = userData.pol_polygon;
+
+        if (polAddress) {
+          setPolWalletAddress(polAddress);
+          setSelectedWallet('pol');
+        } else {
+          setStaticWalletErrorMessage('POL wallet address not found');
+          setShowStaticWalletErrorModal(true);
+          setSelectedWallet('');
+          setPolWalletAddress('');
+        }
+      } else {
+        setStaticWalletErrorMessage('User data not found');
+        setShowStaticWalletErrorModal(true);
+        setSelectedWallet('');
+        setPolWalletAddress('');
+      }
+    } catch (error) {
+      console.error('Error fetching POL wallet:', error);
+      setStaticWalletErrorMessage('Error loading wallet address');
+      setShowStaticWalletErrorModal(true);
+      setSelectedWallet('');
+      setPolWalletAddress('');
+    } finally {
+      setIsLoadingPolWallet(false);
+    }
+  };
+
+  // Function to fetch LTC wallet address from Firestore
+  const fetchLtcWallet = async () => {
+    if (!currentUser) {
+      setStaticWalletErrorMessage('User not authenticated');
+      setShowStaticWalletErrorModal(true);
+      setIsLtcButtonDisabled(true);
+      setSelectedWallet('');
+      setLtcWalletAddress('');
+      return;
+    }
+
+    setIsLoadingLtcWallet(true);
+
+    try {
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const ltcAddress = userData.ltc_ltc;
+
+        if (ltcAddress) {
+          setLtcWalletAddress(ltcAddress);
+          setSelectedWallet('ltc');
+        } else {
+          setStaticWalletErrorMessage('LTC wallet address not found');
+          setShowStaticWalletErrorModal(true);
+          setSelectedWallet('');
+          setLtcWalletAddress('');
+        }
+      } else {
+        setStaticWalletErrorMessage('User data not found');
+        setShowStaticWalletErrorModal(true);
+        setSelectedWallet('');
+        setLtcWalletAddress('');
+      }
+    } catch (error) {
+      console.error('Error fetching LTC wallet:', error);
+      setStaticWalletErrorMessage('Error loading wallet address');
+      setShowStaticWalletErrorModal(true);
+      setSelectedWallet('');
+      setLtcWalletAddress('');
+    } finally {
+      setIsLoadingLtcWallet(false);
+    }
+  };
+
+  // Function to fetch ETH wallet address from Firestore
+  const fetchEthWallet = async () => {
+    if (!currentUser) {
+      setStaticWalletErrorMessage('User not authenticated');
+      setShowStaticWalletErrorModal(true);
+      setIsEthButtonDisabled(true);
+      setSelectedWallet('');
+      setEthWalletAddress('');
+      return;
+    }
+
+    setIsLoadingEthWallet(true);
+
+    try {
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const ethAddress = userData.eth_eth;
+
+        if (ethAddress) {
+          setEthWalletAddress(ethAddress);
+          setSelectedWallet('eth');
+        } else {
+          setStaticWalletErrorMessage('ETH wallet address not found');
+          setShowStaticWalletErrorModal(true);
+          setSelectedWallet('');
+          setEthWalletAddress('');
+        }
+      } else {
+        setStaticWalletErrorMessage('User data not found');
+        setShowStaticWalletErrorModal(true);
+        setSelectedWallet('');
+        setEthWalletAddress('');
+      }
+    } catch (error) {
+      console.error('Error fetching ETH wallet:', error);
+      setStaticWalletErrorMessage('Error loading wallet address');
+      setShowStaticWalletErrorModal(true);
+      setSelectedWallet('');
+      setEthWalletAddress('');
+    } finally {
+      setIsLoadingEthWallet(false);
+    }
+  };
+
+  // Function to fetch BTC wallet address from Firestore
+  const fetchBtcWallet = async () => {
+    if (!currentUser) {
+      setStaticWalletErrorMessage('User not authenticated');
+      setShowStaticWalletErrorModal(true);
+      setIsBtcButtonDisabled(true);
+      setSelectedWallet('');
+      setBtcWalletAddress('');
+      return;
+    }
+
+    setIsLoadingBtcWallet(true);
+
+    try {
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const btcAddress = userData.btc_btc;
+
+        if (btcAddress) {
+          setBtcWalletAddress(btcAddress);
+          setSelectedWallet('btc');
+        } else {
+          setStaticWalletErrorMessage('BTC wallet address not found');
+          setShowStaticWalletErrorModal(true);
+          setSelectedWallet('');
+          setBtcWalletAddress('');
+        }
+      } else {
+        setStaticWalletErrorMessage('User data not found');
+        setShowStaticWalletErrorModal(true);
+        setSelectedWallet('');
+        setBtcWalletAddress('');
+      }
+    } catch (error) {
+      console.error('Error fetching BTC wallet:', error);
+      setStaticWalletErrorMessage('Error loading wallet address');
+      setShowStaticWalletErrorModal(true);
+      setSelectedWallet('');
+      setBtcWalletAddress('');
+    } finally {
+      setIsLoadingBtcWallet(false);
+    }
+  };
+
+  // Function to create Cryptomus order
+  const createCryptomusOrder = async (amount: number) => {
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+
+    // Get Firebase ID token
+    const idToken = await currentUser.getIdToken();
+
+    // Call the CloudFunction
+    const response = await fetch('https://createordercryptomus-ezeznlhr5a-uc.a.run.app', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${idToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount: amount
+      })
+    });
+
+    if (!response.ok) {
+      // Parse error response and map to user-friendly messages
+      const errorText = await response.text();
+      let errorMessage = 'An error has occurred, please contact support';
+      let isAuthError = false;
+
+      if (response.status === 401) {
+        errorMessage = 'You are not authenticated or your token is invalid';
+        isAuthError = true;
+      } else if (errorText.includes('Missing amount in request body')) {
+        errorMessage = 'Please enter a valid amount';
+      } else if (errorText.includes('Payment method not available')) {
+        errorMessage = 'Payment method unavailable';
+      }
+
+      const error = new Error(errorMessage);
+      (error as any).isAuthError = isAuthError;
+      throw error;
+    }
+
+    const data = await response.json();
+    return data;
+  };
+
+  // Function to create Payeer order
+  const createPayeerOrder = async (amount: number) => {
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+
+    // Get Firebase ID token
+    const idToken = await currentUser.getIdToken();
+
+    // Call the CloudFunction
+    const response = await fetch('https://createorderpayeer-ezeznlhr5a-uc.a.run.app', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${idToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount: amount
+      })
+    });
+
+    if (!response.ok) {
+      // Parse error response and map to user-friendly messages
+      const errorData = await response.json();
+      let errorMessage = 'An error has occured, please contact support';
+
+      let isAuthError = false;
+
+      if (errorData.message === 'Unauthorized') {
+        errorMessage = 'You are not authenticated or your token is invalid';
+        isAuthError = true;
+      } else if (errorData.message === 'Missing amount in request body') {
+        errorMessage = 'Please enter a valid amount';
+      } else if (errorData.message === 'Payment method not available') {
+        errorMessage = 'Payment method unavailable';
+      } else if (errorData.message === 'Internal Server Error') {
+        errorMessage = 'An error has occured, please contact support';
+      }
+
+      const error = new Error(errorMessage);
+      (error as any).isAuthError = isAuthError;
+      throw error;
+    }
+
+    const data = await response.json();
+    return data;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMethod) return;
@@ -263,19 +712,76 @@ const AddFunds: React.FC = () => {
 
     setIsProcessing(true);
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      if (selectedMethod === 'cryptomus') {
+        // Handle Cryptomus payment
+        setIsCryptomusProcessing(true);
+        setIsUnauthorized(false);
+        const numAmount = parseFloat(amount);
+        const orderData = await createCryptomusOrder(numAmount);
 
-    if (selectedMethod === 'static-wallets') {
-      const selectedWalletData = staticWallets.find(wallet => wallet.id === selectedWallet);
-      alert(`Your ${selectedWalletData?.name} wallet address is ready. Send any amount to the provided address and notify us with your transaction hash for verification.`);
-    } else {
-      alert(`Payment of $${amount} via ${selectedPaymentMethod.name} has been initiated!`);
+        if (orderData.success && orderData.url) {
+          // Redirect to payment URL
+          window.location.href = orderData.url;
+          return;
+        }
+      } else if (selectedMethod === 'payeer') {
+        // Handle Payeer payment
+        setIsPayeerProcessing(true);
+        setIsPayeerUnauthorized(false);
+        const numAmount = parseFloat(amount);
+        const orderData = await createPayeerOrder(numAmount);
+
+        if (orderData.success && orderData.url) {
+          // Redirect to payment URL
+          window.location.href = orderData.url;
+          return;
+        }
+      } else if (selectedMethod === 'static-wallets') {
+        const selectedWalletData = staticWallets.find(wallet => wallet.id === selectedWallet);
+        alert(`Your ${selectedWalletData?.name} wallet address is ready. Send any amount to the provided address and notify us with your transaction hash for verification.`);
+      } else {
+        // Other payment methods (fallback)
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        alert(`Payment of $${amount} via ${selectedPaymentMethod.name} has been initiated!`);
+      }
+    } catch (error) {
+      console.error('Payment processing error:', error);
+      if (selectedMethod === 'cryptomus' && error instanceof Error) {
+        setIsCryptomusProcessing(false);
+        const isAuthError = (error as any).isAuthError;
+        if (isAuthError) {
+          setIsUnauthorized(true);
+        }
+        setCryptomusErrorMessage(error.message);
+        setShowCryptomusErrorModal(true);
+      } else if (selectedMethod === 'payeer' && error instanceof Error) {
+        setIsPayeerProcessing(false);
+        const isAuthError = (error as any).isAuthError;
+        if (isAuthError) {
+          setIsPayeerUnauthorized(true);
+        }
+        setPayeerErrorMessage(error.message);
+        setShowPayeerErrorModal(true);
+      }
     }
-    
-    setIsProcessing(false);
-    setAmount('');
-    setSelectedMethod('');
-    setSelectedWallet('');
+
+    if ((selectedMethod !== 'cryptomus' || !isUnauthorized) && (selectedMethod !== 'payeer' || !isPayeerUnauthorized)) {
+      setIsProcessing(false);
+      setAmount('');
+      setSelectedMethod('');
+      setSelectedWallet('');
+    } else {
+      setIsProcessing(false);
+    }
+
+    if (selectedMethod === 'cryptomus') {
+      setIsCryptomusProcessing(false);
+    }
+
+    if (selectedMethod === 'payeer') {
+      setIsPayeerProcessing(false);
+    }
   };
 
   const selectedPaymentMethod = paymentMethods.find(method => method.id === selectedMethod);
@@ -394,6 +900,7 @@ const AddFunds: React.FC = () => {
                             ) : (
                               <button
                                 type="button"
+                                disabled={isCryptomusProcessing || isUnauthorized || isPayeerProcessing || isPayeerUnauthorized}
                                 onClick={() => {
                                   if (selectedMethod === method.id) {
                                     setSelectedMethod('');
@@ -402,9 +909,11 @@ const AddFunds: React.FC = () => {
                                   }
                                 }}
                                 className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 w-20 sm:w-20 w-full ${
-                                  selectedMethod === method.id
-                                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
-                                    : 'bg-slate-600/50 hover:bg-slate-500/50 text-slate-300 hover:text-white border border-slate-500/30 hover:border-slate-400/50'
+                                  isCryptomusProcessing || isUnauthorized || isPayeerProcessing || isPayeerUnauthorized
+                                    ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed border border-slate-700/30'
+                                    : selectedMethod === method.id
+                                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
+                                      : 'bg-slate-600/50 hover:bg-slate-500/50 text-slate-300 hover:text-white border border-slate-500/30 hover:border-slate-400/50'
                                 }`}
                               >
                                 {selectedMethod === method.id ? 'Selected' : 'Select'}
@@ -442,14 +951,15 @@ const AddFunds: React.FC = () => {
                           <input
                             type="number"
                             value={amount}
+                            disabled={(selectedMethod === 'cryptomus' && (isCryptomusProcessing || isUnauthorized)) || (selectedMethod === 'payeer' && (isPayeerProcessing || isPayeerUnauthorized))}
                             onChange={(e) => {
                               let newValue = e.target.value;
-                              
+
                               // Remove any negative signs
                               newValue = newValue.replace(/-/g, '');
-                              
+
                               const decimalParts = newValue.split('.');
-                              
+
                               // Only allow up to 2 decimal places
                               if (decimalParts.length > 1 && decimalParts[1].length <= 2) {
                                 const numValue = parseFloat(newValue);
@@ -491,7 +1001,11 @@ const AddFunds: React.FC = () => {
                               }
                             }}
                             placeholder="0"
-                            className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-xl text-white text-md font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500/50 transition-all duration-300 backdrop-blur-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl text-md font-semibold transition-all duration-300 backdrop-blur-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                              (selectedMethod === 'cryptomus' && (isCryptomusProcessing || isUnauthorized)) || (selectedMethod === 'payeer' && (isPayeerProcessing || isPayeerUnauthorized))
+                                ? 'bg-slate-800/30 border-slate-700/50 text-slate-500 cursor-not-allowed'
+                                : 'bg-slate-800/50 border-slate-600/50 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500/50'
+                            }`}
                             required
                           />
                         </div>
@@ -502,19 +1016,24 @@ const AddFunds: React.FC = () => {
                             <button
                               key={quickAmount}
                               type="button"
+                              disabled={(selectedMethod === 'cryptomus' && (isCryptomusProcessing || isUnauthorized)) || (selectedMethod === 'payeer' && (isPayeerProcessing || isPayeerUnauthorized))}
                               onClick={() => {
                                 setAmount(quickAmount.toString());
                                 // Auto-scroll to submit button after quick amount is selected
                                 setTimeout(() => {
                                   if (submitButtonRef.current) {
-                                    submitButtonRef.current.scrollIntoView({ 
+                                    submitButtonRef.current.scrollIntoView({
                                       behavior: 'smooth',
                                       block: 'start'
                                     });
                                   }
                                 }, 150);
                               }}
-                              className="px-4 py-2 bg-slate-700/50 hover:bg-blue-600/20 text-slate-300 hover:text-blue-400 rounded-lg transition-all duration-300 border border-slate-600/30 hover:border-blue-500/50 text-sm font-medium"
+                              className={`px-4 py-2 rounded-lg transition-all duration-300 text-sm font-medium ${
+                                (selectedMethod === 'cryptomus' && (isCryptomusProcessing || isUnauthorized)) || (selectedMethod === 'payeer' && (isPayeerProcessing || isPayeerUnauthorized))
+                                  ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed border border-slate-700/30'
+                                  : 'bg-slate-700/50 hover:bg-blue-600/20 text-slate-300 hover:text-blue-400 border border-slate-600/30 hover:border-blue-500/50'
+                              }`}
                             >
                               ${quickAmount}
                             </button>
@@ -533,35 +1052,106 @@ const AddFunds: React.FC = () => {
 
                       <div className="space-y-4">
                         {staticWallets.map((wallet) => (
-                          <div key={wallet.id} className="p-6 bg-slate-700/30 rounded-xl border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/item">
+                          <div key={wallet.id} className={`p-6 rounded-xl border transition-all duration-300 group/item ${wallet.isAvailable === false
+                            ? 'bg-red-900/20 border-red-600/30 opacity-70 cursor-not-allowed'
+                            : 'bg-slate-700/30 border-slate-600/30 hover:border-slate-500/50 cursor-pointer'
+                            }`}>
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                              <div className="flex flex-col sm:flex-row items-center sm:space-x-4 space-y-2 sm:space-y-0 group-hover/item:transform group-hover/item:translate-x-2 transition-transform duration-500 flex-1 min-w-0">
-                                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-500 rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
+                              <div className={`flex flex-col sm:flex-row items-center sm:space-x-4 space-y-2 sm:space-y-0 transition-transform duration-500 flex-1 min-w-0 ${wallet.isAvailable === false ? '' : 'group-hover/item:transform group-hover/item:translate-x-2'
+                                }`}>
+                                <div className={`w-10 h-10 bg-gradient-to-br ${wallet.isAvailable === false ? 'from-red-600/50 to-red-700/50' : 'from-emerald-500 to-green-500'
+                                  } rounded-lg flex items-center justify-center shadow-md flex-shrink-0`}>
                                   {wallet.icon}
                                 </div>
                                 <div className="min-w-0 flex-1 text-center sm:text-left">
-                                  <h4 className="font-bold text-white group-hover/item:text-blue-100 transition-colors duration-300" style={{ fontSize: '1rem' }}>{wallet.name}</h4>
-                                  <p className="text-slate-400 group-hover/item:text-slate-300 transition-colors duration-300">{wallet.network}</p>
+                                  <h4 className={`font-bold transition-colors duration-300 ${wallet.isAvailable === false
+                                    ? 'text-red-300'
+                                    : 'text-white group-hover/item:text-blue-100'
+                                    }`} style={{ fontSize: '1rem' }}>{wallet.name}</h4>
+                                  <p className={`transition-colors duration-300 ${wallet.isAvailable === false
+                                    ? 'text-red-400'
+                                    : 'text-slate-400 group-hover/item:text-slate-300'
+                                    }`}>{wallet.network}</p>
                                 </div>
                               </div>
                               <div className="flex items-center justify-between sm:justify-end space-x-2 sm:space-x-4 flex-shrink-0 min-w-0">
-                                <button
+                                {wallet.isAvailable === false ? (
+                                  <span className="text-red-400 bg-red-500/10 border border-red-500/30 px-2 py-1 rounded text-sm font-semibold flex-shrink-0">
+                                    Unavailable
+                                  </span>
+                                ) : (
+                                  <button
                                   type="button"
+                                  disabled={(wallet.id === 'usdt' && isUsdtButtonDisabled) || (wallet.id === 'usdc' && isUsdcButtonDisabled) || (wallet.id === 'pol' && isPolButtonDisabled)}
                                   onClick={() => {
-                                    if (selectedWallet === wallet.id) {
-                                      setSelectedWallet('');
+                                    if (wallet.id === 'usdt') {
+                                      if (selectedWallet === wallet.id) {
+                                        setSelectedWallet('');
+                                        setUsdtWalletAddress('');
+                                      } else {
+                                        fetchUsdtWallet();
+                                      }
+                                    } else if (wallet.id === 'usdc') {
+                                      if (selectedWallet === wallet.id) {
+                                        setSelectedWallet('');
+                                        setUsdcWalletAddress('');
+                                      } else {
+                                        fetchUsdcWallet();
+                                      }
+                                    } else if (wallet.id === 'pol') {
+                                      if (selectedWallet === wallet.id) {
+                                        setSelectedWallet('');
+                                        setPolWalletAddress('');
+                                      } else {
+                                        fetchPolWallet();
+                                      }
+                                    } else if (wallet.id === 'ltc') {
+                                      if (selectedWallet === wallet.id) {
+                                        setSelectedWallet('');
+                                        setLtcWalletAddress('');
+                                      } else {
+                                        fetchLtcWallet();
+                                      }
+                                    } else if (wallet.id === 'eth') {
+                                      if (selectedWallet === wallet.id) {
+                                        setSelectedWallet('');
+                                        setEthWalletAddress('');
+                                      } else {
+                                        fetchEthWallet();
+                                      }
+                                    } else if (wallet.id === 'btc') {
+                                      if (selectedWallet === wallet.id) {
+                                        setSelectedWallet('');
+                                        setBtcWalletAddress('');
+                                      } else {
+                                        fetchBtcWallet();
+                                      }
                                     } else {
-                                      setSelectedWallet(wallet.id);
+                                      if (selectedWallet === wallet.id) {
+                                        setSelectedWallet('');
+                                      } else {
+                                        setSelectedWallet(wallet.id);
+                                      }
                                     }
                                   }}
-                                  className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 w-20 sm:w-20 w-full ${
-                                    selectedWallet === wallet.id
-                                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
-                                      : 'bg-slate-600/50 hover:bg-slate-500/50 text-slate-300 hover:text-white border border-slate-500/30 hover:border-slate-400/50'
+                                  style={{ width: '80px' }}
+                                  className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 ${
+                                    (wallet.id === 'usdt' && isUsdtButtonDisabled) || (wallet.id === 'usdc' && isUsdcButtonDisabled) || (wallet.id === 'pol' && isPolButtonDisabled) || (wallet.id === 'ltc' && isLtcButtonDisabled) || (wallet.id === 'eth' && isEthButtonDisabled) || (wallet.id === 'btc' && isBtcButtonDisabled)
+                                      ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed border border-slate-700/30'
+                                      : selectedWallet === wallet.id
+                                        ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
+                                        : 'bg-slate-600/50 hover:bg-slate-500/50 text-slate-300 hover:text-white border border-slate-500/30 hover:border-slate-400/50'
                                   }`}
                                 >
-                                  {selectedWallet === wallet.id ? 'Selected' : 'Select'}
+                                  {(wallet.id === 'usdt' && isLoadingUsdtWallet) || (wallet.id === 'usdc' && isLoadingUsdcWallet) || (wallet.id === 'pol' && isLoadingPolWallet) || (wallet.id === 'ltc' && isLoadingLtcWallet) || (wallet.id === 'eth' && isLoadingEthWallet) || (wallet.id === 'btc' && isLoadingBtcWallet) ? (
+                                    <div className="flex items-center justify-center">
+                                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    </div>
+                                  ) : (
+                                    selectedWallet === wallet.id ? 'Selected' : 'Select'
+                                  )}
                                 </button>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -590,19 +1180,59 @@ const AddFunds: React.FC = () => {
                                     </p>
                                     <div className="bg-slate-700/50 rounded-lg p-3">
                                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                        <code className="text-blue-400 font-mono text-sm break-all">{wallet.address}</code>
+                                        <code className="text-blue-400 font-mono text-sm break-all">
+                                          {wallet.id === 'usdt' && usdtWalletAddress
+                                            ? usdtWalletAddress
+                                            : wallet.id === 'usdc' && usdcWalletAddress
+                                              ? usdcWalletAddress
+                                              : wallet.id === 'pol' && polWalletAddress
+                                                ? polWalletAddress
+                                                : wallet.id === 'ltc' && ltcWalletAddress
+                                                  ? ltcWalletAddress
+                                                  : wallet.id === 'eth' && ethWalletAddress
+                                                    ? ethWalletAddress
+                                                    : wallet.id === 'btc' && btcWalletAddress
+                                                      ? btcWalletAddress
+                                                      : ''}
+                                        </code>
                                         <button
                                         type="button"
                                         onClick={async () => {
                                           try {
-                                            await navigator.clipboard.writeText(wallet.address);
+                                            const addressToCopy = wallet.id === 'usdt' && usdtWalletAddress
+                                              ? usdtWalletAddress
+                                              : wallet.id === 'usdc' && usdcWalletAddress
+                                                ? usdcWalletAddress
+                                                : wallet.id === 'pol' && polWalletAddress
+                                                  ? polWalletAddress
+                                                  : wallet.id === 'ltc' && ltcWalletAddress
+                                                    ? ltcWalletAddress
+                                                    : wallet.id === 'eth' && ethWalletAddress
+                                                      ? ethWalletAddress
+                                                      : wallet.id === 'btc' && btcWalletAddress
+                                                        ? btcWalletAddress
+                                                        : '';
+                                            await navigator.clipboard.writeText(addressToCopy);
                                             setCopiedAddress(true);
                                             setTimeout(() => setCopiedAddress(false), 2000);
                                           } catch (err) {
                                             console.error('Failed to copy: ', err);
                                             // Fallback for older browsers
                                             const textArea = document.createElement('textarea');
-                                            textArea.value = wallet.address;
+                                            const addressToCopy = wallet.id === 'usdt' && usdtWalletAddress
+                                              ? usdtWalletAddress
+                                              : wallet.id === 'usdc' && usdcWalletAddress
+                                                ? usdcWalletAddress
+                                                : wallet.id === 'pol' && polWalletAddress
+                                                  ? polWalletAddress
+                                                  : wallet.id === 'ltc' && ltcWalletAddress
+                                                    ? ltcWalletAddress
+                                                    : wallet.id === 'eth' && ethWalletAddress
+                                                      ? ethWalletAddress
+                                                      : wallet.id === 'btc' && btcWalletAddress
+                                                        ? btcWalletAddress
+                                                        : '';
+                                            textArea.value = addressToCopy;
                                             document.body.appendChild(textArea);
                                             textArea.select();
                                             document.execCommand('copy');
@@ -662,10 +1292,18 @@ const AddFunds: React.FC = () => {
                     <div ref={submitButtonRef} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/section">
                       <button
                         type="submit"
-                        disabled={isProcessing}
-                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-xl"
+                        disabled={isProcessing || (selectedMethod === 'cryptomus' && isUnauthorized) || (selectedMethod === 'payeer' && isPayeerUnauthorized)}
+                        className={`w-full font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform shadow-xl ${
+                          isProcessing || (selectedMethod === 'cryptomus' && isUnauthorized) || (selectedMethod === 'payeer' && isPayeerUnauthorized)
+                            ? 'bg-slate-700/50 text-slate-400 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white hover:scale-[1.02]'
+                        }`}
                       >
-                        {isProcessing ? (
+                        {isProcessing && selectedMethod !== 'cryptomus' && selectedMethod !== 'payeer' ? (
+                          <div className="flex items-center justify-center space-x-2">
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          </div>
+                        ) : isProcessing && (selectedMethod === 'cryptomus' || selectedMethod === 'payeer') ? (
                           <div className="flex items-center justify-center space-x-2">
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                           </div>
@@ -708,7 +1346,7 @@ const AddFunds: React.FC = () => {
 
               <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
               </div>
 
@@ -754,6 +1392,81 @@ const AddFunds: React.FC = () => {
                 Ok
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Cryptomus Error Modal */}
+    {showCryptomusErrorModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+          <div className="text-center">
+            <div className="mb-4">
+              <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-lg font-medium text-white mb-2">Payment Error</h3>
+            <p className="text-blue-200 mb-4">{cryptomusErrorMessage}</p>
+            <button
+              onClick={handleCryptomusErrorModalClose}
+              className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Payeer Error Modal */}
+    {showPayeerErrorModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+          <div className="text-center">
+            <div className="mb-4">
+              <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-lg font-medium text-white mb-2">Payment Error</h3>
+            <p className="text-blue-200 mb-4">{payeerErrorMessage}</p>
+            <button
+              onClick={handlePayeerErrorModalClose}
+              className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Static Wallet Error Modal */}
+    {showStaticWalletErrorModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+          <div className="text-center">
+            <div className="mb-4">
+              <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-lg font-medium text-white mb-2">Wallet Error</h3>
+            <p className="text-blue-200 mb-4">{staticWalletErrorMessage}</p>
+            <button
+              onClick={handleStaticWalletErrorModalClose}
+              className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+            >
+              OK
+            </button>
           </div>
         </div>
       </div>
