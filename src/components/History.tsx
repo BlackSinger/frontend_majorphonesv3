@@ -210,6 +210,21 @@ const History: React.FC = () => {
           data.maySend
         );
 
+        // Type validations and conversions
+        const validatedNumber = typeof data.number === 'string' ? data.number : String(data.number || 'N/A');
+        const validatedPrice = typeof data.price === 'number' ? data.price : parseFloat(data.price) || 0;
+        const validatedSms = typeof data.sms === 'string' ? data.sms : String(data.sms || '');
+
+        // Validate status with allowed values
+        const allowedStatuses = ['Pending', 'Cancelled', 'Completed', 'Inactive', 'Active', 'Expired', 'Timed out'] as const;
+        const statusValue = typeof data.status === 'string' ? data.status : String(data.status || 'Pending');
+        const validatedStatus = allowedStatuses.includes(statusValue as any) ? statusValue as typeof allowedStatuses[number] : 'Pending';
+
+        // Validate type with allowed values
+        const allowedTypes = ['Short', 'Middle', 'Long', 'Empty simcard'] as const;
+        const typeValue = typeof data.type === 'string' ? data.type : String(data.type || 'Short');
+        const validatedType = allowedTypes.includes(typeValue as any) ? typeValue as typeof allowedTypes[number] : 'Short';
+
         const order: HistoryRecord = {
           id: data.orderId || doc.id,
           date: createdAt.toLocaleString('en-US', {
@@ -230,13 +245,13 @@ const History: React.FC = () => {
             second: '2-digit',
             hour12: true
           }),
-          number: data.number || 'N/A',
-          serviceType: data.type || 'Short Numbers',
-          status: data.status || 'Pending',
+          number: validatedNumber,
+          serviceType: validatedType,
+          status: validatedStatus,
           service: data.serviceName || 'N/A',
-          price: parseFloat((data.price || 0).toFixed(2)),
+          price: parseFloat(validatedPrice.toFixed(2)),
           duration: durationText,
-          code: data.sms || '',
+          code: validatedSms,
           country: data.country || 'N/A',
           reuse: data.reuse,
           maySend: data.maySend
@@ -503,17 +518,17 @@ const History: React.FC = () => {
     'Short Numbers',
     'Middle Numbers',
     'Long Numbers',
-    'Empty SIM card'
+    'Empty SIM cards'
   ];
 
   const getNumberTypeOptions = (serviceType: string) => {
     switch (serviceType) {
       case 'Short Numbers':
-        return ['All', 'Single Use', 'Reusable', 'Receive/Respond'];
+        return ['All types', 'Single use', 'Reusable', 'Receive/Respond'];
       case 'Middle Numbers':
-        return ['All', '1 day', '7 days', '14 days'];
+        return ['All types', '1 day', '7 days', '14 days'];
       default:
-        return ['All'];
+        return ['All types'];
     }
   };
 
@@ -571,14 +586,34 @@ const History: React.FC = () => {
       case 'Short Numbers':
         return ['Pending', 'Cancelled', 'Completed', 'Timed out'];
       case 'Middle Numbers':
-        return ['Inactive', 'Active', 'Expired', 'Cancelled'];
+        return ['Inactive', 'Active', 'Cancelled', 'Expired'];
       case 'Long Numbers':
-        return ['Inactive', 'Active', 'Expired', 'Cancelled'];
-      case 'Empty SIM card':
-        return ['Inactive', 'Active', 'Expired', 'Cancelled'];
+        return ['Inactive', 'Active', 'Cancelled', 'Expired'];
+      case 'Empty SIM cards':
+        return ['Inactive', 'Active', 'Cancelled', 'Expired'];
       default:
-        return ['Pending', 'Cancelled', 'Completed', 'Inactive', 'Active', 'Expired', 'Timed out'];
+        return ['Pending', 'Cancelled', 'Completed', 'Timed out', 'Inactive', 'Active', 'Expired'];
     }
+  };
+
+  // Helper function to map UI service type to Firestore service type
+  const mapServiceTypeToFirestore = (uiServiceType: string) => {
+    switch (uiServiceType) {
+      case 'Short Numbers': return 'Short';
+      case 'Middle Numbers': return 'Middle';
+      case 'Long Numbers': return 'Long';
+      case 'Empty SIM cards': return 'Empty simcard';
+      default: return null;
+    }
+  };
+
+  // Helper function to determine number type for Short numbers
+  const getShortNumberType = (record: HistoryRecord) => {
+    const { reuse, maySend } = record;
+    if (reuse === true && maySend === false) return 'Reusable';
+    if (reuse === false && maySend === false) return 'Single use';
+    if (reuse === false && maySend === true) return 'Receive/Respond';
+    return 'Unknown';
   };
 
   // Filter the data based on selected filters
@@ -586,17 +621,31 @@ const History: React.FC = () => {
     // Use only Firestore data
     let filtered = firestoreData;
 
+    // Filter by Service Type
     if (serviceTypeFilter !== 'All') {
-      filtered = filtered.filter(record => record.serviceType === serviceTypeFilter);
+      const firestoreServiceType = mapServiceTypeToFirestore(serviceTypeFilter);
+      if (firestoreServiceType) {
+        filtered = filtered.filter(record => record.serviceType === firestoreServiceType);
+      }
     }
 
+    // Filter by Status
     if (statusFilter !== 'All') {
       filtered = filtered.filter(record => record.status === statusFilter);
     }
 
-    // Apply Number Type filter when Short Numbers or Middle Numbers is selected
-    if ((serviceTypeFilter === 'Short Numbers' || serviceTypeFilter === 'Middle Numbers') && numberTypeFilter !== 'All') {
-      filtered = filtered.filter(record => record.duration === numberTypeFilter);
+    // Apply Number Type filter
+    if (numberTypeFilter !== 'All types') {
+      if (serviceTypeFilter === 'Short Numbers') {
+        // For Short Numbers, filter by reuse/maySend combination
+        filtered = filtered.filter(record => {
+          const shortType = getShortNumberType(record);
+          return shortType === numberTypeFilter;
+        });
+      } else if (serviceTypeFilter === 'Middle Numbers') {
+        // For Middle Numbers, filter by duration
+        filtered = filtered.filter(record => record.duration === numberTypeFilter);
+      }
     }
 
     return filtered;
@@ -776,16 +825,16 @@ const History: React.FC = () => {
     }
   };
 
-  // Get short number type name
-  const getShortNumberType = (serviceType: string) => {
+  // Get service type display name
+  const getServiceTypeDisplayName = (serviceType: string) => {
     switch (serviceType) {
-      case 'Short Numbers':
+      case 'Short':
         return 'Short';
-      case 'Middle Numbers':
+      case 'Middle':
         return 'Middle';
-      case 'Long Numbers':
+      case 'Long':
         return 'Long';
-      case 'Empty SIM card':
+      case 'Empty simcard':
         return 'Empty SIM card';
       default:
         return serviceType;
@@ -924,12 +973,54 @@ const History: React.FC = () => {
           return ['Send'];
         }
       }
-    } else if (serviceType === 'Middle' || serviceType === 'Long' || serviceType === 'Empty simcard') {
-      // For Middle, Long and Empty SIM card types, disable if Cancelled or Expired
-      if (status === 'Cancelled' || status === 'Expired') {
+    } else if (serviceType === 'Middle') {
+      const { code } = record;
+      const hasSms = code && code.trim() !== '';
+
+      if (status === 'Active') {
+        if (hasSms) {
+          // Active with SMS - no actions (disabled)
+          return [];
+        } else {
+          // Active without SMS - only Cancel
+          return ['Cancel'];
+        }
+      } else if (status === 'Inactive') {
+        if (hasSms) {
+          // Inactive with SMS - only Activate
+          return ['Activate'];
+        } else {
+          // Inactive without SMS - Cancel and Activate (current logic)
+          return ['Cancel', 'Activate'];
+        }
+      } else if (status === 'Cancelled' || status === 'Expired') {
+        // Cancelled or Expired - no actions (disabled)
         return [];
       }
-      return ['Cancel', 'Activate'];
+    } else if (serviceType === 'Long' || serviceType === 'Empty simcard') {
+      const { code } = record;
+      const hasSms = code && code.trim() !== '';
+
+      if (status === 'Active') {
+        if (hasSms) {
+          // Active with SMS - no actions (disabled)
+          return [];
+        } else {
+          // Active without SMS - only Cancel
+          return ['Cancel'];
+        }
+      } else if (status === 'Inactive') {
+        if (hasSms) {
+          // Inactive with SMS - only Activate
+          return ['Activate'];
+        } else {
+          // Inactive without SMS - Cancel and Activate
+          return ['Cancel', 'Activate'];
+        }
+      } else if (status === 'Cancelled' || status === 'Expired') {
+        // Cancelled or Expired - no actions (disabled)
+        return [];
+      }
     }
 
     return [];
@@ -1048,7 +1139,7 @@ const History: React.FC = () => {
                                 onClick={() => {
                                   setServiceTypeFilter(option);
                                   setStatusFilter('All'); // Reset status filter when service type changes
-                                  setNumberTypeFilter('All'); // Reset number type filter
+                                  setNumberTypeFilter('All types'); // Reset number type filter
                                   setIsServiceTypeDropdownOpen(false);
                                 }}
                                 className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
@@ -1072,7 +1163,7 @@ const History: React.FC = () => {
                             onClick={() => setIsNumberTypeDropdownOpen(!isNumberTypeDropdownOpen)}
                             className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
                           >
-                            <span>{numberTypeFilter === 'All' ? 'All Types' : numberTypeFilter}</span>
+                            <span>{numberTypeFilter === 'All types' ? 'All Types' : numberTypeFilter}</span>
                           </div>
 
                           <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -1093,7 +1184,7 @@ const History: React.FC = () => {
                                   }}
                                   className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
                                 >
-                                  <span className="text-white">{option === 'All' ? 'All Types' : option}</span>
+                                  <span className="text-white">{option === 'All types' ? 'All Types' : option}</span>
                                 </div>
                               ))}
                             </div>
@@ -1132,7 +1223,7 @@ const History: React.FC = () => {
                               }}
                               className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
                             >
-                              <span className="text-white">All Status</span>
+                              <span className="text-white">All Statuses</span>
                             </div>
                             {getAvailableStatuses(serviceTypeFilter).map((status) => (
                               <div
@@ -1213,7 +1304,7 @@ const History: React.FC = () => {
                         <td className="py-4 px-6">
                           <div className="font-mono text-white">{record.number.startsWith('+') ? record.number : '+' + record.number}</div>
                         </td>
-                        <td className="py-4 px-6 text-white">{getShortNumberType(record.serviceType)}</td>
+                        <td className="py-4 px-6 text-white">{getServiceTypeDisplayName(record.serviceType)}</td>
                         <td className="py-4 px-6">
                           <span className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold border w-24 ${getStatusColor(record.status, record.serviceType)}`}>
                             {record.status}
