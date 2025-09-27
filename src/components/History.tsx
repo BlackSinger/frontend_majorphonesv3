@@ -2,19 +2,24 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HistoryRecord {
   id: string;
   date: string;
   expirationDate: string;
   number: string;
-  serviceType: 'Short Numbers' | 'Middle Numbers' | 'Long Numbers' | 'Empty SIM card';
-  status: 'Pending' | 'Cancelled' | 'Completed' | 'Inactive' | 'Active' | 'Expired';
+  serviceType: 'Short' | 'Middle' | 'Long' | 'Empty simcard';
+  status: 'Pending' | 'Cancelled' | 'Completed' | 'Inactive' | 'Active' | 'Expired' | 'Timed out';
   service: string;
   price: number;
   duration: string;
   code: string;
   country: string;
+  reuse?: boolean;
+  maySend?: boolean;
 }
 
 interface VirtualCardRecord {
@@ -44,6 +49,7 @@ interface ProxyRecord {
 const History: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const searchParams = new URLSearchParams(location.search);
   const tabFromUrl = searchParams.get('tab');
   
@@ -91,259 +97,177 @@ const History: React.FC = () => {
   const numberTypeDropdownRef = useRef<HTMLDivElement>(null);
   const fundsDropdownRef = useRef<HTMLDivElement>(null);
   const actionMenuRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
-  
+
+  // Firestore states
+  const [firestoreData, setFirestoreData] = useState<HistoryRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
+
   const itemsPerPage = 10;
 
-  // Mock history data for numbers
-  const historyData: HistoryRecord[] = [
-    {
-      id: '3bbf097f-d4cb-4257-a3da-2dcc4a35cd05',
-      date: '2024-10-13 2:28',
-      expirationDate: '2024-10-13 14:28',
-      number: '+14157358371',
-      serviceType: 'Short Numbers',
-      status: 'Completed',
-      service: 'WhatsApp',
-      price: 0.15,
-      duration: 'Reusable',
-      code: '123456',
-      country: 'United States'
-    },
-    {
-      id: 'allf097f-d4cb-4257-a3da-2dcc4a35cd05',
-      date: '2024-10-13 2:28',
-      expirationDate: '2024-10-13 14:28',
-      number: '+14157358371',
-      serviceType: 'Short Numbers',
-      status: 'Completed',
-      service: 'eBay',
-      price: 0.15,
-      duration: 'Single Use',
-      code: '123456',
-      country: 'United States'
-    },
-    {
-      id: '9fk1l09q-d4cb-4257-a3da-2dcc4a35cd05',
-      date: '2024-10-13 2:28',
-      expirationDate: '2024-10-13 14:28',
-      number: '+14157358371',
-      serviceType: 'Short Numbers',
-      status: 'Completed',
-      service: 'Google',
-      price: 0.15,
-      duration: 'Receive/Respond',
-      code: '123456',
-      country: 'United States'
-    },
-    {
-      id: 'f7c8d921-4b3a-4e5f-8c9d-1a2b3c4d5e6f',
-      date: '2024-10-12 14:45',
-      expirationDate: '2024-10-12 15:00',
-      number: '+447453011917',
-      serviceType: 'Short Numbers',
-      status: 'Pending',
-      service: 'Service Not Listed',
-      price: 0.12,
-      duration: 'Single Use',
-      code: 'Waiting...',
-      country: 'United Kingdom'
-    },
-    {
-      id: '1f2e3d4c-5b6a-4e7f-8c9d-0a1b2c3d4e5f',
-      date: '2024-10-07 16:12',
-      expirationDate: '2024-10-07 16:27',
-      number: '+4915511292487',
-      serviceType: 'Short Numbers',
-      status: 'Cancelled',
-      service: 'Discord',
-      price: 0.18,
-      duration: 'Single Use',
-      code: '-',
-      country: 'Germany'
-    },
-    {
-      id: '2a5c9e9f-7d6b-4c3a-918f-5b4c3d2e1f0a',
-      date: '2024-10-11 9:15',
-      expirationDate: '2024-10-18 9:15',
-      number: '+10947173371',
-      serviceType: 'Middle Numbers',
-      status: 'Cancelled',
-      service: 'Instagram',
-      price: 2.50,
-      duration: '7 days',
-      code: '-',
-      country: 'United States'
-    },
-    {
-      id: '2a5c8e9f-7d6b-4c3a-9e8f-5b4c3d2e1f0a',
-      date: '2024-10-11 9:15',
-      expirationDate: '2024-10-18 9:15',
-      number: '+14157358371',
-      serviceType: 'Middle Numbers',
-      status: 'Active',
-      service: 'Instagram',
-      price: 2.50,
-      duration: '7 days',
-      code: 'Waiting...',
-      country: 'United States'
-    },
-    {
-      id: 'alñq8e9f-7d6b-4c3a-9e8f-5b4c3d2e1f0a',
-      date: '2024-10-11 9:15',
-      expirationDate: '2024-10-18 9:15',
-      number: '+14157358371',
-      serviceType: 'Middle Numbers',
-      status: 'Inactive',
-      service: 'TikTok',
-      price: 2.50,
-      duration: '7 days',
-      code: '-',
-      country: 'United States'
-    },
-    {
-      id: '8f3e5c7d-2b1a-4e6f-9c8d-7a5b3c1e2f4d',
-      date: '2024-10-10 18:30',
-      expirationDate: '2024-10-11 18:30',
-      number: '+14157358371',
-      serviceType: 'Middle Numbers',
-      status: 'Expired',
-      service: 'Google Voice',
-      price: 1.80,
-      duration: '1 day',
-      code: '345678',
-      country: 'United States'
-    },
-    {
-      id: '443e5c7d-2b1a-4e6f-9c8d-7a5b3c102f4d',
-      date: '2024-10-12 08:10',
-      expirationDate: '2024-10-22 08:10',
-      number: '+14157358371',
-      serviceType: 'Middle Numbers',
-      status: 'Inactive',
-      service: 'Google Messanger',
-      price: 3.20,
-      duration: '14 days',
-      code: '340078',
-      country: 'United States'
-    },
-    {
-      id: '4d7b2e5c-8f9a-4c3d-7e6f-9a8b7c6d5e4f',
-      date: '2024-10-09 7:22',
-      expirationDate: '2024-11-08 7:22',
-      number: '+13361427138',
-      serviceType: 'Long Numbers',
-      status: 'Cancelled',
-      service: 'Facebook',
-      price: 15.50,
-      duration: '30 days',
-      code: '-',
-      country: 'United States'
-    },
-    {
-      id: '6c5b4a3d-2e1f-4c7d-8e9f-5a4b3c2d1e0f',
-      date: '2024-10-06 13:33',
-      expirationDate: '2024-11-05 13:33',
-      number: '+14474530119',
-      serviceType: 'Long Numbers',
-      status: 'Inactive',
-      service: 'LinkedIn',
-      price: 15.50,
-      duration: '30 days',
-      code: '940171',
-      country: 'United States'
-    },
-    {
-      id: '600b4a3d-2e1f-4c7d-8e9f-5a4n5c2d1e0f',
-      date: '2024-10-06 13:33',
-      expirationDate: '2024-11-05 13:33',
-      number: '+14474530119',
-      serviceType: 'Long Numbers',
-      status: 'Inactive',
-      service: 'Match',
-      price: 15.50,
-      duration: '30 days',
-      code: '-',
-      country: 'United States'
-    },
-    {
-      id: 'a7d8e9f0-3c4b-4e5d-9f8e-7c6b5a4d3e2f',
-      date: '2024-10-05 20:18',
-      expirationDate: '2024-11-04 20:18',
-      number: '+14474530119',
-      serviceType: 'Long Numbers',
-      status: 'Active',
-      service: 'Tinder',
-      price: 15.50,
-      duration: '30 days',
-      code: 'Waiting...',
-      country: 'United States'
-    },
-    {
-      id: '5e4d3c2b-1a9f-4e6d-8c7f-9e8d7c6b5a4d',
-      date: '2024-10-04 5:07',
-      expirationDate: '2024-10-04 5:22',
-      number: '+14157358371',
-      serviceType: 'Long Numbers',
-      status: 'Expired',
-      service: 'Discord',
-      price: 15.50,
-      duration: 'Single Use',
-      code: '903917',
-      country: 'United States'
-    },
-    {
-      id: '9e8f7c6d-5b4a-4e3c-8d7f-6e5d4c3b2a1f',
-      date: '2024-10-08 11:45',
-      expirationDate: '2024-11-07 11:45',
-      number: '+19180909431',
-      serviceType: 'Empty SIM card',
-      status: 'Active',
-      service: 'All',
-      price: 25.00,
-      duration: '30 days',
-      code: 'Waiting...',
-      country: 'United States'
-    },
-    {
-      id: 'b8c9d0e1-4f5a-4e3c-7d8e-0f9e8d7c6b5a',
-      date: '2024-10-03 12:54',
-      expirationDate: '2024-11-02 12:54',
-      number: '+13361427138',
-      serviceType: 'Empty SIM card',
-      status: 'Cancelled',
-      service: 'Facebook',
-      price: 25.00,
-      duration: '30 days',
-      code: '-',
-      country: 'United States'
-    },
-    {
-      id: 'b8c038di-4f5a-4e3c-7d8e-471jad7c6b5a',
-      date: '2024-10-03 12:54',
-      expirationDate: '2024-11-02 12:54',
-      number: '+10011222138',
-      serviceType: 'Empty SIM card',
-      status: 'Inactive',
-      service: 'WhatsApp',
-      price: 25.00,
-      duration: '30 days',
-      code: '28403',
-      country: 'United States'
-    },
-    {
-      id: '03jañ190-4f5a-4e3c-7d8e-471jad7c6b5a',
-      date: '2024-10-03 12:54',
-      expirationDate: '2024-11-02 12:54',
-      number: '+194719842138',
-      serviceType: 'Empty SIM card',
-      status: 'Expired',
-      service: 'Amazon',
-      price: 25.00,
-      duration: '30 days',
-      code: '28403',
-      country: 'United States'
+  // Function to format price (show integers without decimals)
+  const formatPrice = (price: number): string => {
+    return price % 1 === 0 ? price.toString() : price.toFixed(2);
+  };
+
+  // Function to determine what to show in Code column
+  const getCodeDisplay = (record: HistoryRecord) => {
+    const { serviceType, status, code } = record;
+    const smsValue = code || '';
+    const hasSms = smsValue && smsValue.trim() !== '';
+
+    if (serviceType === 'Short') {
+      switch (status) {
+        case 'Completed':
+          return { type: 'text', value: smsValue };
+        case 'Pending':
+          return { type: 'spinner', value: null };
+        case 'Cancelled':
+          return { type: 'text', value: '-' };
+        case 'Timed out':
+          return { type: 'text', value: '-' };
+        default:
+          return { type: 'text', value: smsValue };
+      }
+    } else if (serviceType === 'Middle' || serviceType === 'Long' || serviceType === 'Empty simcard') {
+      switch (status) {
+        case 'Active':
+          return hasSms ? { type: 'text', value: smsValue } : { type: 'spinner', value: null };
+        case 'Inactive':
+          return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
+        case 'Expired':
+          return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
+        case 'Cancelled':
+          return { type: 'text', value: '-' };
+        default:
+          return { type: 'text', value: smsValue };
+      }
     }
-  ];
+
+    // Fallback
+    return { type: 'text', value: smsValue };
+  };
+
+  // Function to calculate duration based on type and properties
+  const calculateDuration = (type: string, createdAt: Date, expiry: Date, reuse?: boolean, maySend?: boolean): string => {
+    const durationMs = expiry.getTime() - createdAt.getTime();
+
+    if (type === 'Short') {
+      if (reuse === true && maySend === false) {
+        const durationHours = Math.round(durationMs / (1000 * 60 * 60));
+        return `Reusable for ${durationHours} hours`;
+      } else if (reuse === false && maySend === false) {
+        const durationMinutes = Math.round(durationMs / (1000 * 60));
+        return `Single use for ${durationMinutes} minutes`;
+      } else if (reuse === false && maySend === true) {
+        const durationMinutes = Math.round(durationMs / (1000 * 60));
+        return `Receive/Respond for ${durationMinutes} minutes`;
+      }
+    } else if (type === 'Middle') {
+      const durationDays = Math.round(durationMs / (1000 * 60 * 60 * 24));
+      return `${durationDays} day${durationDays !== 1 ? 's' : ''}`;
+    } else if (type === 'Long' || type === 'Empty simcard') {
+      const durationDays = Math.round(durationMs / (1000 * 60 * 60 * 24));
+      return `${durationDays} days`;
+    }
+
+    // Return empty string for unknown types
+    return '';
+  };
+
+  // Function to fetch orders from Firestore
+  const fetchUserOrders = async () => {
+    if (!currentUser?.uid) {
+      setErrorMessage('User not authenticated');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const ordersRef = collection(db, 'orders');
+      const q = query(
+        ordersRef,
+        where('uid', '==', currentUser.uid),
+        orderBy('createdAt', 'desc')
+      );
+
+      const querySnapshot = await getDocs(q);
+      const orders: HistoryRecord[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+        const expiry = data.expiry?.toDate ? data.expiry.toDate() : new Date(data.expiry);
+
+        // Calculate duration based on type and properties
+        const durationText = calculateDuration(
+          data.type || 'Short Numbers',
+          createdAt,
+          expiry,
+          data.reuse,
+          data.maySend
+        );
+
+        const order: HistoryRecord = {
+          id: data.orderId || doc.id,
+          date: createdAt.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+          }),
+          expirationDate: expiry.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+          }),
+          number: data.number || 'N/A',
+          serviceType: data.type || 'Short Numbers',
+          status: data.status || 'Pending',
+          service: data.serviceName || 'N/A',
+          price: parseFloat((data.price || 0).toFixed(2)),
+          duration: durationText,
+          code: data.sms || '',
+          country: data.country || 'N/A',
+          reuse: data.reuse,
+          maySend: data.maySend
+        };
+
+        orders.push(order);
+      });
+
+      setFirestoreData(orders);
+    } catch (error: any) {
+      console.error('Error fetching orders:', error);
+
+      // Handle specific Firebase errors
+      let errorMsg = 'An error occurred when loading the orders, please try again';
+
+      if (error?.code === 'permission-denied') {
+        errorMsg = 'Access denied, you cannot check these orders';
+      } else if (error?.code === 'unavailable') {
+        errorMsg = 'Service temporarily unavailable, please try again';
+      } else if (error?.code === 'unauthenticated') {
+        errorMsg = 'You are not authenticated';
+      } else if (error?.message) {
+        errorMsg = `Error: ${error.message}`;
+      }
+
+      setErrorMessage(errorMsg);
+      setShowErrorModal(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Mock history data for virtual debit cards
   const virtualCardData: VirtualCardRecord[] = [
@@ -645,19 +569,22 @@ const History: React.FC = () => {
   const getAvailableStatuses = (serviceType: string) => {
     switch (serviceType) {
       case 'Short Numbers':
-        return ['Pending', 'Cancelled', 'Completed'];
+        return ['Pending', 'Cancelled', 'Completed', 'Timed out'];
       case 'Middle Numbers':
+        return ['Inactive', 'Active', 'Expired', 'Cancelled'];
       case 'Long Numbers':
+        return ['Inactive', 'Active', 'Expired', 'Cancelled'];
       case 'Empty SIM card':
-        return ['Inactive', 'Active', 'Expired'];
+        return ['Inactive', 'Active', 'Expired', 'Cancelled'];
       default:
-        return ['Pending', 'Cancelled', 'Completed', 'Inactive', 'Active', 'Expired'];
+        return ['Pending', 'Cancelled', 'Completed', 'Inactive', 'Active', 'Expired', 'Timed out'];
     }
   };
 
   // Filter the data based on selected filters
   const filteredData = useMemo(() => {
-    let filtered = historyData;
+    // Use only Firestore data
+    let filtered = firestoreData;
 
     if (serviceTypeFilter !== 'All') {
       filtered = filtered.filter(record => record.serviceType === serviceTypeFilter);
@@ -673,7 +600,7 @@ const History: React.FC = () => {
     }
 
     return filtered;
-  }, [serviceTypeFilter, statusFilter, numberTypeFilter]);
+  }, [serviceTypeFilter, statusFilter, numberTypeFilter, firestoreData]);
 
   // Filter proxy data based on selected filters
   const filteredProxyData = useMemo(() => {
@@ -742,23 +669,76 @@ const History: React.FC = () => {
     setCurrentProxyPage(1);
   }, [selectedProxyState, selectedProxyDuration]);
 
-  // Get status color
-  const getStatusColor = (status: string) => {
+  // Fetch user orders when component mounts or when tab changes to numbers
+  useEffect(() => {
+    if (activeTab === 'numbers') {
+      if (currentUser) {
+        fetchUserOrders();
+      } else {
+        // If no user, stop loading immediately
+        setIsLoading(false);
+        setFirestoreData([]);
+      }
+    } else {
+      // If not on numbers tab, stop loading
+      setIsLoading(false);
+    }
+  }, [activeTab, currentUser]);
+
+  // Get status color based on type and status
+  const getStatusColor = (status: string, serviceType: string) => {
+    if (serviceType === 'Short Numbers') {
+      switch (status) {
+        case 'Completed':
+          return 'text-blue-400 border-blue-500/30 bg-blue-500/20';
+        case 'Pending':
+          return 'text-orange-400 border-orange-500/30 bg-orange-500/20';
+        case 'Cancelled':
+          return 'text-red-400 border-red-500/30 bg-red-500/20';
+        case 'Expired':
+          return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
+        case 'Timed out':
+          return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
+        default:
+          return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
+      }
+    } else if (serviceType === 'Middle' || serviceType === 'Middle Numbers' ||
+               serviceType === 'Long' || serviceType === 'Long Numbers' ||
+               serviceType === 'Empty SIM card' || serviceType === 'Empty Simcard') {
+      switch (status) {
+        case 'Active':
+          return 'text-green-400 border-green-500/30 bg-green-500/20';
+        case 'Cancelled':
+          return 'text-red-400 border-red-500/30 bg-red-500/20';
+        case 'Inactive':
+          return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
+        case 'Expired':
+          return 'text-red-400 border-red-500/30 bg-red-500/20';
+        case 'Timed out':
+          return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
+        default:
+          return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
+      }
+    }
+
+    // Fallback to original colors
     switch (status) {
       case 'Active':
-        return 'text-green-400 border-green-500/30';
+        return 'text-green-400 border-green-500/30 bg-green-500/20';
       case 'Completed':
-        return 'text-blue-400 border-blue-500/30';
+        return 'text-blue-400 border-blue-500/30 bg-blue-500/20';
       case 'Pending':
-        return 'text-yellow-400 border-yellow-500/30';
+        return 'text-yellow-400 border-yellow-500/30 bg-yellow-500/20';
       case 'Inactive':
-        return 'text-gray-400 border-gray-500/30';
+        return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
       case 'Expired':
-        return 'text-red-400 border-red-500/30';
+        return 'text-red-400 border-red-500/30 bg-red-500/20';
       case 'Cancelled':
-        return 'text-red-400 border-red-500/30';
+        return 'text-red-400 border-red-500/30 bg-red-500/20';
+      case 'Timed out':
+        return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
       default:
-        return 'text-gray-400 border-gray-500/30';
+        return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
     }
   };
 
@@ -917,38 +897,41 @@ const History: React.FC = () => {
     }
   };
 
-  // Get available actions based on service type and status
+  // Get available actions based on service type, status, reuse and maySend
   const getAvailableActions = (record: HistoryRecord) => {
-    const { serviceType, status, duration } = record;
-    
-    switch (serviceType) {
-      case 'Short Numbers':
-        if (status === 'Completed') {
-          if (duration === 'Reusable') {
-            return ['Reuse'];
-          } else if (duration === 'Single Use') {
-            return [];
-          } else if (duration === 'Receive/Respond') {
-            return ['Send'];
-          }
-        } else if (status === 'Pending') {
+    const { serviceType, status, reuse, maySend } = record;
+
+    if (serviceType === 'Short') {
+      if (reuse === true && maySend === false) {
+        // Reusable type
+        if (status === 'Pending') {
           return ['Cancel'];
-        } else if (status === 'Cancelled') {
-          return [];
+        } else if (status === 'Completed') {
+          return ['Reuse'];
         }
-        break;
-      case 'Middle Numbers':
-      case 'Long Numbers':
-      case 'Empty SIM card':
-        if (status === 'Cancelled' || status === 'Expired') {
-          return [];
-        } else if (status === 'Active') {
+      } else if (reuse === false && maySend === false) {
+        // Single use type
+        if (status === 'Pending') {
           return ['Cancel'];
-        } else if (status === 'Inactive') {
-          return ['Cancel', 'Activate'];
         }
-        break;
+        // For other statuses (Completed, Cancelled, Timed out) - no actions
+        return [];
+      } else if (reuse === false && maySend === true) {
+        // Receive/Respond type
+        if (status === 'Pending') {
+          return ['Cancel'];
+        } else if (status === 'Completed') {
+          return ['Send'];
+        }
+      }
+    } else if (serviceType === 'Middle' || serviceType === 'Long' || serviceType === 'Empty simcard') {
+      // For Middle, Long and Empty SIM card types, disable if Cancelled or Expired
+      if (status === 'Cancelled' || status === 'Expired') {
+        return [];
+      }
+      return ['Cancel', 'Activate'];
     }
+
     return [];
   };
 
@@ -1173,7 +1156,17 @@ const History: React.FC = () => {
 
             {/* Table */}
             <div className="overflow-x-auto overflow-y-visible">
-              {filteredData.length > 0 ? (
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p className="text-slate-400 mt-4">Loading numbers...</p>
+                </div>
+              ) : showErrorModal ? (
+                <></>
+              ) : filteredData.length > 0 ? (
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-700/50">
@@ -1218,28 +1211,34 @@ const History: React.FC = () => {
                           </div>
                         </td>
                         <td className="py-4 px-6">
-                          <div className="font-mono text-white">{record.number}</div>
+                          <div className="font-mono text-white">{record.number.startsWith('+') ? record.number : '+' + record.number}</div>
                         </td>
                         <td className="py-4 px-6 text-white">{getShortNumberType(record.serviceType)}</td>
                         <td className="py-4 px-6">
-                          <span className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold border w-24 ${getStatusColor(record.status)}`}>
+                          <span className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold border w-24 ${getStatusColor(record.status, record.serviceType)}`}>
                             {record.status}
                           </span>
                         </td>
                         <td className="py-4 px-6 text-white">{record.service}</td>
                         <td className="py-4 px-6">
-                          <span className="text-emerald-400 font-semibold">${record.price.toFixed(2)}</span>
+                          <span className="text-emerald-400 font-semibold">${formatPrice(record.price)}</span>
                         </td>
                         <td className="py-4 px-6">
-                          {record.code === 'Waiting...' ? (
-                            <div className="flex justify-center">
-                              <svg className="w-5 h-5 animate-spin text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                            </div>
-                          ) : (
-                            <span className="font-mono text-blue-500 font-semibold">{record.code}</span>
-                          )}
+                          {(() => {
+                            const codeDisplay = getCodeDisplay(record);
+                            if (codeDisplay.type === 'spinner') {
+                              return (
+                                <div className="flex justify-center">
+                                  <div className="w-5 h-5 border-2 border-slate-400/30 border-t-slate-200 rounded-full animate-spin"></div>
+                                </div>
+                              );
+                            } else {
+                              return (
+                                <span className="font-mono text-blue-500 font-semibold">{codeDisplay.value}</span>
+                              );
+                            }
+                          })()
+                          }
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex items-center justify-center">
@@ -1477,7 +1476,7 @@ const History: React.FC = () => {
                               </td>
                               <td className="py-4 px-6 text-white text-center">{record.purchaseDate}</td>
                               <td className="py-4 px-6 text-center">
-                                <span className="text-emerald-400 font-semibold">${record.price.toFixed(2)}</span>
+                                <span className="text-emerald-400 font-semibold">${formatPrice(record.price)}</span>
                               </td>
                               <td className="py-4 px-6">
                                 <div className="font-mono text-white text-center">
@@ -1989,6 +1988,36 @@ const History: React.FC = () => {
                     className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
                   >
                     Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Error Modal */}
+        {showErrorModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80 max-w-md">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto flex items-center justify-center bg-red-500/20 rounded-full">
+                    <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+                <p className="text-red-200 mb-4">{errorMessage}</p>
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => {
+                      setShowErrorModal(false);
+                      setErrorMessage('');
+                    }}
+                    className="bg-gradient-to-r from-red-400 to-red-500 hover:from-red-500 hover:to-red-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
+                  >
+                    Cerrar
                   </button>
                 </div>
               </div>
