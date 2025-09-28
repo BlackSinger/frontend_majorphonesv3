@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/config';
+
+// Global object to store service name
+const globalSearchData = {
+  serviceName: ''
+};
 
 interface NumberOption {
   id: string;
@@ -12,19 +19,57 @@ interface NumberOption {
   countryPrefix: string;
   isReusable: boolean;
   receiveSend?: boolean;
-  successRate: number;
+}
+
+interface ServiceOption {
+  id: string;
+  name: string;
 }
 
 const ShortNumbers: React.FC = () => {
   const navigate = useNavigate();
+
+  // Helper function to safely format price
+  const formatPrice = (price: any): string => {
+    // Convert to number and take only first 2 decimals
+    const numPrice = parseFloat(Number(price).toFixed(2));
+    return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
+  };
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('United States');
-  const [numberType, setNumberType] = useState<'single' | 'reusable' | 'receive-send'>('single');
   const [searchResults, setSearchResults] = useState<NumberOption[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+
+  // Services state
+  const [services, setServices] = useState<ServiceOption[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(true);
+  const [selectedService, setSelectedService] = useState<ServiceOption | null>(null);
+  const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
+  const [filteredServices, setFilteredServices] = useState<ServiceOption[]>([]);
+
+  // Error handling state
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [hasError, setHasError] = useState(false);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const serviceDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Function to map country to Firestore collection name
+  const getCollectionNameForCountry = (countryName: string): string => {
+    switch (countryName) {
+      case 'United States':
+        return 'stnTargetsUSA';
+      case 'United Kingdom':
+        return 'stnTargetsUK';
+      case 'India':
+        return 'stnTargetsIndia';
+      default:
+        return 'stnTargetsUSA'; // Default fallback
+    }
+  };
 
   const countries = [
     { 
@@ -97,11 +142,86 @@ const ShortNumbers: React.FC = () => {
     }
   ];
 
-  // Close dropdown when clicking outside
+  // Load services from Firebase
+  const loadServices = async (collectionName: string) => {
+    try {
+      setIsLoadingServices(true);
+      setHasError(false);
+      // Clear previous services and search state
+      setServices([]);
+      setFilteredServices([]);
+      setSelectedService(null);
+      setSearchTerm('');
+      setIsServiceDropdownOpen(false);
+
+      const servicesRef = collection(db, collectionName);
+      const querySnapshot = await getDocs(servicesRef);
+
+        const servicesList: ServiceOption[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          servicesList.push({
+            id: doc.id,
+            name: data.name || doc.id // Use name field or document ID as fallback
+          });
+        });
+
+        // Sort services alphabetically
+        servicesList.sort((a, b) => a.name.localeCompare(b.name));
+
+        setServices(servicesList);
+        setFilteredServices(servicesList);
+        setHasError(false);
+      } catch (error) {
+        console.error('Error loading services:', error);
+        setServices([]);
+        setFilteredServices([]);
+        setHasError(true);
+
+        // Determine error message based on error type
+        let userErrorMessage = 'An error occurred while loading services, please contact support';
+
+        if (error instanceof Error) {
+          if (error.message.includes('permission-denied')) {
+            userErrorMessage = 'You do not have permission to access the services';
+          } else if (error.message.includes('unavailable')) {
+            userErrorMessage = 'Services are temporarily unavailable, please try again later';
+          } else if (error.message.includes('network')) {
+            userErrorMessage = 'Network connection error, please check your internet connection';
+          } else if (error.message.includes('not-found')) {
+            userErrorMessage = 'Services not found, please contact customer support';
+          }
+        }
+
+        setErrorMessage(userErrorMessage);
+        setShowErrorModal(true);
+      } finally {
+        setIsLoadingServices(false);
+      }
+    };
+
+  // Load services on component mount
+  useEffect(() => {
+    const collectionName = getCollectionNameForCountry(selectedCountry);
+    loadServices(collectionName);
+  }, []);
+
+  // Load services when country changes
+  useEffect(() => {
+    if (selectedCountry) {
+      const collectionName = getCollectionNameForCountry(selectedCountry);
+      loadServices(collectionName);
+    }
+  }, [selectedCountry]);
+
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsCountryDropdownOpen(false);
+      }
+      if (serviceDropdownRef.current && !serviceDropdownRef.current.contains(event.target as Node)) {
+        setIsServiceDropdownOpen(false);
       }
     };
 
@@ -111,104 +231,152 @@ const ShortNumbers: React.FC = () => {
     };
   }, []);
 
+  // Handle error modal close
+  const handleErrorModalClose = () => {
+    setShowErrorModal(false);
+    setErrorMessage('');
+  };
+
+  // Handle service search filtering
+  const handleServiceSearch = (value: string) => {
+    setSearchTerm(value);
+
+    if (!value.trim()) {
+      setFilteredServices(services);
+      setIsServiceDropdownOpen(false);
+      return;
+    }
+
+    // Filter services based on search term
+    const filtered = services.filter(service =>
+      service.name.toLowerCase().includes(value.toLowerCase())
+    );
+
+    // If no matches found, show "Service not listed" option
+    if (filtered.length === 0) {
+      setFilteredServices([{ id: 'not-listed', name: 'Service not listed' }]);
+    } else {
+      setFilteredServices(filtered);
+    }
+
+    setIsServiceDropdownOpen(true);
+  };
+
+  // Handle service selection
+  const handleServiceSelect = (service: ServiceOption) => {
+    setSelectedService(service);
+    setSearchTerm(service.name);
+    setIsServiceDropdownOpen(false);
+  };
+
+  // Handle service input focus
+  const handleServiceInputFocus = () => {
+    if (!isLoadingServices && services.length > 0) {
+      setFilteredServices(services);
+      setIsServiceDropdownOpen(true);
+    }
+  };
+
   const handleSearch = async () => {
-    if (!searchTerm.trim()) return;
+    if (!selectedService) return;
+
+    // Store service name in global object
+    globalSearchData.serviceName = selectedService.name;
+
+    // Print to console for verification
+    console.log('Selected service name:', globalSearchData.serviceName);
 
     setIsSearching(true);
     setHasSearched(false);
 
     try {
-      // Simulate API call - replace with actual API endpoint
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const selectedCountryData = countries.find(c => c.name === selectedCountry);
-      const countryCode = selectedCountryData?.code || 'US';
-      const countryPrefix = selectedCountryData?.prefix || '+1';
-      
-      const singleUseNumbers: NumberOption[] = [
-        {
-          id: '1',
-          number: '555-1001',
-          price: 0.08,
-          country: selectedCountry,
-          countryCode: countryCode,
-          countryPrefix: countryPrefix,
-          isReusable: false,
-          successRate: 98
-        },
-        {
-          id: '2',
-          number: '555-1002',
-          price: 0.06,
-          country: selectedCountry,
-          countryCode: countryCode,
-          countryPrefix: countryPrefix,
-          isReusable: false,
-          successRate: 94
-        },
-        {
-          id: '3',
-          number: '555-1003',
-          price: 0.10,
-          country: selectedCountry,
-          countryCode: countryCode,
-          countryPrefix: countryPrefix,
-          isReusable: false,
-          successRate: 91
-        }
-      ];
+      let allNumbers: NumberOption[] = [];
 
-      const reusableNumbers: NumberOption[] = [
-        {
-          id: '4',
-          number: '555-0123',
-          price: 1.2,
-          extraSmsPrice: 0.6,
-          country: selectedCountry,
-          countryCode: countryCode,
-          countryPrefix: countryPrefix,
-          isReusable: true,
-          successRate: 95
-        }
-      ];
+      // For United States, search in stnUSA collection
+      if (selectedCountry === 'United States') {
+        // Search across opt1, opt2, opt3 documents and their services subcollections simultaneously
+        const searchPromises = ['opt1', 'opt2', 'opt3'].map(async (optDoc) => {
+          const servicesRef = collection(db, 'stnUSA', optDoc, 'services');
+          const querySnapshot = await getDocs(servicesRef);
 
-      const receiveSendNumbers: NumberOption[] = [
-        {
-          id: '5',
-          number: '555-2001',
-          price: 0.15,
-          country: selectedCountry,
-          countryCode: countryCode,
-          countryPrefix: countryPrefix,
-          isReusable: false,
-          receiveSend: true,
-          successRate: 97
-        }
-      ];
+          const results: NumberOption[] = [];
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
 
-      // Select appropriate array based on number type
-      let mockResults: NumberOption[] = [];
-      switch (numberType) {
-        case 'single':
-          mockResults = singleUseNumbers;
-          break;
-        case 'reusable':
-          mockResults = reusableNumbers;
-          break;
-        case 'receive-send':
-          mockResults = receiveSendNumbers;
-          break;
-        default:
-          mockResults = singleUseNumbers;
+            // Check if service name matches (case insensitive)
+            if (data.serviceName && data.serviceName.toLowerCase().includes(globalSearchData.serviceName.toLowerCase())) {
+              const selectedCountryData = countries.find(c => c.name === selectedCountry);
+              const countryCode = selectedCountryData?.code || 'US';
+              const countryPrefix = selectedCountryData?.prefix || '+1';
+
+              // Map properties based on source document
+              const isOpt3 = optDoc === 'opt3';
+
+              results.push({
+                id: `${optDoc}-${doc.id}`,
+                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                price: data.price, // Only use Firestore price
+                country: selectedCountry,
+                countryCode: countryCode,
+                countryPrefix: countryPrefix,
+                isReusable: false, // All options are not reusable
+                receiveSend: isOpt3 // Only opt3 has receive/send capability
+              });
+            }
+          });
+
+          return results;
+        });
+
+        // Wait for all searches to complete
+        const searchResults = await Promise.all(searchPromises);
+
+        // Flatten results from all documents
+        allNumbers = searchResults.flat();
+
+        // Sort by price (lowest first)
+        allNumbers.sort((a, b) => a.price - b.price);
+      } else {
+        // For other countries, implement similar logic when collections are available
+        allNumbers = [];
       }
 
-      setSearchResults(mockResults);
+      // Only show results if we have them, otherwise stay in search view
+      if (allNumbers.length > 0) {
+        setSearchResults(allNumbers);
+        setHasSearched(true);
+      } else {
+        setSearchResults([]);
+        setHasSearched(false);
+      }
     } catch (error) {
       console.error('Error searching numbers:', error);
+
+      // Reset search state to allow retry
       setSearchResults([]);
+      setHasSearched(false);
+
+      // Determine error message based on error type
+      let userErrorMessage = 'An error occurred while searching for numbers, please try again';
+
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          userErrorMessage = 'You do not have permission to access the number search';
+        } else if (error.message.includes('unavailable')) {
+          userErrorMessage = 'Number search is temporarily unavailable, please try again later';
+        } else if (error.message.includes('network')) {
+          userErrorMessage = 'Network connection error, please check your internet connection';
+        } else if (error.message.includes('not-found')) {
+          userErrorMessage = 'Number collection not found, please contact customer support';
+        } else if (error.message.includes('quota-exceeded')) {
+          userErrorMessage = 'Service quota exceeded, please try again later';
+        }
+      }
+
+      setErrorMessage(userErrorMessage);
+      setShowErrorModal(true);
     } finally {
       setIsSearching(false);
-      setHasSearched(true);
     }
   };
 
@@ -249,7 +417,7 @@ const ShortNumbers: React.FC = () => {
         </div>
 
         {/* Main Content Section */}
-        <div className={`rounded-3xl shadow-2xl border border-slate-700/50 relative ${isCountryDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
+        <div className={`rounded-3xl shadow-2xl border border-slate-700/50 relative ${(isCountryDropdownOpen || isServiceDropdownOpen) ? 'overflow-visible' : 'overflow-hidden'}`}>
             
           {!hasSearched ? (
             /* SEARCH VIEW */
@@ -274,7 +442,7 @@ const ShortNumbers: React.FC = () => {
                           <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
                             Search Service
                           </label>
-                          <div className="relative group">
+                          <div className="relative group" ref={serviceDropdownRef}>
                             <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                               <svg className="h-6 w-6 text-emerald-400 group-focus-within:text-emerald-300 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -283,10 +451,27 @@ const ShortNumbers: React.FC = () => {
                             <input
                               type="text"
                               value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                              className="w-full pl-14 pr-3 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50"
-                              placeholder="Enter service name"
+                              onChange={(e) => handleServiceSearch(e.target.value)}
+                              onFocus={handleServiceInputFocus}
+                              disabled={isLoadingServices || hasError}
+                              className="w-full pl-14 pr-3 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              placeholder={isLoadingServices ? "Loading services..." : "Enter service name"}
                             />
+
+                            {/* Service Dropdown */}
+                            {isServiceDropdownOpen && !isLoadingServices && !hasError && (
+                              <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
+                                {filteredServices.map((service) => (
+                                  <div
+                                    key={service.id}
+                                    onClick={() => handleServiceSelect(service)}
+                                    className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                                  >
+                                    <span className="text-white">{service.name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -297,8 +482,12 @@ const ShortNumbers: React.FC = () => {
                           </label>
                           <div className="relative group" ref={dropdownRef}>
                             <div
-                              onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-                              className="w-full pl-12 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                              onClick={() => !isLoadingServices && !hasError && setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                              className={`w-full pl-12 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${
+                                isLoadingServices || hasError
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : 'cursor-pointer hover:border-slate-500/50'
+                              }`}
                             >
                               <div className="flex items-center">
                                 <div className="absolute left-4">
@@ -315,7 +504,7 @@ const ShortNumbers: React.FC = () => {
                             </div>
 
                             {/* Custom Dropdown Options */}
-                            {isCountryDropdownOpen && (
+                            {isCountryDropdownOpen && !isLoadingServices && !hasError && (
                               <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
                                 {countries.map((country) => (
                                   <div
@@ -340,62 +529,26 @@ const ShortNumbers: React.FC = () => {
 
                     </div>
 
-                    {/* Number Type Toggle */}
-                    <div className="flex flex-col items-center space-y-3">
-                      <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider text-center">
-                        Number type
-                      </label>
-                      <div className="flex items-center bg-slate-700/50 rounded-full p-2 border border-slate-600/50">
-                        <button
-                          onClick={() => setNumberType('single')}
-                          className={`px-4 sm:px-6 lg:px-8 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[2.5rem] flex items-center ${
-                            numberType === 'single'
-                              ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg' 
-                              : 'text-slate-400 hover:text-slate-300'
-                          }`}
-                        >
-                          Single Use
-                        </button>
-                        <button
-                          onClick={() => setNumberType('reusable')}
-                          className={`px-4 sm:px-6 lg:px-8 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[2.5rem] flex items-center ${
-                            numberType === 'reusable'
-                              ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg' 
-                              : 'text-slate-400 hover:text-slate-300'
-                          }`}
-                        >
-                          Reusable
-                        </button>
-                        <button
-                          onClick={() => setNumberType('receive-send')}
-                          className={`px-4 sm:px-6 lg:px-8 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[2.5rem] flex items-center ${
-                            numberType === 'receive-send'
-                              ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg' 
-                              : 'text-slate-400 hover:text-slate-300'
-                          }`}
-                        >
-                          Receive/Send
-                        </button>
-                      </div>
-                    </div>
 
                     {/* Search Button */}
                     <div className="flex flex-col items-center space-y-3">
-                      <button 
+                      <button
                         onClick={handleSearch}
-                        disabled={!searchTerm.trim() || isSearching}
+                        disabled={!selectedService || isSearching || isLoadingServices || hasError}
                         className="group px-8 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[150px]"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         
                         <div className="relative z-10 flex items-center justify-center">
-                          {isSearching ? (
+                          {isSearching || isLoadingServices ? (
                             <svg className="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                           ) : (
                             <span className="group-hover:tracking-wide transition-all duration-300">
-                              <span>Search numbers</span>
+                              <span>
+                                {isLoadingServices ? 'Loading...' : 'Search numbers'}
+                              </span>
                             </span>
                           )}
                         </div>
@@ -463,9 +616,9 @@ const ShortNumbers: React.FC = () => {
                             <div className="flex items-center space-x-2">
                               <div className="w-9 h-9 bg-blue-300/10 rounded-xl flex items-center justify-center">
                                 <span className="text-emerald-400 font-bold text-sm">
-                                  {searchResults.length === 1 ? '1st' : 
-                                   searchResults.indexOf(option) === 0 ? '1st' :
-                                   searchResults.indexOf(option) === 1 ? '2nd' : '3rd'}
+                                  {searchResults.indexOf(option) === 0 ? '1st' :
+                                   searchResults.indexOf(option) === 1 ? '2nd' :
+                                   searchResults.indexOf(option) === 2 ? '3rd' : '4th'}
                                 </span>
                               </div>
                               <div>
@@ -478,40 +631,33 @@ const ShortNumbers: React.FC = () => {
                           <div className="md:flex md:items-center md:justify-between">
                             {/* Mobile Layout */}
                             <div className="md:hidden space-y-3">
-                              {/* Price, Duration, Success Rate in two columns */}
+                              {/* Price, Reusable, Each Reuse, Receive/Send in order */}
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between text-md">
                                   <span className="text-slate-300 font-medium">Price:</span>
                                   <span className="text-emerald-400 font-semibold">
-                                    ${option.price.toFixed(2)}
+                                    ${formatPrice(option.price)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between text-md">
+                                  <span className="text-slate-300 font-medium">Reusable:</span>
+                                  <span className={`font-semibold ${option.isReusable ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {option.isReusable ? 'Yes' : 'No'}
                                   </span>
                                 </div>
                                 {option.isReusable && option.extraSmsPrice && (
                                   <div className="flex items-center justify-between text-md">
                                     <span className="text-slate-300 font-medium">Each reuse:</span>
                                     <span className="text-emerald-400 font-semibold">
-                                      ${option.extraSmsPrice.toFixed(2)}
-                                    </span>
-                                  </div>
-                                )}
-                                {option.receiveSend ? (
-                                  <div className="flex items-center justify-between text-md">
-                                    <span className="text-slate-300 font-medium">Receive/Send:</span>
-                                    <span className="font-semibold text-emerald-400">
-                                      Yes
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-between text-md">
-                                    <span className="text-slate-300 font-medium">Reusable:</span>
-                                    <span className={`font-semibold ${option.isReusable ? 'text-emerald-400' : 'text-red-400'}`}>
-                                      {option.isReusable ? 'Yes' : 'No'}
+                                      ${formatPrice(option.extraSmsPrice)}
                                     </span>
                                   </div>
                                 )}
                                 <div className="flex items-center justify-between text-md">
-                                  <span className="text-slate-300 font-medium">Success Rate:</span>
-                                  <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
+                                  <span className="text-slate-300 font-medium">Receive/Send:</span>
+                                  <span className={`font-semibold ${option.receiveSend ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {option.receiveSend ? 'Yes' : 'No'}
+                                  </span>
                                 </div>
                               </div>
                               {/* Purchase Button - full width */}
@@ -523,11 +669,18 @@ const ShortNumbers: React.FC = () => {
                               </button>
                             </div>
 
-                            {/* Desktop Layout - unchanged */}
+                            {/* Desktop Layout - ordered: Price, Reusable, Each Reuse, Receive/Send, Purchase */}
                             <div className="hidden md:flex md:items-center md:space-x-2 text-md">
                               <span className="text-slate-300 font-medium">Price:</span>
                               <span className="text-emerald-400 font-semibold">
-                                ${option.price.toFixed(2)}
+                                ${formatPrice(option.price)}
+                              </span>
+                            </div>
+
+                            <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                              <span className="text-slate-300 font-medium">Reusable:</span>
+                              <span className={`font-semibold ${option.isReusable ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {option.isReusable ? 'Yes' : 'No'}
                               </span>
                             </div>
 
@@ -535,30 +688,16 @@ const ShortNumbers: React.FC = () => {
                               <div className="hidden md:flex md:items-center md:space-x-2 text-md">
                                 <span className="text-slate-300 font-medium">Each reuse:</span>
                                 <span className="text-emerald-400 font-semibold">
-                                  ${option.extraSmsPrice.toFixed(2)}
-                                </span>
-                              </div>
-                            )}
-
-                            {option.receiveSend ? (
-                              <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                                <span className="text-slate-300 font-medium">Receive/Send:</span>
-                                <span className="font-semibold text-emerald-400">
-                                  Yes
-                                </span>
-                              </div>
-                            ) : (
-                              <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                                <span className="text-slate-300 font-medium">Reusable:</span>
-                                <span className={`font-semibold ${option.isReusable ? 'text-emerald-400' : 'text-red-400'}`}>
-                                  {option.isReusable ? 'Yes' : 'No'}
+                                  ${formatPrice(option.extraSmsPrice)}
                                 </span>
                               </div>
                             )}
 
                             <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                              <span className="text-slate-300 font-medium">Success Rate:</span>
-                              <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
+                              <span className="text-slate-300 font-medium">Receive/Send:</span>
+                              <span className={`font-semibold ${option.receiveSend ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {option.receiveSend ? 'Yes' : 'No'}
+                              </span>
                             </div>
 
                             <button 
@@ -587,6 +726,31 @@ const ShortNumbers: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Error Modal */}
+        {showErrorModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+                <p className="text-blue-200 mb-4">{errorMessage}</p>
+                <button
+                  onClick={handleErrorModalClose}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
