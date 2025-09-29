@@ -164,6 +164,12 @@ service cloud.firestore {
       }
     }
 
+    // Users can ONLY read the emptySimcardCatalog document from fees collection
+    match /fees/emptySimcardCatalog {
+      allow read: if request.auth != null;
+      allow write: if false; // No write access
+    }
+
     // Default deny all other documents
     match /{document=**} {
       allow read, write: if false;

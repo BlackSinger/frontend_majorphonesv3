@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 interface NumberOption {
   id: string;
@@ -10,7 +12,6 @@ interface NumberOption {
   countryCode: string;
   countryPrefix: string;
   duration: number;
-  successRate: number;
 }
 
 const EmptySimcard: React.FC = () => {
@@ -20,7 +21,19 @@ const EmptySimcard: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+
+  // Error handling state
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Helper function to safely format price
+  const formatPrice = (price: any): string => {
+    // Convert to number and take only first 2 decimals
+    const numPrice = parseFloat(Number(price).toFixed(2));
+    return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
+  };
 
   const countries = [
     { 
@@ -56,39 +69,79 @@ const EmptySimcard: React.FC = () => {
     };
   }, []);
 
+  // Handle error modal close
+  const handleErrorModalClose = () => {
+    setShowErrorModal(false);
+    setErrorMessage('');
+  };
+
   const handleSearch = async () => {
     setIsSearching(true);
     setHasSearched(false);
 
     try {
-      // Simulate API call - replace with actual API endpoint
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      // Get price from fees/emptySimcardCatalog document
+      const docRef = doc(db, 'fees', 'emptySimcardCatalog');
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        throw new Error('not-found');
+      }
+
+      const data = docSnap.data();
+      const thirtyDaysPrice = data.thirtyDays;
+
+      if (!thirtyDaysPrice) {
+        throw new Error('Price data not available');
+      }
+
       const selectedCountryData = countries.find(c => c.name === selectedCountry);
       const countryCode = selectedCountryData?.code || 'US';
       const countryPrefix = selectedCountryData?.prefix || '+1';
-      
-      // Mock data for empty simcard numbers
-      const mockResults: NumberOption[] = [
+
+      // Create single number option with price from Firebase
+      const result: NumberOption[] = [
         {
-          id: '1',
-          number: '555-0123',
-          price: 25.00,
+          id: 'empty-simcard-1',
+          number: `${countryPrefix}-XXXXXX`, // Placeholder number
+          price: Number(thirtyDaysPrice),
           country: selectedCountry,
           countryCode: countryCode,
           countryPrefix: countryPrefix,
-          duration: 30,
-          successRate: 99
+          duration: 30
         }
       ];
 
-      setSearchResults(mockResults);
+      setSearchResults(result);
+      setHasSearched(true);
     } catch (error) {
       console.error('Error searching numbers:', error);
+
+      // Reset search state to allow retry
       setSearchResults([]);
+      setHasSearched(false);
+
+      // Determine error message based on error type
+      let userErrorMessage = 'An error occurred while searching for numbers, please try again';
+
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          userErrorMessage = 'You do not have permission to access the number search';
+        } else if (error.message.includes('unavailable')) {
+          userErrorMessage = 'Number search is temporarily unavailable, please try again later';
+        } else if (error.message.includes('network')) {
+          userErrorMessage = 'Network connection error, please check your internet connection';
+        } else if (error.message.includes('not-found')) {
+          userErrorMessage = 'Number options not found, please contact customer support';
+        } else if (error.message.includes('quota-exceeded')) {
+          userErrorMessage = 'Service quota exceeded, please try again later';
+        }
+      }
+
+      setErrorMessage(userErrorMessage);
+      setShowErrorModal(true);
     } finally {
       setIsSearching(false);
-      setHasSearched(true);
     }
   };
 
@@ -232,8 +285,8 @@ const EmptySimcard: React.FC = () => {
               <div className="relative z-10">
                 {/* Back Button */}
                 <div className="mb-5">
-                  <button 
-                    onClick={() => setHasSearched(false)}
+                  <button
+                    onClick={() => window.location.reload()}
                     className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
                   >
                     <svg className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -296,12 +349,12 @@ const EmptySimcard: React.FC = () => {
                         <div className="md:flex md:items-center md:justify-between">
                           {/* Mobile Layout */}
                           <div className="md:hidden space-y-3">
-                            {/* Price, Duration, Success Rate in two columns */}
+                            {/* Price, Duration, Renewable in two columns */}
                             <div className="space-y-2">
                               <div className="flex items-center justify-between text-md">
                                 <span className="text-slate-300 font-medium">Price:</span>
                                 <span className="text-emerald-400 font-semibold">
-                                  ${option.price.toFixed(2)}
+                                  ${formatPrice(option.price)}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between text-md">
@@ -311,8 +364,8 @@ const EmptySimcard: React.FC = () => {
                                 </span>
                               </div>
                               <div className="flex items-center justify-between text-md">
-                                <span className="text-slate-300 font-medium">Success Rate:</span>
-                                <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
+                                <span className="text-slate-300 font-medium">Renewable:</span>
+                                <span className="text-red-400 font-semibold">No</span>
                               </div>
                             </div>
                             {/* Purchase Button - full width */}
@@ -328,7 +381,7 @@ const EmptySimcard: React.FC = () => {
                           <div className="hidden md:flex md:items-center md:space-x-2 text-md">
                             <span className="text-slate-300 font-medium">Price:</span>
                             <span className="text-emerald-400 font-semibold">
-                              ${option.price.toFixed(2)}
+                              ${formatPrice(option.price)}
                             </span>
                           </div>
 
@@ -340,8 +393,8 @@ const EmptySimcard: React.FC = () => {
                           </div>
 
                           <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                            <span className="text-slate-300 font-medium">Success Rate:</span>
-                            <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
+                            <span className="text-slate-300 font-medium">Renewable:</span>
+                            <span className="text-red-400 font-semibold">No</span>
                           </div>
 
                           <button 
@@ -369,6 +422,31 @@ const EmptySimcard: React.FC = () => {
             </div>
           </div>
           </>
+        )}
+
+        {/* Error Modal */}
+        {showErrorModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+                <p className="text-blue-200 mb-4">{errorMessage}</p>
+                <button
+                  onClick={handleErrorModalClose}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </DashboardLayout>
