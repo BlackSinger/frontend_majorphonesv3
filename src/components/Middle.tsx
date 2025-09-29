@@ -1,16 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/config';
+
+// Global object to store service name
+const globalSearchData = {
+  name: ''
+};
 
 interface NumberOption {
   id: string;
   number: string;
-  price: number;
+  priceOneDay: number;
+  priceSevenDays: number;
+  priceFourteenDays: number;
   country: string;
   countryCode: string;
   countryPrefix: string;
   duration: number;
-  successRate: number;
+}
+
+interface ServiceOption {
+  id: string;
+  name: string;
 }
 
 const Middle: React.FC = () => {
@@ -21,7 +34,28 @@ const Middle: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+
+  // Services state
+  const [services, setServices] = useState<ServiceOption[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(true);
+  const [selectedService, setSelectedService] = useState<ServiceOption | null>(null);
+  const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
+  const [filteredServices, setFilteredServices] = useState<ServiceOption[]>([]);
+
+  // Error handling state
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [hasError, setHasError] = useState(false);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const serviceDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Helper function to safely format price
+  const formatPrice = (price: any): string => {
+    // Convert to number and take only first 2 decimals
+    const numPrice = parseFloat(Number(price).toFixed(2));
+    return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
+  };
 
   const countries = [
     { 
@@ -43,11 +77,123 @@ const Middle: React.FC = () => {
     }
   ];
 
+  // Load services from Firebase
+  const loadServices = async () => {
+    try {
+      setIsLoadingServices(true);
+      setHasError(false);
+      // Clear previous services and search state
+      setServices([]);
+      setFilteredServices([]);
+      setSelectedService(null);
+      setSearchTerm('');
+      setIsServiceDropdownOpen(false);
+
+      const servicesRef = collection(db, 'middleTargetsUSA');
+      const querySnapshot = await getDocs(servicesRef);
+
+      const servicesList: ServiceOption[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        servicesList.push({
+          id: doc.id,
+          name: data.name || doc.id // Use name field or document ID as fallback
+        });
+      });
+
+      // Sort services alphabetically
+      servicesList.sort((a, b) => a.name.localeCompare(b.name));
+
+      setServices(servicesList);
+      setFilteredServices(servicesList);
+      setHasError(false);
+    } catch (error) {
+      console.error('Error loading services:', error);
+      setServices([]);
+      setFilteredServices([]);
+      setHasError(true);
+
+      // Determine error message based on error type
+      let userErrorMessage = 'An error occurred while loading services, please contact support';
+
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          userErrorMessage = 'You do not have permission to access the services';
+        } else if (error.message.includes('unavailable')) {
+          userErrorMessage = 'Services are temporarily unavailable, please try again later';
+        } else if (error.message.includes('network')) {
+          userErrorMessage = 'Network connection error, please check your internet connection';
+        } else if (error.message.includes('not-found')) {
+          userErrorMessage = 'Services not found, please contact customer support';
+        }
+      }
+
+      setErrorMessage(userErrorMessage);
+      setShowErrorModal(true);
+    } finally {
+      setIsLoadingServices(false);
+    }
+  };
+
+  // Load services on component mount
+  useEffect(() => {
+    loadServices();
+  }, []);
+
+  // Handle error modal close
+  const handleErrorModalClose = () => {
+    setShowErrorModal(false);
+    setErrorMessage('');
+  };
+
+  // Handle service search filtering
+  const handleServiceSearch = (value: string) => {
+    setSearchTerm(value);
+
+    if (!value.trim()) {
+      setFilteredServices(services);
+      setIsServiceDropdownOpen(false);
+      return;
+    }
+
+    // Filter services based on search term
+    const filtered = services.filter(service =>
+      service.name.toLowerCase().includes(value.toLowerCase())
+    );
+
+    // If no matches found, show "Service not listed" option
+    if (filtered.length === 0) {
+      setFilteredServices([{ id: 'not-listed', name: 'Service not listed' }]);
+    } else {
+      setFilteredServices(filtered);
+    }
+
+    setIsServiceDropdownOpen(true);
+  };
+
+  // Handle service selection
+  const handleServiceSelect = (service: ServiceOption) => {
+    setSelectedService(service);
+    setSearchTerm(service.name);
+    setIsServiceDropdownOpen(false);
+  };
+
+  // Handle service input focus
+  const handleServiceInputFocus = () => {
+    if (!isLoadingServices && !isSearching && services.length > 0) {
+      setFilteredServices(services);
+      setIsServiceDropdownOpen(true);
+    }
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsCountryDropdownOpen(false);
+      }
+      if (serviceDropdownRef.current && !serviceDropdownRef.current.contains(event.target as Node)) {
+        setIsServiceDropdownOpen(false);
       }
     };
 
@@ -58,60 +204,114 @@ const Middle: React.FC = () => {
   }, []);
 
   const handleSearch = async () => {
-    if (!searchTerm.trim()) return;
+    if (!selectedService) return;
+
+    // Store service name in global object
+    globalSearchData.name = selectedService.name;
+
+    // Print to console for verification
+    console.log('Selected service name:', globalSearchData.name);
 
     setIsSearching(true);
     setHasSearched(false);
 
     try {
-      // Simulate API call - replace with actual API endpoint
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const selectedCountryData = countries.find(c => c.name === selectedCountry);
-      const countryCode = selectedCountryData?.code || 'US';
-      const countryPrefix = selectedCountryData?.prefix || '+1';
-      
-      // Mock data with duration instead of reusability
-      const mockResults: NumberOption[] = [
-        {
-          id: '1',
-          number: '555-0456',
-          price: 1.80,
-          country: selectedCountry,
-          countryCode: countryCode,
-          countryPrefix: countryPrefix,
-          duration: 1,
-          successRate: 88
-        },
-        {
-          id: '2',
-          number: '555-0123',
-          price: 2.50,
-          country: selectedCountry,
-          countryCode: countryCode,
-          countryPrefix: countryPrefix,
-          duration: 7,
-          successRate: 95
-        },
-        {
-          id: '3',
-          number: '555-0789',
-          price: 3.20,
-          country: selectedCountry,
-          countryCode: countryCode,
-          countryPrefix: countryPrefix,
-          duration: 14,
-          successRate: 92
-        }
-      ];
+      let allNumbers: NumberOption[] = [];
 
-      setSearchResults(mockResults);
+      // Search in middleUSA/opt4/services collection
+      const servicesRef = collection(db, 'middleUSA', 'opt4', 'services');
+      const querySnapshot = await getDocs(servicesRef);
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+
+        // Check if service name matches EXACTLY (case insensitive)
+        if (data.name && data.name.toLowerCase() === globalSearchData.name.toLowerCase()) {
+          const selectedCountryData = countries.find(c => c.name === selectedCountry);
+          const countryCode = selectedCountryData?.code || 'US';
+          const countryPrefix = selectedCountryData?.prefix || '+1';
+
+          // Create 3 number options based on the three prices
+          if (data.priceOneDay) {
+            allNumbers.push({
+              id: `1day-${doc.id}`,
+              number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+              priceOneDay: Number(data.priceOneDay),
+              priceSevenDays: Number(data.priceSevenDays || 0),
+              priceFourteenDays: Number(data.priceFourteenDays || 0),
+              country: selectedCountry,
+              countryCode: countryCode,
+              countryPrefix: countryPrefix,
+              duration: 1
+            });
+          }
+
+          if (data.priceSevenDays) {
+            allNumbers.push({
+              id: `7days-${doc.id}`,
+              number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+              priceOneDay: Number(data.priceOneDay || 0),
+              priceSevenDays: Number(data.priceSevenDays),
+              priceFourteenDays: Number(data.priceFourteenDays || 0),
+              country: selectedCountry,
+              countryCode: countryCode,
+              countryPrefix: countryPrefix,
+              duration: 7
+            });
+          }
+
+          if (data.priceFourteenDays) {
+            allNumbers.push({
+              id: `14days-${doc.id}`,
+              number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+              priceOneDay: Number(data.priceOneDay || 0),
+              priceSevenDays: Number(data.priceSevenDays || 0),
+              priceFourteenDays: Number(data.priceFourteenDays),
+              country: selectedCountry,
+              countryCode: countryCode,
+              countryPrefix: countryPrefix,
+              duration: 14
+            });
+          }
+        }
+      });
+
+      // Only show results if we have them, otherwise stay in search view
+      if (allNumbers.length > 0) {
+        setSearchResults(allNumbers);
+        setHasSearched(true);
+      } else {
+        setSearchResults([]);
+        setHasSearched(false);
+      }
     } catch (error) {
       console.error('Error searching numbers:', error);
+
+      // Reset search state to allow retry
       setSearchResults([]);
+      setHasSearched(false);
+
+      // Determine error message based on error type
+      let userErrorMessage = 'An error occurred while searching for numbers, please try again';
+
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          userErrorMessage = 'You do not have permission to access the number search';
+        } else if (error.message.includes('unavailable')) {
+          userErrorMessage = 'Number search is temporarily unavailable, please try again later';
+        } else if (error.message.includes('network')) {
+          userErrorMessage = 'Network connection error, please check your internet connection';
+        } else if (error.message.includes('not-found')) {
+          userErrorMessage = 'Number collection not found, please contact customer support';
+        } else if (error.message.includes('quota-exceeded')) {
+          userErrorMessage = 'Service quota exceeded, please try again later';
+        }
+      }
+
+      setErrorMessage(userErrorMessage);
+      setShowErrorModal(true);
     } finally {
       setIsSearching(false);
-      setHasSearched(true);
     }
   };
 
@@ -150,7 +350,7 @@ const Middle: React.FC = () => {
         </div>
 
         {/* Main Content Section */}
-        <div className={`rounded-3xl shadow-2xl border border-slate-700/50 relative ${isCountryDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
+        <div className={`rounded-3xl shadow-2xl border border-slate-700/50 relative ${(isCountryDropdownOpen || isServiceDropdownOpen) ? 'overflow-visible' : 'overflow-hidden'}`}>
           
           {!hasSearched ? (
             /* SEARCH VIEW */
@@ -175,7 +375,7 @@ const Middle: React.FC = () => {
                         <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
                           Search Service
                         </label>
-                        <div className="relative group">
+                        <div className="relative group" ref={serviceDropdownRef}>
                           <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                             <svg className="h-6 w-6 text-emerald-400 group-focus-within:text-emerald-300 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -184,10 +384,27 @@ const Middle: React.FC = () => {
                           <input
                             type="text"
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-14 pr-3 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50"
-                            placeholder="Enter service name"
+                            onChange={(e) => handleServiceSearch(e.target.value)}
+                            onFocus={handleServiceInputFocus}
+                            disabled={isLoadingServices || hasError || isSearching}
+                            className="w-full pl-14 pr-3 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            placeholder={isLoadingServices ? "Loading services..." : "Enter service name"}
                           />
+
+                          {/* Service Dropdown */}
+                          {isServiceDropdownOpen && !isLoadingServices && !hasError && !isSearching && (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
+                              {filteredServices.map((service) => (
+                                <div
+                                  key={service.id}
+                                  onClick={() => handleServiceSelect(service)}
+                                  className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                                >
+                                  <span className="text-white">{service.name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -246,22 +463,24 @@ const Middle: React.FC = () => {
                     {/* Search Button */}
                     <div className="flex flex-col items-center space-y-3">
                       <div className="h-2"></div>
-                      <button 
+                      <button
                         onClick={handleSearch}
-                        disabled={!searchTerm.trim() || isSearching}
+                        disabled={!selectedService || isSearching || isLoadingServices || hasError}
                         className="group px-5 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[200px]"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                        
+
                         <div className="relative z-10 flex items-center justify-center">
-                          {isSearching ? (
+                          {isSearching || isLoadingServices ? (
                             <svg className="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                           ) : (
                             <>
                               <span className="group-hover:tracking-wide transition-all duration-300">
-                                <span>Search numbers</span>
+                                <span>
+                                  {isLoadingServices ? 'Loading...' : 'Search numbers'}
+                                </span>
                               </span>
                             </>
                           )}
@@ -278,8 +497,8 @@ const Middle: React.FC = () => {
               <div className="relative z-10">
                 {/* Back Button */}
                 <div className="mb-5">
-                  <button 
-                    onClick={() => setHasSearched(false)}
+                  <button
+                    onClick={() => window.location.reload()}
                     className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
                   >
                     <svg className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -345,12 +564,16 @@ const Middle: React.FC = () => {
                         <div className="md:flex md:items-center md:justify-between">
                           {/* Mobile Layout */}
                           <div className="md:hidden space-y-3">
-                            {/* Price, Duration, Success Rate in two columns */}
+                            {/* Price, Duration, Renewable in two columns */}
                             <div className="space-y-2">
                               <div className="flex items-center justify-between text-md">
                                 <span className="text-slate-300 font-medium">Price:</span>
                                 <span className="text-emerald-400 font-semibold">
-                                  ${option.price.toFixed(2)}
+                                  ${formatPrice(
+                                    option.duration === 1 ? option.priceOneDay :
+                                    option.duration === 7 ? option.priceSevenDays :
+                                    option.priceFourteenDays
+                                  )}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between text-md">
@@ -360,8 +583,8 @@ const Middle: React.FC = () => {
                                 </span>
                               </div>
                               <div className="flex items-center justify-between text-md">
-                                <span className="text-slate-300 font-medium">Success Rate:</span>
-                                <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
+                                <span className="text-slate-300 font-medium">Renewable:</span>
+                                <span className="text-red-400 font-semibold">No</span>
                               </div>
                             </div>
                             {/* Purchase Button - full width */}
@@ -373,11 +596,15 @@ const Middle: React.FC = () => {
                             </button>
                           </div>
 
-                          {/* Desktop Layout - unchanged */}
+                          {/* Desktop Layout */}
                           <div className="hidden md:flex md:items-center md:space-x-2 text-md">
                             <span className="text-slate-300 font-medium">Price:</span>
                             <span className="text-emerald-400 font-semibold">
-                              ${option.price.toFixed(2)}
+                              ${formatPrice(
+                                option.duration === 1 ? option.priceOneDay :
+                                option.duration === 7 ? option.priceSevenDays :
+                                option.priceFourteenDays
+                              )}
                             </span>
                           </div>
 
@@ -389,8 +616,8 @@ const Middle: React.FC = () => {
                           </div>
 
                           <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                            <span className="text-slate-300 font-medium">Success Rate:</span>
-                            <span className="text-emerald-400 font-semibold">{option.successRate}%</span>
+                            <span className="text-slate-300 font-medium">Renewable:</span>
+                            <span className="text-red-400 font-semibold">No</span>
                           </div>
 
                           <button 
@@ -419,6 +646,31 @@ const Middle: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Error Modal */}
+        {showErrorModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+                <p className="text-blue-200 mb-4">{errorMessage}</p>
+                <button
+                  onClick={handleErrorModalClose}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
