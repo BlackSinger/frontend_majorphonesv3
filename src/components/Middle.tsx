@@ -163,7 +163,7 @@ const Middle: React.FC = () => {
 
     // If no matches found, show "Service not listed" option
     if (filtered.length === 0) {
-      setFilteredServices([{ id: 'not-listed', name: 'Service not listed' }]);
+      setFilteredServices([{ id: 'allservices', name: 'Service not listed' }]);
     } else {
       setFilteredServices(filtered);
     }
@@ -224,54 +224,94 @@ const Middle: React.FC = () => {
 
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        let shouldInclude = false;
 
-        // Check if service name matches EXACTLY (case insensitive)
-        if (data.name && data.name.toLowerCase() === globalSearchData.name.toLowerCase()) {
+        // Check if this is the "Service not listed" case
+        if (globalSearchData.name.toLowerCase() === 'service not listed') {
+          // For "Service not listed", look for document ID "allservices"
+          shouldInclude = doc.id === 'allservices';
+        } else {
+          // For other services, check if service name matches EXACTLY (case insensitive)
+          shouldInclude = data.name && data.name.toLowerCase() === globalSearchData.name.toLowerCase();
+        }
+
+        if (shouldInclude) {
           const selectedCountryData = countries.find(c => c.name === selectedCountry);
           const countryCode = selectedCountryData?.code || 'US';
           const countryPrefix = selectedCountryData?.prefix || '+1';
 
-          // Create 3 number options based on the three prices
-          if (data.priceOneDay) {
-            allNumbers.push({
-              id: `1day-${doc.id}`,
-              number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
-              priceOneDay: Number(data.priceOneDay),
-              priceSevenDays: Number(data.priceSevenDays || 0),
-              priceFourteenDays: Number(data.priceFourteenDays || 0),
-              country: selectedCountry,
-              countryCode: countryCode,
-              countryPrefix: countryPrefix,
-              duration: 1
-            });
-          }
+          // For "allservices" document, only create 7 and 14 days options (no 1 day)
+          if (doc.id === 'allservices') {
+            if (data.priceSevenDays) {
+              allNumbers.push({
+                id: `7days-${doc.id}`,
+                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                priceOneDay: 0,
+                priceSevenDays: Number(data.priceSevenDays),
+                priceFourteenDays: Number(data.priceFourteenDays || 0),
+                country: selectedCountry,
+                countryCode: countryCode,
+                countryPrefix: countryPrefix,
+                duration: 7
+              });
+            }
 
-          if (data.priceSevenDays) {
-            allNumbers.push({
-              id: `7days-${doc.id}`,
-              number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
-              priceOneDay: Number(data.priceOneDay || 0),
-              priceSevenDays: Number(data.priceSevenDays),
-              priceFourteenDays: Number(data.priceFourteenDays || 0),
-              country: selectedCountry,
-              countryCode: countryCode,
-              countryPrefix: countryPrefix,
-              duration: 7
-            });
-          }
+            if (data.priceFourteenDays) {
+              allNumbers.push({
+                id: `14days-${doc.id}`,
+                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                priceOneDay: 0,
+                priceSevenDays: Number(data.priceSevenDays || 0),
+                priceFourteenDays: Number(data.priceFourteenDays),
+                country: selectedCountry,
+                countryCode: countryCode,
+                countryPrefix: countryPrefix,
+                duration: 14
+              });
+            }
+          } else {
+            // For other services, create all three options as before
+            if (data.priceOneDay) {
+              allNumbers.push({
+                id: `1day-${doc.id}`,
+                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                priceOneDay: Number(data.priceOneDay),
+                priceSevenDays: Number(data.priceSevenDays || 0),
+                priceFourteenDays: Number(data.priceFourteenDays || 0),
+                country: selectedCountry,
+                countryCode: countryCode,
+                countryPrefix: countryPrefix,
+                duration: 1
+              });
+            }
 
-          if (data.priceFourteenDays) {
-            allNumbers.push({
-              id: `14days-${doc.id}`,
-              number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
-              priceOneDay: Number(data.priceOneDay || 0),
-              priceSevenDays: Number(data.priceSevenDays || 0),
-              priceFourteenDays: Number(data.priceFourteenDays),
-              country: selectedCountry,
-              countryCode: countryCode,
-              countryPrefix: countryPrefix,
-              duration: 14
-            });
+            if (data.priceSevenDays) {
+              allNumbers.push({
+                id: `7days-${doc.id}`,
+                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                priceOneDay: Number(data.priceOneDay || 0),
+                priceSevenDays: Number(data.priceSevenDays),
+                priceFourteenDays: Number(data.priceFourteenDays || 0),
+                country: selectedCountry,
+                countryCode: countryCode,
+                countryPrefix: countryPrefix,
+                duration: 7
+              });
+            }
+
+            if (data.priceFourteenDays) {
+              allNumbers.push({
+                id: `14days-${doc.id}`,
+                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                priceOneDay: Number(data.priceOneDay || 0),
+                priceSevenDays: Number(data.priceSevenDays || 0),
+                priceFourteenDays: Number(data.priceFourteenDays),
+                country: selectedCountry,
+                countryCode: countryCode,
+                countryPrefix: countryPrefix,
+                duration: 14
+              });
+            }
           }
         }
       });
