@@ -294,7 +294,7 @@ const LongTerm: React.FC = () => {
         } else if (error.message.includes('network')) {
           userErrorMessage = 'Network connection error, please check your internet connection';
         } else if (error.message.includes('not-found')) {
-          userErrorMessage = 'Number collection not found, please contact customer support';
+          userErrorMessage = 'Number options not found, please contact customer support';
         } else if (error.message.includes('quota-exceeded')) {
           userErrorMessage = 'Service quota exceeded, please try again later';
         }
@@ -560,7 +560,10 @@ const LongTerm: React.FC = () => {
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-2">
                             <div className="w-9 h-9 bg-blue-300/10 rounded-xl flex items-center justify-center">
-                              <span className="text-emerald-400 font-bold text-sm">1st</span>
+                              <span className="text-emerald-400 font-bold text-sm">
+                                {searchResults.indexOf(option) === 0 ? '1st' :
+                                 searchResults.indexOf(option) === 1 ? '2nd' : '3rd'}
+                              </span>
                             </div>
                             <div>
                               <p className="text-white font-bold text-md">Option</p>

@@ -342,7 +342,7 @@ const Middle: React.FC = () => {
         } else if (error.message.includes('network')) {
           userErrorMessage = 'Network connection error, please check your internet connection';
         } else if (error.message.includes('not-found')) {
-          userErrorMessage = 'Number collection not found, please contact customer support';
+          userErrorMessage = 'Number options not found, please contact customer support';
         } else if (error.message.includes('quota-exceeded')) {
           userErrorMessage = 'Service quota exceeded, please try again later';
         }
