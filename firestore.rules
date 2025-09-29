@@ -56,8 +56,68 @@ service cloud.firestore {
       allow write: if false; // No write access
     }
 
+    // Users can read stnTargetsGermany collection for service selection (read-only)
+    match /stnTargetsGermany/{serviceId} {
+      allow read: if request.auth != null;
+      allow write: if false; // No write access
+    }
+
+    // Users can read stnTargetsFrance collection for service selection (read-only)
+    match /stnTargetsFrance/{serviceId} {
+      allow read: if request.auth != null;
+      allow write: if false; // No write access
+    }
+
     // Users can read stnUSA collection and its subcollections for number search (read-only)
     match /stnUSA/{optionId} {
+      allow read: if request.auth != null;
+      allow write: if false; // No write access
+
+      // Allow read access to services subcollection
+      match /services/{serviceId} {
+        allow read: if request.auth != null;
+        allow write: if false; // No write access
+      }
+    }
+
+    // Users can read stnUK collection and its subcollections for number search (read-only)
+    match /stnUK/{optionId} {
+      allow read: if request.auth != null;
+      allow write: if false; // No write access
+
+      // Allow read access to services subcollection
+      match /services/{serviceId} {
+        allow read: if request.auth != null;
+        allow write: if false; // No write access
+      }
+    }
+
+    // Users can read stnIndia collection and its subcollections for number search (read-only)
+    match /stnIndia/{optionId} {
+      allow read: if request.auth != null;
+      allow write: if false; // No write access
+
+      // Allow read access to services subcollection
+      match /services/{serviceId} {
+        allow read: if request.auth != null;
+        allow write: if false; // No write access
+      }
+    }
+
+    // Users can read stnGermany collection and its subcollections for number search (read-only)
+    match /stnGermany/{optionId} {
+      allow read: if request.auth != null;
+      allow write: if false; // No write access
+
+      // Allow read access to services subcollection
+      match /services/{serviceId} {
+        allow read: if request.auth != null;
+        allow write: if false; // No write access
+      }
+    }
+
+    // Users can read stnFrance collection and its subcollections for number search (read-only)
+    match /stnFrance/{optionId} {
       allow read: if request.auth != null;
       allow write: if false; // No write access
 

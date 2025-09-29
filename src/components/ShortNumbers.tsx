@@ -66,6 +66,10 @@ const ShortNumbers: React.FC = () => {
         return 'stnTargetsUK';
       case 'India':
         return 'stnTargetsIndia';
+      case 'Germany':
+        return 'stnTargetsGermany';
+      case 'France':
+        return 'stnTargetsFrance';
       default:
         return 'stnTargetsUSA'; // Default fallback
     }
@@ -271,7 +275,7 @@ const ShortNumbers: React.FC = () => {
 
   // Handle service input focus
   const handleServiceInputFocus = () => {
-    if (!isLoadingServices && services.length > 0) {
+    if (!isLoadingServices && !isSearching && services.length > 0) {
       setFilteredServices(services);
       setIsServiceDropdownOpen(true);
     }
@@ -294,8 +298,8 @@ const ShortNumbers: React.FC = () => {
 
       // For United States, search in stnUSA collection
       if (selectedCountry === 'United States') {
-        // Search across opt1, opt2, opt3 documents and their services subcollections simultaneously
-        const searchPromises = ['opt1', 'opt2', 'opt3'].map(async (optDoc) => {
+        // Search across opt1, opt2, opt3, opt6 documents and their services subcollections simultaneously
+        const searchPromises = ['opt1', 'opt2', 'opt3', 'opt6'].map(async (optDoc) => {
           const servicesRef = collection(db, 'stnUSA', optDoc, 'services');
           const querySnapshot = await getDocs(servicesRef);
 
@@ -303,23 +307,25 @@ const ShortNumbers: React.FC = () => {
           querySnapshot.forEach((doc) => {
             const data = doc.data();
 
-            // Check if service name matches (case insensitive)
-            if (data.serviceName && data.serviceName.toLowerCase().includes(globalSearchData.serviceName.toLowerCase())) {
+            // Check if service name matches EXACTLY (case insensitive)
+            if (data.serviceName && data.serviceName.toLowerCase() === globalSearchData.serviceName.toLowerCase()) {
               const selectedCountryData = countries.find(c => c.name === selectedCountry);
               const countryCode = selectedCountryData?.code || 'US';
               const countryPrefix = selectedCountryData?.prefix || '+1';
 
               // Map properties based on source document
               const isOpt3 = optDoc === 'opt3';
+              const isOpt6 = optDoc === 'opt6';
 
               results.push({
                 id: `${optDoc}-${doc.id}`,
                 number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
                 price: data.price, // Only use Firestore price
+                extraSmsPrice: isOpt6 ? (data.price / 2) : undefined, // Only opt6 has extraSmsPrice for reuse (half of price)
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
-                isReusable: false, // All options are not reusable
+                isReusable: isOpt6, // Only opt6 is reusable
                 receiveSend: isOpt3 // Only opt3 has receive/send capability
               });
             }
@@ -336,8 +342,172 @@ const ShortNumbers: React.FC = () => {
 
         // Sort by price (lowest first)
         allNumbers.sort((a, b) => a.price - b.price);
+      } else if (selectedCountry === 'United Kingdom') {
+        // For United Kingdom, search in stnUK collection (opt2 and opt5 only)
+        const searchPromises = ['opt2', 'opt5'].map(async (optDoc) => {
+          const servicesRef = collection(db, 'stnUK', optDoc, 'services');
+          const querySnapshot = await getDocs(servicesRef);
+
+          const results: NumberOption[] = [];
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+
+            // Check if service name matches EXACTLY (case insensitive)
+            if (data.serviceName && data.serviceName.toLowerCase() === globalSearchData.serviceName.toLowerCase()) {
+              const selectedCountryData = countries.find(c => c.name === selectedCountry);
+              const countryCode = selectedCountryData?.code || 'GB';
+              const countryPrefix = selectedCountryData?.prefix || '+44';
+
+              // Both opt2 and opt5 for UK have same properties: not reusable, no receive/send
+              results.push({
+                id: `${optDoc}-${doc.id}`,
+                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                price: data.price, // Only use Firestore price
+                country: selectedCountry,
+                countryCode: countryCode,
+                countryPrefix: countryPrefix,
+                isReusable: false, // Both options are not reusable
+                receiveSend: false // Both options do not have receive/send
+              });
+            }
+          });
+
+          return results;
+        });
+
+        // Wait for all searches to complete
+        const searchResults = await Promise.all(searchPromises);
+
+        // Flatten results from all documents
+        allNumbers = searchResults.flat();
+
+        // Sort by price (lowest first)
+        allNumbers.sort((a, b) => a.price - b.price);
+      } else if (selectedCountry === 'India') {
+        // For India, search in stnIndia collection (opt2 and opt5 only)
+        const searchPromises = ['opt2', 'opt5'].map(async (optDoc) => {
+          const servicesRef = collection(db, 'stnIndia', optDoc, 'services');
+          const querySnapshot = await getDocs(servicesRef);
+
+          const results: NumberOption[] = [];
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+
+            // Check if service name matches EXACTLY (case insensitive)
+            if (data.serviceName && data.serviceName.toLowerCase() === globalSearchData.serviceName.toLowerCase()) {
+              const selectedCountryData = countries.find(c => c.name === selectedCountry);
+              const countryCode = selectedCountryData?.code || 'IN';
+              const countryPrefix = selectedCountryData?.prefix || '+91';
+
+              // Both opt2 and opt5 for India have same properties: not reusable, no receive/send
+              results.push({
+                id: `${optDoc}-${doc.id}`,
+                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                price: data.price, // Only use Firestore price
+                country: selectedCountry,
+                countryCode: countryCode,
+                countryPrefix: countryPrefix,
+                isReusable: false, // Both options are not reusable
+                receiveSend: false // Both options do not have receive/send
+              });
+            }
+          });
+
+          return results;
+        });
+
+        // Wait for all searches to complete
+        const searchResults = await Promise.all(searchPromises);
+
+        // Flatten results from all documents
+        allNumbers = searchResults.flat();
+
+        // Sort by price (lowest first)
+        allNumbers.sort((a, b) => a.price - b.price);
+      } else if (selectedCountry === 'Germany') {
+        // For Germany, search in stnGermany collection (opt2 and opt5 only)
+        const searchPromises = ['opt2', 'opt5'].map(async (optDoc) => {
+          const servicesRef = collection(db, 'stnGermany', optDoc, 'services');
+          const querySnapshot = await getDocs(servicesRef);
+
+          const results: NumberOption[] = [];
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+
+            // Check if service name matches EXACTLY (case insensitive)
+            if (data.serviceName && data.serviceName.toLowerCase() === globalSearchData.serviceName.toLowerCase()) {
+              const selectedCountryData = countries.find(c => c.name === selectedCountry);
+              const countryCode = selectedCountryData?.code || 'DE';
+              const countryPrefix = selectedCountryData?.prefix || '+49';
+
+              // Both opt2 and opt5 for Germany have same properties: not reusable, no receive/send
+              results.push({
+                id: `${optDoc}-${doc.id}`,
+                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                price: data.price, // Only use Firestore price
+                country: selectedCountry,
+                countryCode: countryCode,
+                countryPrefix: countryPrefix,
+                isReusable: false, // Both options are not reusable
+                receiveSend: false // Both options do not have receive/send
+              });
+            }
+          });
+
+          return results;
+        });
+
+        // Wait for all searches to complete
+        const searchResults = await Promise.all(searchPromises);
+
+        // Flatten results from all documents
+        allNumbers = searchResults.flat();
+
+        // Sort by price (lowest first)
+        allNumbers.sort((a, b) => a.price - b.price);
+      } else if (selectedCountry === 'France') {
+        // For France, search in stnFrance collection (opt2 and opt5 only)
+        const searchPromises = ['opt2', 'opt5'].map(async (optDoc) => {
+          const servicesRef = collection(db, 'stnFrance', optDoc, 'services');
+          const querySnapshot = await getDocs(servicesRef);
+
+          const results: NumberOption[] = [];
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+
+            // Check if service name matches EXACTLY (case insensitive)
+            if (data.serviceName && data.serviceName.toLowerCase() === globalSearchData.serviceName.toLowerCase()) {
+              const selectedCountryData = countries.find(c => c.name === selectedCountry);
+              const countryCode = selectedCountryData?.code || 'FR';
+              const countryPrefix = selectedCountryData?.prefix || '+33';
+
+              // Both opt2 and opt5 for France have same properties: not reusable, no receive/send
+              results.push({
+                id: `${optDoc}-${doc.id}`,
+                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                price: data.price, // Only use Firestore price
+                country: selectedCountry,
+                countryCode: countryCode,
+                countryPrefix: countryPrefix,
+                isReusable: false, // Both options are not reusable
+                receiveSend: false // Both options do not have receive/send
+              });
+            }
+          });
+
+          return results;
+        });
+
+        // Wait for all searches to complete
+        const searchResults = await Promise.all(searchPromises);
+
+        // Flatten results from all documents
+        allNumbers = searchResults.flat();
+
+        // Sort by price (lowest first)
+        allNumbers.sort((a, b) => a.price - b.price);
       } else {
-        // For other countries, implement similar logic when collections are available
+        // For other countries, no collections available yet
         allNumbers = [];
       }
 
@@ -453,13 +623,13 @@ const ShortNumbers: React.FC = () => {
                               value={searchTerm}
                               onChange={(e) => handleServiceSearch(e.target.value)}
                               onFocus={handleServiceInputFocus}
-                              disabled={isLoadingServices || hasError}
+                              disabled={isLoadingServices || hasError || isSearching}
                               className="w-full pl-14 pr-3 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                               placeholder={isLoadingServices ? "Loading services..." : "Enter service name"}
                             />
 
                             {/* Service Dropdown */}
-                            {isServiceDropdownOpen && !isLoadingServices && !hasError && (
+                            {isServiceDropdownOpen && !isLoadingServices && !hasError && !isSearching && (
                               <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
                                 {filteredServices.map((service) => (
                                   <div
@@ -482,9 +652,9 @@ const ShortNumbers: React.FC = () => {
                           </label>
                           <div className="relative group" ref={dropdownRef}>
                             <div
-                              onClick={() => !isLoadingServices && !hasError && setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                              onClick={() => !isLoadingServices && !hasError && !isSearching && setIsCountryDropdownOpen(!isCountryDropdownOpen)}
                               className={`w-full pl-12 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${
-                                isLoadingServices || hasError
+                                isLoadingServices || hasError || isSearching
                                   ? 'opacity-50 cursor-not-allowed'
                                   : 'cursor-pointer hover:border-slate-500/50'
                               }`}
@@ -504,7 +674,7 @@ const ShortNumbers: React.FC = () => {
                             </div>
 
                             {/* Custom Dropdown Options */}
-                            {isCountryDropdownOpen && !isLoadingServices && !hasError && (
+                            {isCountryDropdownOpen && !isLoadingServices && !hasError && !isSearching && (
                               <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
                                 {countries.map((country) => (
                                   <div
@@ -564,7 +734,7 @@ const ShortNumbers: React.FC = () => {
                   {/* Back Button */}
                   <div className="mb-5">
                     <button 
-                      onClick={() => setHasSearched(false)}
+                      onClick={() => window.location.reload()}
                       className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
                     >
                       <svg className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
