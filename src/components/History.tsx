@@ -1932,7 +1932,7 @@ const History: React.FC = () => {
 
         {/* UUID Modal */}
         {showUuidModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
             <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-70 h-58">
               <div className="text-center">
                 <div className="mb-4">
@@ -1972,7 +1972,7 @@ const History: React.FC = () => {
 
         {/* Information Modal */}
         {showInfoModal && selectedRecord && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
             <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
               <div className="text-center">
                 <div className="mb-4">
@@ -2030,7 +2030,7 @@ const History: React.FC = () => {
 
         {/* Proxy Information Modal */}
         {showProxyInfoModal && selectedProxyRecord && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
             <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
               <div className="text-center">
                 <div className="mb-4">
@@ -2088,7 +2088,7 @@ const History: React.FC = () => {
 
         {/* Error Modal */}
         {showErrorModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
             <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80 max-w-md">
               <div className="text-center">
                 <div className="mb-4">

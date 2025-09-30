@@ -234,7 +234,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
 
       {/* Error Modal */}
       {showErrorModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
           <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
             <div className="text-center">
               <div className="mb-4">

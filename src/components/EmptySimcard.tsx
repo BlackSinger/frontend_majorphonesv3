@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { getAuth } from 'firebase/auth';
 
 interface NumberOption {
   id: string;
@@ -25,6 +26,9 @@ const EmptySimcard: React.FC = () => {
   // Error handling state
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Purchase state - track which option is being purchased
+  const [purchasingOptionId, setPurchasingOptionId] = useState<string | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -73,6 +77,67 @@ const EmptySimcard: React.FC = () => {
   const handleErrorModalClose = () => {
     setShowErrorModal(false);
     setErrorMessage('');
+  };
+
+  const handlePurchase = async (option: NumberOption) => {
+    const currentUser = getAuth().currentUser;
+
+    if (!currentUser) {
+      setErrorMessage('You are not authenticated or your token is invalid');
+      setShowErrorModal(true);
+      return;
+    }
+
+    // Create unique identifier for this option
+    const uniqueOptionId = option.id;
+    setPurchasingOptionId(uniqueOptionId);
+
+    try {
+      // Get Firebase ID token
+      const idToken = await currentUser.getIdToken();
+
+      // Make API call to buyemptysimcardusa cloud function (no body needed)
+      const response = await fetch('https://buyemptysimcardusa-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success case - redirect to history
+        navigate('/history');
+      } else {
+        // Handle error responses
+        let errorMsg = 'An unknown error occurred';
+
+        if (data.message === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+        } else if (data.message === 'Invalid serviceId' || data.message === 'Invalid duration') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'You cannot buy an empty simcard, because you have used Amazon Pay') {
+          errorMsg = 'Users that deposit with Amazon Pay cannot purchase empty SIM cards';
+        } else if (data.message === 'Insufficient balance') {
+          errorMsg = 'You do not have enough balance to make the purchase';
+        } else if (data.message === 'Internal Server Error') {
+          errorMsg = 'Please contact our customer support';
+        } else if (data.message === 'Service unavailable') {
+          errorMsg = 'We ran out of SIM cards, try again later';
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('Buy Empty SIM Card USA purchase error:', error);
+      setErrorMessage('Please contact our customer support');
+      setShowErrorModal(true);
+    } finally {
+      setPurchasingOptionId(null);
+    }
   };
 
   const handleSearch = async () => {
@@ -307,7 +372,7 @@ const EmptySimcard: React.FC = () => {
                     {searchResults.length > 0 
                       ? (
                           <span className="flex items-center flex-wrap">
-                            Found {searchResults.length} numbers from {selectedCountry}
+                            Found {searchResults.length} number from {selectedCountry}
                             <span className="ml-2 hidden sm:inline">
                               {countries.find(c => c.name === selectedCountry)?.flag}
                             </span>
@@ -369,11 +434,20 @@ const EmptySimcard: React.FC = () => {
                               </div>
                             </div>
                             {/* Purchase Button - full width */}
-                            <button 
-                              onClick={() => navigate('/history')}
-                              className="w-full px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-md"
+                            <button
+                              onClick={() => handlePurchase(option)}
+                              disabled={purchasingOptionId !== null}
+                              className="w-full px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                             >
-                              Purchase
+                              {purchasingOptionId === option.id ? (
+                                <div className="flex items-center justify-center">
+                                  <svg className="w-4 h-4 animate-spin mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                  </svg>
+                                </div>
+                              ) : (
+                                'Purchase'
+                              )}
                             </button>
                           </div>
 
@@ -397,11 +471,20 @@ const EmptySimcard: React.FC = () => {
                             <span className="text-red-400 font-semibold">No</span>
                           </div>
 
-                          <button 
-                            onClick={() => navigate('/history')}
-                            className="hidden md:block px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm"
+                          <button
+                            onClick={() => handlePurchase(option)}
+                            disabled={purchasingOptionId !== null}
+                            className="hidden md:block px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[120px]"
                           >
-                            Purchase
+                            {purchasingOptionId === option.id ? (
+                              <div className="flex items-center justify-center">
+                                <svg className="w-4 h-4 animate-spin mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                              </div>
+                            ) : (
+                              'Purchase'
+                            )}
                           </button>
                         </div>
                       </div>
@@ -426,7 +509,7 @@ const EmptySimcard: React.FC = () => {
 
         {/* Error Modal */}
         {showErrorModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
             <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
               <div className="text-center">
                 <div className="mb-4">
