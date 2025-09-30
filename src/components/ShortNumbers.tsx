@@ -3,10 +3,19 @@ import { useNavigate, Link } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../firebase/config';
+import { getAuth } from 'firebase/auth';
 
 // Global object to store service name
 const globalSearchData = {
   serviceName: ''
+};
+
+// Global object to store purchase data
+const globalPurchaseData = {
+  serviceId: '',
+  option: 0
 };
 
 interface NumberOption {
@@ -19,6 +28,7 @@ interface NumberOption {
   countryPrefix: string;
   isReusable: boolean;
   receiveSend?: boolean;
+  opt: string;
 }
 
 interface ServiceOption {
@@ -28,6 +38,7 @@ interface ServiceOption {
 
 const ShortNumbers: React.FC = () => {
   const navigate = useNavigate();
+  const [user] = useAuthState(auth);
 
   // Helper function to safely format price
   const formatPrice = (price: any): string => {
@@ -53,6 +64,9 @@ const ShortNumbers: React.FC = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [hasError, setHasError] = useState(false);
+
+  // Purchase state - track which option is being purchased
+  const [purchasingOptionId, setPurchasingOptionId] = useState<string | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const serviceDropdownRef = useRef<HTMLDivElement>(null);
@@ -241,6 +255,399 @@ const ShortNumbers: React.FC = () => {
     setErrorMessage('');
   };
 
+  // Handle purchase for opt6 numbers (reusable)
+  const handleReuseUSAPurchase = async (uniqueOptionId: string) => {
+    const currentUser = getAuth().currentUser;
+
+    if (!currentUser) {
+      setErrorMessage('You are not authenticated or your token is invalid');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setPurchasingOptionId(uniqueOptionId);
+
+    try {
+      // Get Firebase ID token using official method
+      const idToken = await currentUser.getIdToken();
+
+      // Log token for debugging (remove in production)
+      console.log('Reuse USA - ID Token length:', idToken?.length);
+      console.log('Reuse USA - ID Token starts with:', idToken?.substring(0, 20));
+
+      // Make API call to reuseusa cloud function
+      const response = await fetch('https://reuseusa-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          serviceId: globalPurchaseData.serviceId
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success case - redirect to history
+        navigate('/history');
+      } else {
+        // Handle error responses for reuseusa
+        let errorMsg = 'An unknown error occurred';
+
+        if (data.message === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+        } else if (data.message === 'Insufficient balance') {
+          errorMsg = 'You do not have enough balance to make the purchase';
+        } else if (data.message === 'Failed to get number') {
+          errorMsg = 'We ran out of SIM cards, try again later';
+        } else if (data.message === 'Internal Server Error') {
+          errorMsg = 'Please contact our customer support';
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('Reuse USA purchase error:', error);
+      setErrorMessage('Please contact our customer support');
+      setShowErrorModal(true);
+    } finally {
+      setPurchasingOptionId(null);
+    }
+  };
+
+  // Handle purchase for opt1, opt2, opt3 numbers (standard)
+  const handleBuyShortUSAPurchase = async (uniqueOptionId: string) => {
+    const currentUser = getAuth().currentUser;
+
+    if (!currentUser) {
+      setErrorMessage('You are not authenticated or your token is invalid');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setPurchasingOptionId(uniqueOptionId);
+
+    try {
+      // Get Firebase ID token using official method
+      const idToken = await currentUser.getIdToken();
+
+      // Log token for debugging (remove in production)
+      console.log('Buy Short USA - ID Token length:', idToken?.length);
+      console.log('Buy Short USA - ID Token starts with:', idToken?.substring(0, 20));
+
+      // Make API call to buyshortusa cloud function
+      const response = await fetch('https://buyshortusa-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          serviceId: globalPurchaseData.serviceId,
+          option: globalPurchaseData.option
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success case - redirect to history
+        navigate('/history');
+      } else {
+        // Handle error responses for buyshortusa
+        let errorMsg = 'An unknown error occurred';
+
+        if (data.message === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+        } else if (data.message === 'Missing parameters in request body') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'Service unavailable') {
+          errorMsg = 'We ran out of SIM cards, try again later';
+        } else if (data.message === 'Insufficient balance') {
+          errorMsg = 'You do not have enough balance to make the purchase';
+        } else if (data.message === 'Internal Server Error') {
+          errorMsg = 'Please contact our customer support';
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('Buy Short USA purchase error:', error);
+      setErrorMessage('Please contact our customer support');
+      setShowErrorModal(true);
+    } finally {
+      setPurchasingOptionId(null);
+    }
+  };
+
+  // Handle purchase for UK numbers (opt2, opt5)
+  const handleBuyShortUKPurchase = async (uniqueOptionId: string) => {
+    const currentUser = getAuth().currentUser;
+
+    if (!currentUser) {
+      setErrorMessage('You are not authenticated or your token is invalid');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setPurchasingOptionId(uniqueOptionId);
+
+    try {
+      // Get Firebase ID token using official method
+      const idToken = await currentUser.getIdToken();
+
+      // Log token for debugging (remove in production)
+      console.log('Buy Short UK - ID Token length:', idToken?.length);
+      console.log('Buy Short UK - ID Token starts with:', idToken?.substring(0, 20));
+
+      // Make API call to buyshortuk cloud function
+      const response = await fetch('https://buyshortuk-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          serviceId: globalPurchaseData.serviceId,
+          option: globalPurchaseData.option
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success case - redirect to history
+        navigate('/history');
+      } else {
+        // Handle error responses for buyshortuk
+        let errorMsg = 'An unknown error occurred';
+
+        if (data.message === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+        } else if (data.message === 'Missing parameters in request body') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'Service unavailable') {
+          errorMsg = 'We ran out of SIM cards, try again later';
+        } else if (data.message === 'Insufficient balance') {
+          errorMsg = 'You do not have enough balance to make the purchase';
+        } else if (data.message === 'Internal Server Error') {
+          errorMsg = 'Please contact our customer support';
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('Buy Short UK purchase error:', error);
+      setErrorMessage('Please contact our customer support');
+      setShowErrorModal(true);
+    } finally {
+      setPurchasingOptionId(null);
+    }
+  };
+
+  // Handle purchase for India numbers (opt2, opt5)
+  const handleBuyShortIndiaPurchase = async (uniqueOptionId: string) => {
+    const currentUser = getAuth().currentUser;
+
+    if (!currentUser) {
+      setErrorMessage('You are not authenticated or your token is invalid');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setPurchasingOptionId(uniqueOptionId);
+
+    try {
+      // Get Firebase ID token using official method
+      const idToken = await currentUser.getIdToken();
+
+      // Log token for debugging (remove in production)
+      console.log('Buy Short India - ID Token length:', idToken?.length);
+      console.log('Buy Short India - ID Token starts with:', idToken?.substring(0, 20));
+
+      // Make API call to buyshortindia cloud function
+      const response = await fetch('https://buyshortindia-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          serviceId: globalPurchaseData.serviceId,
+          option: globalPurchaseData.option
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success case - redirect to history
+        navigate('/history');
+      } else {
+        // Handle error responses for buyshortindia
+        let errorMsg = 'An unknown error occurred';
+
+        if (data.message === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+        } else if (data.message === 'Missing parameters in request body') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'Service unavailable') {
+          errorMsg = 'We ran out of SIM cards, try again later';
+        } else if (data.message === 'Insufficient balance') {
+          errorMsg = 'You do not have enough balance to make the purchase';
+        } else if (data.message === 'Internal Server Error') {
+          errorMsg = 'Please contact our customer support';
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('Buy Short India purchase error:', error);
+      setErrorMessage('Please contact our customer support');
+      setShowErrorModal(true);
+    } finally {
+      setPurchasingOptionId(null);
+    }
+  };
+
+  // Handle purchase for Germany numbers (opt2, opt5)
+  const handleBuyShortGermanyPurchase = async (uniqueOptionId: string) => {
+    const currentUser = getAuth().currentUser;
+
+    if (!currentUser) {
+      setErrorMessage('You are not authenticated or your token is invalid');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setPurchasingOptionId(uniqueOptionId);
+
+    try {
+      // Get Firebase ID token using official method
+      const idToken = await currentUser.getIdToken();
+
+      // Log token for debugging (remove in production)
+      console.log('Buy Short Germany - ID Token length:', idToken?.length);
+      console.log('Buy Short Germany - ID Token starts with:', idToken?.substring(0, 20));
+
+      // Make API call to buyshortgermany cloud function
+      const response = await fetch('https://buyshortgermany-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          serviceId: globalPurchaseData.serviceId,
+          option: globalPurchaseData.option
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success case - redirect to history
+        navigate('/history');
+      } else {
+        // Handle error responses for buyshortgermany
+        let errorMsg = 'An unknown error occurred';
+
+        if (data.message === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+        } else if (data.message === 'Missing parameters in request body') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'Service unavailable') {
+          errorMsg = 'We ran out of SIM cards, try again later';
+        } else if (data.message === 'Insufficient balance') {
+          errorMsg = 'You do not have enough balance to make the purchase';
+        } else if (data.message === 'Internal Server Error') {
+          errorMsg = 'Please contact our customer support';
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('Buy Short Germany purchase error:', error);
+      setErrorMessage('Please contact our customer support');
+      setShowErrorModal(true);
+    } finally {
+      setPurchasingOptionId(null);
+    }
+  };
+
+  // Handle purchase for France numbers (opt2, opt5)
+  const handleBuyShortFrancePurchase = async (uniqueOptionId: string) => {
+    const currentUser = getAuth().currentUser;
+
+    if (!currentUser) {
+      setErrorMessage('You are not authenticated or your token is invalid');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setPurchasingOptionId(uniqueOptionId);
+
+    try {
+      // Get Firebase ID token using official method
+      const idToken = await currentUser.getIdToken();
+
+      // Log token for debugging (remove in production)
+      console.log('Buy Short France - ID Token length:', idToken?.length);
+      console.log('Buy Short France - ID Token starts with:', idToken?.substring(0, 20));
+
+      // Make API call to buyshortfrance cloud function
+      const response = await fetch('https://buyshortfrance-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          serviceId: globalPurchaseData.serviceId,
+          option: globalPurchaseData.option
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success case - redirect to history
+        navigate('/history');
+      } else {
+        // Handle error responses for buyshortfrance
+        let errorMsg = 'An unknown error occurred';
+
+        if (data.message === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+        } else if (data.message === 'Missing parameters in request body') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'Service unavailable') {
+          errorMsg = 'We ran out of SIM cards, try again later';
+        } else if (data.message === 'Insufficient balance') {
+          errorMsg = 'You do not have enough balance to make the purchase';
+        } else if (data.message === 'Internal Server Error') {
+          errorMsg = 'Please contact our customer support';
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('Buy Short France purchase error:', error);
+      setErrorMessage('Please contact our customer support');
+      setShowErrorModal(true);
+    } finally {
+      setPurchasingOptionId(null);
+    }
+  };
+
   // Handle service search filtering
   const handleServiceSearch = (value: string) => {
     setSearchTerm(value);
@@ -281,6 +688,79 @@ const ShortNumbers: React.FC = () => {
     }
   };
 
+  // Handle purchase click to log option data
+  const handlePurchaseClick = (option: NumberOption) => {
+    // Fill global purchase data
+    globalPurchaseData.serviceId = option.id;
+
+    // Map opt to option number based on country
+    if (selectedCountry === 'United States') {
+      // USA has opt1, opt2, opt3, opt6
+      switch (option.opt) {
+        case 'opt1':
+          globalPurchaseData.option = 1;
+          break;
+        case 'opt2':
+          globalPurchaseData.option = 2;
+          break;
+        case 'opt3':
+          globalPurchaseData.option = 3;
+          break;
+        case 'opt6':
+          globalPurchaseData.option = 6;
+          break;
+        default:
+          globalPurchaseData.option = 0; // fallback
+      }
+    } else {
+      // UK, India, Germany, France have opt2, opt5
+      switch (option.opt) {
+        case 'opt2':
+          globalPurchaseData.option = 2;
+          break;
+        case 'opt5':
+          globalPurchaseData.option = 5;
+          break;
+        default:
+          globalPurchaseData.option = 0; // fallback
+      }
+    }
+
+    // Log the global purchase data
+    console.log('Purchase clicked:', {
+      serviceId: globalPurchaseData.serviceId,
+      option: globalPurchaseData.option,
+      opt: option.opt
+    });
+
+    // Create unique identifier combining serviceId and opt
+    const uniqueOptionId = `${option.id}-${option.opt}`;
+
+    // Handle purchase based on selected country
+    if (selectedCountry === 'United States') {
+      // Use different cloud functions based on opt
+      if (option.opt === 'opt6') {
+        // Use reuseusa cloud function for opt6 (reusable numbers)
+        handleReuseUSAPurchase(uniqueOptionId);
+      } else {
+        // Use buyshortusa cloud function for opt1, opt2, opt3
+        handleBuyShortUSAPurchase(uniqueOptionId);
+      }
+    } else if (selectedCountry === 'United Kingdom') {
+      // Use buyshortuk cloud function for opt2, opt5
+      handleBuyShortUKPurchase(uniqueOptionId);
+    } else if (selectedCountry === 'India') {
+      // Use buyshortindia cloud function for opt2, opt5
+      handleBuyShortIndiaPurchase(uniqueOptionId);
+    } else if (selectedCountry === 'Germany') {
+      // Use buyshortgermany cloud function for opt2, opt5
+      handleBuyShortGermanyPurchase(uniqueOptionId);
+    } else if (selectedCountry === 'France') {
+      // Use buyshortfrance cloud function for opt2, opt5
+      handleBuyShortFrancePurchase(uniqueOptionId);
+    }
+  };
+
   const handleSearch = async () => {
     if (!selectedService) return;
 
@@ -318,7 +798,7 @@ const ShortNumbers: React.FC = () => {
               const isOpt6 = optDoc === 'opt6';
 
               results.push({
-                id: `${optDoc}-${doc.id}`,
+                id: data.id,
                 number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
                 price: data.price, // Only use Firestore price
                 extraSmsPrice: isOpt6 ? (data.price / 2) : undefined, // Only opt6 has extraSmsPrice for reuse (half of price)
@@ -326,7 +806,8 @@ const ShortNumbers: React.FC = () => {
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 isReusable: isOpt6, // Only opt6 is reusable
-                receiveSend: isOpt3 // Only opt3 has receive/send capability
+                receiveSend: isOpt3, // Only opt3 has receive/send capability
+                opt: optDoc
               });
             }
           });
@@ -360,14 +841,15 @@ const ShortNumbers: React.FC = () => {
 
               // Both opt2 and opt5 for UK have same properties: not reusable, no receive/send
               results.push({
-                id: `${optDoc}-${doc.id}`,
+                id: data.id,
                 number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
                 price: data.price, // Only use Firestore price
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 isReusable: false, // Both options are not reusable
-                receiveSend: false // Both options do not have receive/send
+                receiveSend: false, // Both options do not have receive/send
+                opt: optDoc
               });
             }
           });
@@ -401,14 +883,15 @@ const ShortNumbers: React.FC = () => {
 
               // Both opt2 and opt5 for India have same properties: not reusable, no receive/send
               results.push({
-                id: `${optDoc}-${doc.id}`,
+                id: data.id,
                 number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
                 price: data.price, // Only use Firestore price
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 isReusable: false, // Both options are not reusable
-                receiveSend: false // Both options do not have receive/send
+                receiveSend: false, // Both options do not have receive/send
+                opt: optDoc
               });
             }
           });
@@ -442,14 +925,15 @@ const ShortNumbers: React.FC = () => {
 
               // Both opt2 and opt5 for Germany have same properties: not reusable, no receive/send
               results.push({
-                id: `${optDoc}-${doc.id}`,
+                id: data.id,
                 number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
                 price: data.price, // Only use Firestore price
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 isReusable: false, // Both options are not reusable
-                receiveSend: false // Both options do not have receive/send
+                receiveSend: false, // Both options do not have receive/send
+                opt: optDoc
               });
             }
           });
@@ -483,14 +967,15 @@ const ShortNumbers: React.FC = () => {
 
               // Both opt2 and opt5 for France have same properties: not reusable, no receive/send
               results.push({
-                id: `${optDoc}-${doc.id}`,
+                id: data.id,
                 number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
                 price: data.price, // Only use Firestore price
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 isReusable: false, // Both options are not reusable
-                receiveSend: false // Both options do not have receive/send
+                receiveSend: false, // Both options do not have receive/send
+                opt: optDoc
               });
             }
           });
@@ -831,11 +1316,20 @@ const ShortNumbers: React.FC = () => {
                                 </div>
                               </div>
                               {/* Purchase Button - full width */}
-                              <button 
-                                onClick={() => navigate('/history')}
-                                className="w-full px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-md"
+                              <button
+                                onClick={() => handlePurchaseClick(option)}
+                                disabled={purchasingOptionId !== null}
+                                className="w-full px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[120px]"
                               >
-                                Purchase
+                                {purchasingOptionId === `${option.id}-${option.opt}` ? (
+                                  <div className="flex items-center justify-center">
+                                    <svg className="w-4 h-4 animate-spin mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                  </div>
+                                ) : (
+                                  'Purchase'
+                                )}
                               </button>
                             </div>
 
@@ -870,11 +1364,20 @@ const ShortNumbers: React.FC = () => {
                               </span>
                             </div>
 
-                            <button 
-                              onClick={() => navigate('/history')}
-                              className="hidden md:block px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm"
+                            <button
+                              onClick={() => handlePurchaseClick(option)}
+                              disabled={purchasingOptionId !== null}
+                              className="hidden md:block px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[120px]"
                             >
-                              Purchase
+                              {purchasingOptionId === `${option.id}-${option.opt}` ? (
+                                <div className="flex items-center justify-center">
+                                  <svg className="w-4 h-4 animate-spin mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                  </svg>
+                                </div>
+                              ) : (
+                                'Purchase'
+                              )}
                             </button>
                           </div>
                         </div>
