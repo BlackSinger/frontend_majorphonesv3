@@ -27,6 +27,7 @@ interface HistoryRecord {
   expiry?: Date; // Timestamp de expiración para validar Send
   awakeIn?: Date; // Timestamp cuando el número despertará (para números sleeping)
   codeAwakeAt?: Date; // Timestamp cuando el contador de 5 minutos en Code debe iniciar (cuando el número está awake)
+  orderId?: string; // Order ID para operaciones con Cloud Functions
 }
 
 interface VirtualCardRecord {
@@ -292,6 +293,9 @@ const History: React.FC = () => {
   // Reusing state - track which order is being reused
   const [reusingOrderId, setReusingOrderId] = useState<string | null>(null);
 
+  // Activating state - track which order is being activated
+  const [activatingOrderId, setActivatingOrderId] = useState<string | null>(null);
+
   // Use ref to store uid to prevent listener recreation
   const userIdRef = useRef<string | undefined>(currentUser?.uid);
 
@@ -315,10 +319,30 @@ const History: React.FC = () => {
     return now >= expiryTime;
   };
 
+  // Function to check if a Middle number has timed out (for display purposes only)
+  const hasMiddleTimedOut = (record: HistoryRecord): boolean => {
+    if (record.serviceType !== 'Middle' || record.status !== 'Active' || !record.createdAt) {
+      return false;
+    }
+    const hasSms = record.code && record.code.trim() !== '';
+    // If SMS already received, don't show as timed out
+    if (hasSms) {
+      return false;
+    }
+    const now = new Date().getTime();
+    const startTime = record.createdAt.getTime();
+    const fiveMinutes = 5 * 60 * 1000; // 5:00 in milliseconds
+    const expiryTime = startTime + fiveMinutes;
+    return now >= expiryTime;
+  };
+
   // Function to get display status (visual only, doesn't modify Firestore)
   const getDisplayStatus = (record: HistoryRecord): string => {
     if (hasTimedOut(record)) {
       return 'Timed out';
+    }
+    if (hasMiddleTimedOut(record)) {
+      return 'Inactive';
     }
     return record.status;
   };
@@ -359,7 +383,25 @@ const History: React.FC = () => {
       } else {
         return { type: 'text', value: smsValue };
       }
-    } else if (serviceType === 'Middle' || serviceType === 'Long' || serviceType === 'Empty simcard') {
+    } else if (serviceType === 'Middle') {
+      switch (status) {
+        case 'Active':
+          if (hasSms) {
+            return { type: 'text', value: smsValue };
+          } else {
+            // Show countdown timer for Middle Active without SMS (5 minutes)
+            return { type: 'countdown', value: null, createdAt };
+          }
+        case 'Inactive':
+          return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
+        case 'Expired':
+          return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
+        case 'Cancelled':
+          return { type: 'text', value: '-' };
+        default:
+          return { type: 'text', value: smsValue };
+      }
+    } else if (serviceType === 'Long' || serviceType === 'Empty simcard') {
       switch (status) {
         case 'Active':
           return hasSms ? { type: 'text', value: smsValue } : { type: 'spinner', value: null };
@@ -940,7 +982,8 @@ const History: React.FC = () => {
         maySend: docData.maySend,
         createdAt: createdAt,
         updatedAt: docData.updatedAt?.toDate?.() || null,
-        expiry: expiry
+        expiry: expiry,
+        orderId: docData.orderId || docId
       };
     };
 
@@ -1314,6 +1357,12 @@ const History: React.FC = () => {
       const { code } = record;
       const hasSms = code && code.trim() !== '';
 
+      // Check if displaying as Inactive (ficticio) - disable actions
+      if (displayStatus === 'Inactive' && status === 'Active') {
+        // Ficticio Inactive (still Active in Firestore) - no actions (disabled)
+        return [];
+      }
+
       if (status === 'Active') {
         if (hasSms) {
           // Active with SMS - no actions (disabled)
@@ -1323,13 +1372,8 @@ const History: React.FC = () => {
           return ['Cancel'];
         }
       } else if (status === 'Inactive') {
-        if (hasSms) {
-          // Inactive with SMS - only Activate
-          return ['Activate'];
-        } else {
-          // Inactive without SMS - Cancel and Activate (current logic)
-          return ['Cancel', 'Activate'];
-        }
+        // Real Inactive status (from Firestore) - always show Activate (regardless of SMS)
+        return ['Activate'];
       } else if (status === 'Cancelled' || status === 'Expired') {
         // Cancelled or Expired - no actions (disabled)
         return [];
@@ -1371,8 +1415,8 @@ const History: React.FC = () => {
     }));
   };
 
-  // Handle cancel order
-  const handleCancelOrder = async (orderId: string) => {
+  // Handle cancel short number
+  const handleCancelShort = async (orderId: string) => {
     const currentUser = getAuth().currentUser;
 
     if (!currentUser) {
@@ -1426,6 +1470,81 @@ const History: React.FC = () => {
       }
     } catch (error) {
       console.error('Cancel order error:', error);
+      setErrorMessage('Please contact our customer support');
+      setShowErrorModal(true);
+      setCancellingOrderId(null);
+    }
+  };
+
+  // Handle cancel middle number
+  const handleCancelMiddle = async (recordId: string, orderId?: string) => {
+    if (!orderId) {
+      setErrorMessage('Invalid order ID');
+      setShowErrorModal(true);
+      return;
+    }
+
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      setErrorMessage('You are not authenticated or your token is invalid');
+      setShowErrorModal(true);
+      return;
+    }
+
+    // Set cancelling state
+    setCancellingOrderId(recordId);
+
+    try {
+      // Get Firebase ID token
+      const idToken = await currentUser.getIdToken();
+
+      // Make API call to cancel middle number cloud function
+      const response = await fetch('https://cancelmiddleusa-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orderId })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success - the listener will automatically update the status to Cancelled
+        // Backend will change status to Cancelled and buttons will be disabled
+        // No need to clear cancelling state - keep buttons disabled
+      } else {
+        // Handle error responses
+        let errorMsg = 'An unknown error occurred';
+        let shouldClearCancelling = true;
+
+        if (data.message === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+          shouldClearCancelling = false; // Keep buttons disabled for Unauthorized
+        } else if (data.message === 'Order not found') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'Internal error') {
+          errorMsg = 'Please contact our customer support';
+        } else if (data.message === 'Number cannot be cancelled') {
+          errorMsg = 'This number cannot be cancelled';
+        } else if (data.message === 'Error cancelling middle') {
+          errorMsg = 'When trying to cancel the number, please try again';
+        } else if (data.message === 'Internal Server Error') {
+          errorMsg = 'Please contact our customer support';
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+
+        if (shouldClearCancelling) {
+          setCancellingOrderId(null);
+        }
+      }
+    } catch (error) {
+      console.error('Cancel middle number error:', error);
       setErrorMessage('Please contact our customer support');
       setShowErrorModal(true);
       setCancellingOrderId(null);
@@ -1551,7 +1670,11 @@ const History: React.FC = () => {
 
     // Handle Cancel action
     if (action === 'Cancel') {
-      await handleCancelOrder(record.id);
+      if (record.serviceType === 'Middle') {
+        await handleCancelMiddle(record.id, record.orderId);
+      } else {
+        await handleCancelShort(record.id);
+      }
       return;
     }
 
@@ -1567,7 +1690,88 @@ const History: React.FC = () => {
       return;
     }
 
+    // Handle Activate action
+    if (action === 'Activate') {
+      await handleActivateNumber(record.id, record.orderId);
+      return;
+    }
+
     // TODO: Implement other functionalities
+  };
+
+  // Handle Activate Number
+  const handleActivateNumber = async (recordId: string, orderId?: string) => {
+    if (!orderId) {
+      setErrorMessage('Invalid order ID');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setActivatingOrderId(recordId);
+
+    try {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        setErrorMessage('You are not authenticated or your token is invalid');
+        setShowErrorModal(true);
+        setActivatingOrderId(null);
+        return;
+      }
+
+      const idToken = await currentUser.getIdToken();
+
+      const response = await fetch('https://activatemiddleusa-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orderId })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success - backend will change status to Active, component will re-render
+        console.log('Service activated successfully:', data);
+        setActivatingOrderId(null);
+        // Data will auto-update via Firestore listener
+      } else {
+        // Handle errors
+        let errorMsg = 'Please contact our customer support';
+
+        if (data.message === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+          // Don't clear activatingOrderId - keep buttons disabled for Unauthorized
+        } else if (data.message === 'Invalid orderId') {
+          errorMsg = 'Please refresh the page and try again';
+          setActivatingOrderId(null); // Re-enable buttons
+        } else if (data.message === 'Error waking up middle') {
+          errorMsg = 'When trying to activate this number, please try again';
+          setActivatingOrderId(null); // Re-enable buttons
+        } else if (data.message === 'Error getting time of wake up') {
+          errorMsg = 'Please refresh the page and try again';
+          setActivatingOrderId(null); // Re-enable buttons
+        } else if (data.message === 'Internal Server Error') {
+          errorMsg = 'Please contact our customer support';
+          setActivatingOrderId(null); // Re-enable buttons
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+
+        // Only clear activatingOrderId if not Unauthorized
+        if (data.message !== 'Unauthorized' && activatingOrderId) {
+          // Already cleared above for specific errors
+        }
+      }
+    } catch (error) {
+      console.error('Error activating number:', error);
+      setErrorMessage('Please contact our customer support');
+      setShowErrorModal(true);
+      setActivatingOrderId(null);
+    }
   };
 
   return (
@@ -1631,7 +1835,7 @@ const History: React.FC = () => {
               <>
                 {/* Check if any operation is in progress */}
                 {(() => {
-                  const isProcessing = cancellingOrderId !== null || reusingOrderId !== null;
+                  const isProcessing = cancellingOrderId !== null || reusingOrderId !== null || activatingOrderId !== null;
                   
                   return (
                     <>
@@ -1965,11 +2169,13 @@ const History: React.FC = () => {
                               const hasActions = availableActions.length > 0;
                               const isCancelling = cancellingOrderId === record.id;
                               const isReusing = reusingOrderId === record.id;
-                              const isOtherProcessing = (cancellingOrderId !== null && cancellingOrderId !== record.id) || 
-                                                        (reusingOrderId !== null && reusingOrderId !== record.id);
+                              const isActivating = activatingOrderId === record.id;
+                              const isOtherProcessing = (cancellingOrderId !== null && cancellingOrderId !== record.id) ||
+                                                        (reusingOrderId !== null && reusingOrderId !== record.id) ||
+                                                        (activatingOrderId !== null && activatingOrderId !== record.id);
 
-                              // Show spinner if this record is being cancelled or reused
-                              if (isCancelling || isReusing) {
+                              // Show spinner if this record is being cancelled, reused, or activated
+                              if (isCancelling || isReusing || isActivating) {
                                 return (
                                   <div className="flex justify-center">
                                     <div className="w-5 h-5 border-2 border-slate-400/30 border-t-slate-200 rounded-full animate-spin"></div>
@@ -2741,14 +2947,14 @@ const History: React.FC = () => {
                   </div>
                 </div>
                 <h3 className="text-lg font-medium text-white mb-2">Error</h3>
-                <p className="text-red-200 mb-4">{errorMessage}</p>
+                <p className="text-blue-200 mb-4">{errorMessage}</p>
                 <div className="flex justify-center">
                   <button
                     onClick={() => {
                       setShowErrorModal(false);
                       setErrorMessage('');
                     }}
-                    className="bg-gradient-to-r from-red-400 to-red-500 hover:from-red-500 hover:to-red-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
+                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
                   >
                     Ok
                   </button>
