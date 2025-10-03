@@ -1314,6 +1314,14 @@ const ShortNumbers: React.FC = () => {
                                     {option.receiveSend ? 'Yes' : 'No'}
                                   </span>
                                 </div>
+                                {option.receiveSend && (
+                                  <div className="flex items-center justify-between text-md">
+                                    <span className="text-slate-300 font-medium">Each sending:</span>
+                                    <span className="text-emerald-400 font-semibold">
+                                      $0.50
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                               {/* Purchase Button - full width */}
                               <button
@@ -1363,6 +1371,15 @@ const ShortNumbers: React.FC = () => {
                                 {option.receiveSend ? 'Yes' : 'No'}
                               </span>
                             </div>
+
+                            {option.receiveSend && (
+                              <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                                <span className="text-slate-300 font-medium">Each sending:</span>
+                                <span className="text-emerald-400 font-semibold">
+                                  $0.50
+                                </span>
+                              </div>
+                            )}
 
                             <button
                               onClick={() => handlePurchaseClick(option)}

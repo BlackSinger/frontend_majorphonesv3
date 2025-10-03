@@ -2,9 +2,10 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
+import { getAuth } from 'firebase/auth';
 
 interface HistoryRecord {
   id: string;
@@ -20,6 +21,12 @@ interface HistoryRecord {
   country: string;
   reuse?: boolean;
   maySend?: boolean;
+  asleep?: boolean; // Indica si el número está dormido (sleeping) en Firestore
+  createdAt?: Date; // Timestamp de creación para calcular el contador
+  updatedAt?: Date; // Timestamp de última actualización (usado en reuse)
+  expiry?: Date; // Timestamp de expiración para validar Send
+  awakeIn?: Date; // Timestamp cuando el número despertará (para números sleeping)
+  codeAwakeAt?: Date; // Timestamp cuando el contador de 5 minutos en Code debe iniciar (cuando el número está awake)
 }
 
 interface VirtualCardRecord {
@@ -45,6 +52,178 @@ interface ProxyRecord {
   user: string;
   password: string;
 }
+
+// Countdown Timer Component - DO NOT re-render if status changes
+const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: string; onTimeout?: () => void; updatedAt?: Date }> = React.memo(({ createdAt, recordId, status, onTimeout, updatedAt }) => {
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+
+  useEffect(() => {
+    // If status is not Pending, don't show timer
+    if (status !== 'Pending') {
+      setTimeLeft(0);
+      return;
+    }
+
+    const calculateTimeLeft = () => {
+      const now = new Date().getTime();
+      // Use updatedAt if available (for reused numbers), otherwise use createdAt
+      const startTime = updatedAt ? updatedAt.getTime() : createdAt.getTime();
+      const fiveMinutes = 5 * 60 * 1000; // 5:00 in milliseconds
+      const expiryTime = startTime + fiveMinutes;
+      const remaining = expiryTime - now;
+
+      return Math.max(0, Math.floor(remaining / 1000)); // Return seconds remaining
+    };
+
+    // Initial calculation
+    setTimeLeft(calculateTimeLeft());
+
+    // Update every second
+    const interval = setInterval(() => {
+      const remaining = calculateTimeLeft();
+      setTimeLeft(remaining);
+
+      // Stop the interval when time runs out
+      if (status !== "Pending"){
+            clearInterval(interval);
+            setTimeLeft(0);
+      }
+      if (remaining <= 0) {
+        clearInterval(interval);
+        // Notify parent component that time has expired
+        if (onTimeout) {
+          onTimeout();
+        }
+      }
+    }, 1000);
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
+  }, [createdAt, updatedAt, status, onTimeout]);
+
+  // If status changed to non-Pending, don't render
+  if (status !== 'Pending') {
+    return <span className="font-mono text-slate-400">-</span>;
+  }
+
+  // If time has expired, show dash instead of timer
+  if (timeLeft === 0) {
+    return <span className="font-mono text-slate-400">-</span>;
+  }
+
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+
+  return (
+    <span className="font-mono text-yellow-500 font-semibold">
+      {minutes}:{seconds.toString().padStart(2, '0')}
+    </span>
+  );
+});
+
+// Wake Up Timer Component - Shows countdown until number wakes up
+const WakeUpTimer: React.FC<{ awakeIn: Date; recordId: string; onWakeUp?: () => void }> = React.memo(({ awakeIn, recordId, onWakeUp }) => {
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date().getTime();
+      const wakeTime = awakeIn.getTime();
+      const remaining = wakeTime - now;
+
+      return Math.max(0, Math.floor(remaining / 1000)); // Return seconds remaining
+    };
+
+    // Initial calculation
+    setTimeLeft(calculateTimeLeft());
+
+    // Update every second
+    const interval = setInterval(() => {
+      const remaining = calculateTimeLeft();
+      setTimeLeft(remaining);
+
+      // When time is up, notify parent
+      if (remaining <= 0) {
+        clearInterval(interval);
+        if (onWakeUp) {
+          onWakeUp();
+        }
+      }
+    }, 1000);
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
+  }, [awakeIn, onWakeUp]);
+
+  // If time has expired, show dash
+  if (timeLeft === 0) {
+    return <span className="font-mono text-slate-400">-</span>;
+  }
+
+  // Format as HH:MM:SS
+  const hours = Math.floor(timeLeft / 3600);
+  const minutes = Math.floor((timeLeft % 3600) / 60);
+  const seconds = timeLeft % 60;
+
+  return (
+    <span className="font-mono text-orange-500 font-semibold text-xs">
+      {hours > 0 ? `${hours}:` : ''}{minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
+    </span>
+  );
+});
+
+// Code Awake Timer Component - Shows 5 minute countdown in Code column after number wakes up
+const CodeAwakeTimer: React.FC<{ codeAwakeAt: Date; recordId: string; onTimeout?: () => void }> = React.memo(({ codeAwakeAt, recordId, onTimeout }) => {
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date().getTime();
+      const startTime = codeAwakeAt.getTime();
+      const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+      const expiryTime = startTime + fiveMinutes;
+      const remaining = expiryTime - now;
+
+      return Math.max(0, Math.floor(remaining / 1000)); // Return seconds remaining
+    };
+
+    // Initial calculation
+    setTimeLeft(calculateTimeLeft());
+
+    // Update every second
+    const interval = setInterval(() => {
+      const remaining = calculateTimeLeft();
+      setTimeLeft(remaining);
+
+      // Stop the interval when time runs out
+      if (remaining <= 0) {
+        clearInterval(interval);
+        // Notify parent component that time has expired
+        if (onTimeout) {
+          onTimeout();
+        }
+      }
+    }, 1000);
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
+  }, [codeAwakeAt, onTimeout]);
+
+  // If time has expired, show dash
+  if (timeLeft === 0) {
+    return <span className="font-mono text-slate-400">-</span>;
+  }
+
+  // Format time as MM:SS
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+
+  return (
+    <span className="font-mono text-yellow-500 font-semibold">
+      {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+    </span>
+  );
+});
 
 const History: React.FC = () => {
   const location = useLocation();
@@ -104,7 +283,45 @@ const History: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [showErrorModal, setShowErrorModal] = useState(false);
 
+  // Force re-render every minute to update action buttons availability
+  const [, setForceUpdate] = useState(0);
+
+  // Cancelling state - track which order is being cancelled
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+
+  // Reusing state - track which order is being reused
+  const [reusingOrderId, setReusingOrderId] = useState<string | null>(null);
+
+  // Use ref to store uid to prevent listener recreation
+  const userIdRef = useRef<string | undefined>(currentUser?.uid);
+
+  // Update ref when uid changes
+  useEffect(() => {
+    userIdRef.current = currentUser?.uid;
+  }, [currentUser?.uid]);
+
   const itemsPerPage = 10;
+
+  // Function to check if a Short number has timed out (for display purposes only)
+  const hasTimedOut = (record: HistoryRecord): boolean => {
+    if (record.serviceType !== 'Short' || record.status !== 'Pending' || !record.createdAt) {
+      return false;
+    }
+    const now = new Date().getTime();
+    // Use updatedAt if available (for reused numbers), otherwise use createdAt
+    const startTime = record.updatedAt ? record.updatedAt.getTime() : record.createdAt.getTime();
+    const fiveMinutes = 5 * 60 * 1000; // 5:00 in milliseconds
+    const expiryTime = startTime + fiveMinutes;
+    return now >= expiryTime;
+  };
+
+  // Function to get display status (visual only, doesn't modify Firestore)
+  const getDisplayStatus = (record: HistoryRecord): string => {
+    if (hasTimedOut(record)) {
+      return 'Timed out';
+    }
+    return record.status;
+  };
 
   // Function to format price (show integers without decimals)
   const formatPrice = (price: number): string => {
@@ -113,22 +330,34 @@ const History: React.FC = () => {
 
   // Function to determine what to show in Code column
   const getCodeDisplay = (record: HistoryRecord) => {
-    const { serviceType, status, code } = record;
+    const { serviceType, status, code, createdAt, codeAwakeAt } = record;
     const smsValue = code || '';
     const hasSms = smsValue && smsValue.trim() !== '';
 
     if (serviceType === 'Short') {
-      switch (status) {
-        case 'Completed':
-          return { type: 'text', value: smsValue };
-        case 'Pending':
-          return { type: 'spinner', value: null };
-        case 'Cancelled':
-          return { type: 'text', value: '-' };
-        case 'Timed out':
-          return { type: 'text', value: '-' };
-        default:
-          return { type: 'text', value: smsValue };
+      // Check if codeAwakeAt exists - show CodeAwakeTimer
+      if (codeAwakeAt) {
+        const now = new Date().getTime();
+        const startTime = codeAwakeAt.getTime();
+        const fiveMinutes = 5 * 60 * 1000;
+        const expiryTime = startTime + fiveMinutes;
+
+        // Only show timer if within the 5-minute window
+        if (now < expiryTime) {
+          return { type: 'codeAwakeTimer', value: null, codeAwakeAt };
+        }
+      }
+
+      // IMPORTANT: Always check status first, never show countdown if not Pending
+      if (status === 'Completed') {
+        return { type: 'text', value: smsValue };
+      } else if (status === 'Pending') {
+        // Return countdown timer ONLY for Short Pending numbers
+        return { type: 'countdown', value: null, createdAt };
+      } else if (status === 'Cancelled' || status === 'Timed out') {
+        return { type: 'text', value: '-' };
+      } else {
+        return { type: 'text', value: smsValue };
       }
     } else if (serviceType === 'Middle' || serviceType === 'Long' || serviceType === 'Empty simcard') {
       switch (status) {
@@ -174,114 +403,6 @@ const History: React.FC = () => {
 
     // Return empty string for unknown types
     return '';
-  };
-
-  // Function to fetch orders from Firestore
-  const fetchUserOrders = async () => {
-    if (!currentUser?.uid) {
-      setErrorMessage('User not authenticated');
-      setShowErrorModal(true);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const ordersRef = collection(db, 'orders');
-      const q = query(
-        ordersRef,
-        where('uid', '==', currentUser.uid),
-        orderBy('createdAt', 'desc')
-      );
-
-      const querySnapshot = await getDocs(q);
-      const orders: HistoryRecord[] = [];
-
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-        const expiry = data.expiry?.toDate ? data.expiry.toDate() : new Date(data.expiry);
-
-        // Calculate duration based on type and properties
-        const durationText = calculateDuration(
-          data.type || 'Short Numbers',
-          createdAt,
-          expiry,
-          data.reuse,
-          data.maySend
-        );
-
-        // Type validations and conversions
-        const validatedNumber = typeof data.number === 'string' ? data.number : String(data.number || 'N/A');
-        const validatedPrice = typeof data.price === 'number' ? data.price : parseFloat(data.price) || 0;
-        const validatedSms = typeof data.sms === 'string' ? data.sms : String(data.sms || '');
-
-        // Validate status with allowed values
-        const allowedStatuses = ['Pending', 'Cancelled', 'Completed', 'Inactive', 'Active', 'Expired', 'Timed out'] as const;
-        const statusValue = typeof data.status === 'string' ? data.status : String(data.status || 'Pending');
-        const validatedStatus = allowedStatuses.includes(statusValue as any) ? statusValue as typeof allowedStatuses[number] : 'Pending';
-
-        // Validate type with allowed values
-        const allowedTypes = ['Short', 'Middle', 'Long', 'Empty simcard'] as const;
-        const typeValue = typeof data.type === 'string' ? data.type : String(data.type || 'Short');
-        const validatedType = allowedTypes.includes(typeValue as any) ? typeValue as typeof allowedTypes[number] : 'Short';
-
-        const order: HistoryRecord = {
-          id: data.orderId || doc.id,
-          date: createdAt.toLocaleString('en-US', {
-            year: 'numeric',
-            month: 'numeric',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-          }),
-          expirationDate: expiry.toLocaleString('en-US', {
-            year: 'numeric',
-            month: 'numeric',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-          }),
-          number: validatedNumber,
-          serviceType: validatedType,
-          status: validatedStatus,
-          service: data.serviceName || 'N/A',
-          price: parseFloat(validatedPrice.toFixed(2)),
-          duration: durationText,
-          code: validatedSms,
-          country: data.country || 'N/A',
-          reuse: data.reuse,
-          maySend: data.maySend
-        };
-
-        orders.push(order);
-      });
-
-      setFirestoreData(orders);
-    } catch (error: any) {
-      console.error('Error fetching orders:', error);
-
-      // Handle specific Firebase errors
-      let errorMsg = 'An error occurred when loading the orders, please try again';
-
-      if (error?.code === 'permission-denied') {
-        errorMsg = 'Access denied, you cannot check these orders';
-      } else if (error?.code === 'unavailable') {
-        errorMsg = 'Service temporarily unavailable, please try again';
-      } else if (error?.code === 'unauthenticated') {
-        errorMsg = 'You are not authenticated';
-      } else if (error?.message) {
-        errorMsg = `Error: ${error.message}`;
-      }
-
-      setErrorMessage(errorMsg);
-      setShowErrorModal(true);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Mock history data for virtual debit cards
@@ -718,21 +839,195 @@ const History: React.FC = () => {
     setCurrentProxyPage(1);
   }, [selectedProxyState, selectedProxyDuration]);
 
-  // Fetch user orders when component mounts or when tab changes to numbers
+  // Force re-render every 10 seconds to update action buttons (but not affecting the listener)
   useEffect(() => {
-    if (activeTab === 'numbers') {
-      if (currentUser) {
-        fetchUserOrders();
-      } else {
-        // If no user, stop loading immediately
-        setIsLoading(false);
-        setFirestoreData([]);
-      }
-    } else {
-      // If not on numbers tab, stop loading
+    if (activeTab !== 'numbers') return;
+
+    const interval = setInterval(() => {
+      setForceUpdate(prev => prev + 1);
+    }, 10000); // Update every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [activeTab]);
+
+  // Real-time listener for user orders
+  useEffect(() => {
+    if (activeTab !== 'numbers') {
       setIsLoading(false);
+      return;
     }
-  }, [activeTab, currentUser]);
+
+    const uid = userIdRef.current;
+    if (!uid) {
+      setIsLoading(false);
+      setFirestoreData([]);
+      return;
+    }
+
+    setIsLoading(true);
+    let isSubscribed = true; // Flag to prevent state updates after unmount
+
+    const ordersRef = collection(db, 'orders');
+    const q = query(
+      ordersRef,
+      where('uid', '==', uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    // --- Helper para crear el objeto 'HistoryRecord' ---
+    // (Esta función auxiliar se mueve fuera del listener para mayor claridad)
+    const createHistoryRecord = (docData: any, docId: string): HistoryRecord => {
+      const createdAt = docData.createdAt?.toDate ? docData.createdAt.toDate() : new Date(docData.createdAt);
+      const expiry = docData.expiry?.toDate ? docData.expiry.toDate() : new Date(docData.expiry);
+
+      const durationText = calculateDuration(
+        docData.type || 'Short',
+        createdAt,
+        expiry,
+        docData.reuse,
+        docData.maySend
+      );
+      
+      console.log(docData)
+      const allowedStatuses = ['Pending', 'Cancelled', 'Completed', 'Inactive', 'Active', 'Expired', 'Timed out'] as const;
+
+      // Normalizar el status recibido
+      let statusValue = typeof docData.status === 'string' ? docData.status : String(docData.status || 'Pending');
+
+      // Manejar variantes comunes de "Timed out" que pueden venir del backend
+      const statusLower = statusValue.toLowerCase();
+      if (statusLower === 'timed out' || statusLower === 'timedout' || statusLower === 'timeout' || statusLower === 'timed-out') {
+        statusValue = 'Timed out';
+      }
+
+      // Log para debug - identificar status inválidos
+      if (!allowedStatuses.includes(statusValue as any)) {
+        console.warn(`⚠️ Status inválido detectado para orden ${docData.orderId}:`, {
+          statusOriginal: docData.status,
+          statusNormalizado: statusValue,
+          tipo: docData.type,
+          maySend: docData.maySend,
+          reuse: docData.reuse,
+          statusesPermitidos: allowedStatuses
+        });
+      }
+
+      const validatedStatus = allowedStatuses.includes(statusValue as any) ? statusValue as typeof allowedStatuses[number] : 'Pending';
+
+      const allowedTypes = ['Short', 'Middle', 'Long', 'Empty simcard'] as const;
+      const typeValue = typeof docData.type === 'string' ? docData.type : String(docData.type || 'Short');
+      const validatedType = allowedTypes.includes(typeValue as any) ? typeValue as typeof allowedTypes[number] : 'Short';
+
+      return {
+        id: docData.orderId || docId,
+        date: createdAt.toLocaleString('en-US', {
+          year: 'numeric', month: 'numeric', day: 'numeric',
+          hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+        }),
+        expirationDate: expiry.toLocaleString('en-US', {
+          year: 'numeric', month: 'numeric', day: 'numeric',
+          hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+        }),
+        number: String(docData.number || 'N/A'),
+        serviceType: validatedType,
+        status: validatedStatus,
+        service: docData.serviceName || 'N/A',
+        price: parseFloat((typeof docData.price === 'number' ? docData.price : 0).toFixed(2)),
+        duration: durationText,
+        code: String(docData.sms || ''),
+        country: docData.country || 'N/A',
+        reuse: docData.reuse,
+        maySend: docData.maySend,
+        createdAt: createdAt,
+        updatedAt: docData.updatedAt?.toDate?.() || null,
+        expiry: expiry
+      };
+    };
+
+    // Setup real-time listener
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        if (!isSubscribed) return;
+
+        // **LA CORRECCIÓN CLAVE ESTÁ AQUÍ**
+        // Actualiza el estado de forma funcional y atómica para todos los cambios.
+        setFirestoreData(currentData => {
+            let nextData = [...currentData]; // Crea una copia mutable del estado actual
+
+            querySnapshot.docChanges().forEach(change => {
+                const changedRecord = createHistoryRecord(change.doc.data(), change.doc.id);
+                const recordId = changedRecord.id;
+                const existingIndex = nextData.findIndex(item => item.id === recordId);
+
+                switch (change.type) {
+                    case 'added':
+                        if (existingIndex > -1) {
+                            // Si ya existe (puede pasar con la caché de Firestore), lo actualizamos.
+                            nextData[existingIndex] = changedRecord;
+                        } else {
+                            // Si es nuevo, lo agregamos. La clasificación final lo ordenará.
+                            nextData.push(changedRecord);
+                        }
+                        break;
+                    case 'modified':
+                        if (existingIndex > -1) {
+                            // Reemplazamos el registro existente con la versión modificada.
+                            nextData[existingIndex] = changedRecord;
+                        } else {
+                            // Si no se encuentra, podría ser un registro que llega tarde. Lo agregamos.
+                            nextData.push(changedRecord);
+                        }
+                        break;
+                    case 'removed':
+                        if (existingIndex > -1) {
+                            // Eliminamos el registro.
+                            nextData.splice(existingIndex, 1);
+                        }
+                        break;
+                }
+            });
+
+            // Re-ordena el array para asegurar que se respete el 'orderBy' de la consulta.
+            // Esto es crucial para que los nuevos elementos aparezcan al principio.
+            nextData.sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+
+            return nextData;
+        });
+
+        if (isSubscribed) {
+          setIsLoading(false);
+        }
+      },
+      (error: any) => {
+          if (!isSubscribed) return;
+          console.error('Error in real-time listener:', error);
+
+          // Handle specific Firebase errors
+          let errorMsg = 'An error occurred when loading the orders, please try again';
+
+          if (error?.code === 'permission-denied') {
+            errorMsg = 'Access denied, you cannot check these orders';
+          } else if (error?.code === 'unavailable') {
+            errorMsg = 'Service temporarily unavailable, please try again';
+          } else if (error?.code === 'unauthenticated') {
+            errorMsg = 'You are not authenticated';
+          } else if (error?.message) {
+            errorMsg = `Error: ${error.message}`;
+          }
+
+          setErrorMessage('An error occurred. Please try again.');
+          setShowErrorModal(true);
+          setIsLoading(false);
+        }
+      );
+
+    // Cleanup listener on unmount or when dependencies change
+    return () => {
+      isSubscribed = false;
+      unsubscribe();
+    };
+  }, [activeTab]); // ONLY activeTab - uid is stable via ref
 
   // Get status color based on type and status
   const getStatusColor = (status: string, serviceType: string) => {
@@ -946,32 +1241,74 @@ const History: React.FC = () => {
     }
   };
 
+  // Helper function to check if 2:45 minutes have passed since creation
+  const hasTwoFortyFiveMinutesPassed = (createdAt?: Date): boolean => {
+    if (!createdAt) return true; // If no createdAt, allow actions
+    const now = new Date().getTime();
+    const created = createdAt.getTime();
+    const twoMinutesFortyFive = 2 * 60 * 1000 + 45 * 1000; // 2:45 in milliseconds
+    return (now - created) >= twoMinutesFortyFive;
+  };
+
   // Get available actions based on service type, status, reuse and maySend
   const getAvailableActions = (record: HistoryRecord) => {
-    const { serviceType, status, reuse, maySend } = record;
+    const { serviceType, status, reuse, maySend, code, createdAt, expiry } = record;
+    const hasSms = code && code.trim() !== '';
+    const displayStatus = getDisplayStatus(record); // Get visual status
 
     if (serviceType === 'Short') {
+      // If visually showing "Timed out", no actions available
+      if (displayStatus === 'Timed out') {
+        return [];
+      }
+
+      // Check for Reuse first - if reuse is true and Completed, always show Reuse
+      if (reuse === true && status === 'Completed') {
+        return ['Reuse'];
+      }
+
       if (reuse === true && maySend === false) {
         // Reusable type
         if (status === 'Pending') {
-          return ['Cancel'];
-        } else if (status === 'Completed') {
-          return ['Reuse'];
+          // Only allow Cancel if 2:45 minutes have passed AND no SMS received
+          if (!hasSms && hasTwoFortyFiveMinutesPassed(createdAt)) {
+            return ['Cancel'];
+          }
+          return []; // Disabled if less than 2:45 minutes or SMS received
         }
       } else if (reuse === false && maySend === false) {
         // Single use type
         if (status === 'Pending') {
-          return ['Cancel'];
+          // Only allow Cancel if 2:45 minutes have passed AND no SMS received
+          if (!hasSms && hasTwoFortyFiveMinutesPassed(createdAt)) {
+            return ['Cancel'];
+          }
+          return []; // Disabled if less than 2:45 minutes or SMS received
         }
         // For other statuses (Completed, Cancelled, Timed out) - no actions
         return [];
       } else if (reuse === false && maySend === true) {
         // Receive/Respond type
         if (status === 'Pending') {
-          return ['Cancel'];
+          // Only allow Cancel if 2:45 minutes have passed AND no SMS received
+          if (!hasSms && hasTwoFortyFiveMinutesPassed(createdAt)) {
+            return ['Cancel'];
+          }
+          return []; // Disabled if less than 2:45 minutes or SMS received
         } else if (status === 'Completed') {
-          return ['Send'];
+          // Check if expiry is still valid (greater than current time) and has SMS
+          if (hasSms && expiry) {
+            const now = new Date();
+            if (expiry.getTime() > now.getTime()) {
+              // Within 5-minute window, show Send button
+              return ['Send'];
+            }
+          }
+          // If no SMS, expired, or no expiry - no actions
+          return [];
         }
+        // No actions for other statuses
+        return [];
       }
     } else if (serviceType === 'Middle') {
       const { code } = record;
@@ -1034,15 +1371,199 @@ const History: React.FC = () => {
     }));
   };
 
+  // Handle cancel order
+  const handleCancelOrder = async (orderId: string) => {
+    const currentUser = getAuth().currentUser;
+
+    if (!currentUser) {
+      setErrorMessage('You are not authenticated or your token is invalid');
+      setShowErrorModal(true);
+      return;
+    }
+
+    // Set cancelling state
+    setCancellingOrderId(orderId);
+
+    try {
+      // Get Firebase ID token
+      const idToken = await currentUser.getIdToken();
+
+      // Make API call to cancel short number cloud function
+      const response = await fetch('https://cancelshortnumber-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orderId })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success - the listener will automatically update the table
+        // No need to do anything, just clear the cancelling state
+        setCancellingOrderId(null);
+      } else {
+        // Handle error responses
+        let errorMsg = 'An unknown error occurred';
+
+        if (data.message === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+        } else if (data.message === 'Bad Request: Missing orderId' || data.message === 'Order not found') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'Error cancelling number') {
+          errorMsg = 'This number could not be cancelled, please try again or contact our customer support';
+        } else if (data.message === 'Error updating balance') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'Internal Server Error') {
+          errorMsg = 'Please contact our customer support';
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+        setCancellingOrderId(null);
+      }
+    } catch (error) {
+      console.error('Cancel order error:', error);
+      setErrorMessage('Please contact our customer support');
+      setShowErrorModal(true);
+      setCancellingOrderId(null);
+    }
+  };
+
+  // Handle Reuse number
+  const handleReuseNumber = async (orderId: string) => {
+    const currentUser = getAuth().currentUser;
+
+    if (!currentUser) {
+      setErrorMessage('You are not authenticated or your token is invalid');
+      setShowErrorModal(true);
+      return;
+    }
+
+    // Set reusing state
+    setReusingOrderId(orderId);
+
+    try {
+      // Get Firebase ID token
+      const idToken = await currentUser.getIdToken();
+
+      // TODO: Replace with actual cloud function URL
+      const response = await fetch('https://activatereuseusa-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orderId })
+      });
+
+      const data = await response.json();
+      console.log('Reuse number response:', JSON.stringify(data,null,2));
+      if (data.success) {
+        // Check if the message is 'Number is awake'
+        if (data.message === 'Number is awake') {
+          console.log('Number is awake detected for orderId:', orderId);
+          // Update the record to set codeAwakeAt based on updatedAt
+          setFirestoreData(currentData => {
+            const updated = currentData.map(record => {
+              if (record.id === orderId) {
+                console.log('Found record:', {
+                  id: record.id,
+                  asleep: record.asleep,
+                  updatedAt: record.updatedAt,
+                  status: record.status
+                });
+                // Use updatedAt as the starting point for the 5-minute timer
+                const startTime = record.updatedAt || new Date();
+                console.log('Setting codeAwakeAt to:', startTime);
+                return { ...record, codeAwakeAt: startTime };
+              }
+              return record;
+            });
+            console.log('Updated firestoreData');
+            return updated;
+          });
+        }
+        // Success - the listener will automatically update the table
+        setReusingOrderId(null);
+      } else {
+        // Handle error responses
+        let errorMsg = 'An unknown error occurred';
+        let shouldShowError = true;
+
+        if ((data.message === 'Number is asleep' || data.message === 'Number is sleeping') && data.time) {
+          // Number is sleeping - update local state to show wake up timer
+          const wakeUpTime = new Date(data.time);
+          const now = new Date();
+          const timeDiff = wakeUpTime.getTime() - now.getTime();
+
+          if (timeDiff > 0) {
+            // Update the record locally to add awakeIn
+            setFirestoreData(currentData => 
+              currentData.map(record => 
+                record.id === orderId 
+                  ? { ...record, awakeIn: wakeUpTime }
+                  : record
+              )
+            );
+            shouldShowError = false; // Don't show error, show timer instead
+            setReusingOrderId(null);
+          } else {
+            errorMsg = 'This number is ready to be reused. Please try again.';
+          }
+        } else if (data.message === 'Insufficient balance' && data.price) {
+          // Format price to show only 2 decimals or as integer if no decimals
+          const formattedPrice = data.price % 1 === 0 ? data.price.toString() : data.price.toFixed(2);
+          errorMsg = `Insufficient balance. You need $${formattedPrice} to reuse this number`;
+        } else if (data.message === 'Error activating reuse') {
+          errorMsg = 'This number can no longer be reused';
+        } else if (data.message === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+        } else if (data.message === 'Bad Request: Missing orderId' || data.message === 'Order not found') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message) {
+          errorMsg = data.message;
+        } else if (data.message === 'Internal Server Error') {
+          errorMsg = 'Please contact our customer support';
+        }
+
+        if (shouldShowError) {
+          setErrorMessage(errorMsg);
+          setShowErrorModal(true);
+          setReusingOrderId(null);
+        }
+      }
+    } catch (error) {
+      console.error('Reuse number error:', error);
+      setErrorMessage('Please contact our customer support');
+      setShowErrorModal(true);
+      setReusingOrderId(null);
+    }
+  };
+
   // Handle action click
-  const handleActionClick = (action: string, record: HistoryRecord) => {
+  const handleActionClick = async (action: string, record: HistoryRecord) => {
     console.log(`Action "${action}" clicked for record:`, record.id);
     // Close the menu after clicking an action
     setOpenActionMenus(prev => ({ ...prev, [record.id]: false }));
 
+    // Handle Cancel action
+    if (action === 'Cancel') {
+      await handleCancelOrder(record.id);
+      return;
+    }
+
+    // Handle Reuse action
+    if (action === 'Reuse') {
+      await handleReuseNumber(record.id);
+      return;
+    }
+
     // Handle Send action
     if (action === 'Send') {
-      navigate(`/sendmessage?number=${encodeURIComponent(record.number)}`);
+      navigate('/sendmessage');
       return;
     }
 
@@ -1108,6 +1629,12 @@ const History: React.FC = () => {
             {/* Numbers Tab Content */}
             {activeTab === 'numbers' && (
               <>
+                {/* Check if any operation is in progress */}
+                {(() => {
+                  const isProcessing = cancellingOrderId !== null || reusingOrderId !== null;
+                  
+                  return (
+                    <>
                 {/* Filters */}
                 <div className="mb-6">
                   <div className="flex flex-col lg:flex-row gap-6">
@@ -1118,8 +1645,10 @@ const History: React.FC = () => {
                       </label>
                       <div className="relative group" ref={serviceTypeDropdownRef}>
                         <div
-                          onClick={() => setIsServiceTypeDropdownOpen(!isServiceTypeDropdownOpen)}
-                          className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                          onClick={() => !isProcessing && setIsServiceTypeDropdownOpen(!isServiceTypeDropdownOpen)}
+                          className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${
+                            isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-slate-500/50'
+                          }`}
                         >
                           <span>{serviceTypeFilter === 'All' ? 'All Services' : serviceTypeFilter}</span>
                         </div>
@@ -1131,7 +1660,7 @@ const History: React.FC = () => {
                         </div>
 
                         {/* Custom Dropdown Options */}
-                        {isServiceTypeDropdownOpen && (
+                        {isServiceTypeDropdownOpen && !isProcessing && (
                           <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
                             {serviceTypeOptions.map((option) => (
                               <div
@@ -1160,8 +1689,10 @@ const History: React.FC = () => {
                         </label>
                         <div className="relative group" ref={numberTypeDropdownRef}>
                           <div
-                            onClick={() => setIsNumberTypeDropdownOpen(!isNumberTypeDropdownOpen)}
-                            className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                            onClick={() => !isProcessing && setIsNumberTypeDropdownOpen(!isNumberTypeDropdownOpen)}
+                            className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${
+                              isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-slate-500/50'
+                            }`}
                           >
                             <span>{numberTypeFilter === 'All types' ? 'All Types' : numberTypeFilter}</span>
                           </div>
@@ -1173,7 +1704,7 @@ const History: React.FC = () => {
                           </div>
 
                           {/* Custom Dropdown Options */}
-                          {isNumberTypeDropdownOpen && (
+                          {isNumberTypeDropdownOpen && !isProcessing && (
                             <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
                               {getNumberTypeOptions(serviceTypeFilter).map((option) => (
                                 <div
@@ -1200,8 +1731,10 @@ const History: React.FC = () => {
                       </label>
                       <div className="relative group" ref={statusDropdownRef}>
                         <div
-                          onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                          className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                          onClick={() => !isProcessing && setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                          className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${
+                            isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-slate-500/50'
+                          }`}
                         >
                           <span>{statusFilter === 'All' ? 'All Statuses' : statusFilter}</span>
                         </div>
@@ -1213,7 +1746,7 @@ const History: React.FC = () => {
                         </div>
 
                         {/* Custom Dropdown Options */}
-                        {isStatusDropdownOpen && (
+                        {isStatusDropdownOpen && !isProcessing && (
                           <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
                             <div
                               key="All"
@@ -1306,8 +1839,8 @@ const History: React.FC = () => {
                         </td>
                         <td className="py-4 px-6 text-white">{getServiceTypeDisplayName(record.serviceType)}</td>
                         <td className="py-4 px-6">
-                          <span className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold border w-24 ${getStatusColor(record.status, record.serviceType)}`}>
-                            {record.status}
+                          <span className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold border w-24 ${getStatusColor(getDisplayStatus(record), record.serviceType)}`}>
+                            {getDisplayStatus(record)}
                           </span>
                         </td>
                         <td className="py-4 px-6 text-white">{record.service}</td>
@@ -1316,46 +1849,153 @@ const History: React.FC = () => {
                         </td>
                         <td className="py-4 px-6">
                           {(() => {
-                            const codeDisplay = getCodeDisplay(record);
-                            if (codeDisplay.type === 'spinner') {
-                              return (
-                                <div className="flex justify-center">
-                                  <div className="w-5 h-5 border-2 border-slate-400/30 border-t-slate-200 rounded-full animate-spin"></div>
-                                </div>
-                              );
-                            } else {
-                              return (
-                                <span className="font-mono text-blue-500 font-semibold">{codeDisplay.value}</span>
-                              );
+                            // ALWAYS check status directly from record - never trust cached data
+                            if (record.serviceType === 'Short') {
+                              // If number is sleeping (awakeIn exists and is in the future), show "Activating..."
+                              if (record.awakeIn) {
+                                const now = new Date().getTime();
+                                const wakeTime = record.awakeIn.getTime();
+                                if (now < wakeTime) {
+                                  return <span className="font-mono text-orange-500 font-semibold animate-pulse">Activating...</span>;
+                                }
+                              }
+
+                              // Check if codeAwakeAt exists - show CodeAwakeTimer
+                              if (record.codeAwakeAt) {
+                                const now = new Date().getTime();
+                                const startTime = record.codeAwakeAt.getTime();
+                                const fiveMinutes = 5 * 60 * 1000;
+                                const expiryTime = startTime + fiveMinutes;
+
+                                console.log('CodeAwakeTimer check:', {
+                                  recordId: record.id,
+                                  now,
+                                  startTime,
+                                  expiryTime,
+                                  timeLeft: expiryTime - now,
+                                  shouldShow: now < expiryTime
+                                });
+
+                                // Only show timer if within the 5-minute window
+                                if (now < expiryTime) {
+                                  return <CodeAwakeTimer
+                                    codeAwakeAt={record.codeAwakeAt}
+                                    recordId={record.id}
+                                    onTimeout={() => {
+                                      console.log('CodeAwakeTimer timeout for:', record.id);
+                                      // Remove codeAwakeAt when timer expires
+                                      setFirestoreData(currentData =>
+                                        currentData.map(r =>
+                                          r.id === record.id
+                                            ? { ...r, codeAwakeAt: undefined }
+                                            : r
+                                        )
+                                      );
+                                      setForceUpdate(prev => prev + 1);
+                                    }}
+                                  />;
+                                }
+                              }
+
+                              if (record.status === 'Completed') {
+                                return <span className="font-mono text-blue-500 font-semibold">{record.code || ''}</span>;
+                              } else if (record.status === 'Pending' && record.createdAt) {
+                                return <CountdownTimer
+                                  createdAt={record.createdAt}
+                                  recordId={record.id}
+                                  status={record.status}
+                                  updatedAt={record.updatedAt}
+                                  onTimeout={() => setForceUpdate(prev => prev + 1)}
+                                />;
+                              } else {
+                                return <span className="font-mono text-slate-400">-</span>;
+                              }
+                            } else if (record.serviceType === 'Middle' || record.serviceType === 'Long' || record.serviceType === 'Empty simcard') {
+                              const hasSms = record.code && record.code.trim() !== '';
+                              if (record.status === 'Active') {
+                                return hasSms ? (
+                                  <span className="font-mono text-blue-500 font-semibold">{record.code}</span>
+                                ) : (
+                                  <div className="flex justify-center">
+                                    <div className="w-5 h-5 border-2 border-slate-400/30 border-t-slate-200 rounded-full animate-spin"></div>
+                                  </div>
+                                );
+                              } else {
+                                return hasSms ? (
+                                  <span className="font-mono text-blue-500 font-semibold">{record.code}</span>
+                                ) : (
+                                  <span className="font-mono text-slate-400">-</span>
+                                );
+                              }
                             }
+                            return <span className="font-mono text-slate-400">-</span>;
                           })()
                           }
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex items-center justify-center">
                             {(() => {
+                              // Check if number is sleeping (awakeIn exists and is in the future)
+                              if (record.awakeIn) {
+                                const now = new Date().getTime();
+                                const wakeTime = record.awakeIn.getTime();
+                                if (now < wakeTime) {
+                                  // Show wake up timer instead of action buttons
+                                  return (
+                                    <WakeUpTimer 
+                                      awakeIn={record.awakeIn} 
+                                      recordId={record.id}
+                                      onWakeUp={() => {
+                                        // Remove awakeIn when timer expires and force re-render
+                                        setFirestoreData(currentData => 
+                                          currentData.map(r => 
+                                            r.id === record.id 
+                                              ? { ...r, awakeIn: undefined }
+                                              : r
+                                          )
+                                        );
+                                        setForceUpdate(prev => prev + 1);
+                                      }}
+                                    />
+                                  );
+                                }
+                              }
+
                               const availableActions = getAvailableActions(record);
                               const hasActions = availableActions.length > 0;
-                              
+                              const isCancelling = cancellingOrderId === record.id;
+                              const isReusing = reusingOrderId === record.id;
+                              const isOtherProcessing = (cancellingOrderId !== null && cancellingOrderId !== record.id) || 
+                                                        (reusingOrderId !== null && reusingOrderId !== record.id);
+
+                              // Show spinner if this record is being cancelled or reused
+                              if (isCancelling || isReusing) {
+                                return (
+                                  <div className="flex justify-center">
+                                    <div className="w-5 h-5 border-2 border-slate-400/30 border-t-slate-200 rounded-full animate-spin"></div>
+                                  </div>
+                                );
+                              }
+
                               return (
                                 <div className="relative" ref={(el) => { actionMenuRefs.current[record.id] = el; }}>
                                   <button
-                                    onClick={() => hasActions && handleActionMenuToggle(record.id)}
+                                    onClick={() => hasActions && !isOtherProcessing && handleActionMenuToggle(record.id)}
                                     className={`p-2 rounded-lg transition-colors duration-200 ${
-                                      hasActions
+                                      hasActions && !isOtherProcessing
                                         ? 'text-slate-400 hover:text-slate-300 hover:bg-slate-700/30 cursor-pointer'
                                         : 'text-slate-600 cursor-not-allowed'
                                     }`}
-                                    disabled={!hasActions}
+                                    disabled={!hasActions || isOtherProcessing}
                                     title={hasActions ? "More actions" : "No actions available"}
                                   >
                                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                      <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                                      <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
                                     </svg>
                                   </button>
-                                  
+
                                   {/* Action Menu Dropdown */}
-                                  {hasActions && openActionMenus[record.id] && (
+                                  {hasActions && openActionMenus[record.id] && !isOtherProcessing && (
                                     <div className="absolute right-0 top-full mt-2 bg-slate-800 border border-slate-600/50 rounded-xl shadow-xl z-[70] min-w-[120px]">
                                       {availableActions.map((action, index) => (
                                         <button
@@ -1453,6 +2093,8 @@ const History: React.FC = () => {
               </div>
             )}
             </>
+          )})()}
+          </>
           )}
 
             {/* Virtual Cards Tab Content */}
@@ -2108,7 +2750,7 @@ const History: React.FC = () => {
                     }}
                     className="bg-gradient-to-r from-red-400 to-red-500 hover:from-red-500 hover:to-red-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
                   >
-                    Cerrar
+                    Ok
                   </button>
                 </div>
               </div>

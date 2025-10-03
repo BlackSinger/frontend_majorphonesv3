@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
+import { db, auth } from '../firebase/config';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 
 interface NumberOption {
   id: string;
@@ -19,13 +21,22 @@ interface SentMessage {
   timestamp: Date;
 }
 
+interface Order {
+  uid: string;
+  number: string | number;
+  maySend: boolean;
+  expiry: Timestamp;
+  sms?: string;
+  orderId?: string;
+  serviceName?: string;
+  messagesSent?: string[];
+}
+
 const SendMessage: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const numberFromUrl = searchParams.get('number');
 
-  const [selectedNumber, setSelectedNumber] = useState<string | null>(numberFromUrl);
+  const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
+  const [selectedNumberData, setSelectedNumberData] = useState<Order | null>(null);
   const [searchResults, setSearchResults] = useState<NumberOption[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -33,29 +44,73 @@ const SendMessage: React.FC = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
   const [messageInput, setMessageInput] = useState('');
+  const [availableNumbers, setAvailableNumbers] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [firestoreError, setFirestoreError] = useState<string | null>(null);
+  const [messageData, setMessageData] = useState({ message: '', orderId: '' });
+  const [isSending, setIsSending] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const numbers = [
-    { 
-      code: 'US', 
-      number: '+14157358371',
-      service: 'Google',
-      codeReceived: true,
-      messageReceived: '123456',
-      flag: (
-        <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
-          <rect width="60" height="40" fill="#B22234"/>
-          <rect width="60" height="3" y="3" fill="white"/>
-          <rect width="60" height="3" y="9" fill="white"/>
-          <rect width="60" height="3" y="15" fill="white"/>
-          <rect width="60" height="3" y="21" fill="white"/>
-          <rect width="60" height="3" y="27" fill="white"/>
-          <rect width="60" height="3" y="33" fill="white"/>
-          <rect width="24" height="21" fill="#3C3B6E"/>
-        </svg>
-      )
-    }
-  ];
+  // Fetch available numbers from Firestore
+  useEffect(() => {
+    const fetchAvailableNumbers = async () => {
+      try {
+        setLoading(true);
+        setFirestoreError(null);
+
+        const user = auth.currentUser;
+        if (!user) {
+          setFirestoreError('No user authenticated');
+          setLoading(false);
+          return;
+        }
+
+        const ordersRef = collection(db, 'orders');
+        const now = Timestamp.now();
+
+        const q = query(
+          ordersRef,
+          where('uid', '==', user.uid),
+          where('maySend', '==', true)
+        );
+
+        const querySnapshot = await getDocs(q);
+        const numbers: Order[] = [];
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data() as Order;
+          // Filter by expiry > current time
+          if (data.expiry.toMillis() > now.toMillis()) {
+            numbers.push(data);
+          }
+        });
+
+        setAvailableNumbers(numbers);
+        setLoading(false);
+      } catch (error: any) {
+        console.error('Error fetching available numbers:', error);
+
+        // Handle specific Firebase errors
+        let errorMsg = 'An error occurred when loading the orders, please try again';
+
+        if (error?.code === 'permission-denied') {
+          errorMsg = 'Access denied, you cannot check these orders';
+        } else if (error?.code === 'unavailable') {
+          errorMsg = 'Service temporarily unavailable, please try again';
+        } else if (error?.code === 'unauthenticated') {
+          errorMsg = 'You are not authenticated';
+        } else if (error?.message) {
+          errorMsg = `Error: ${error.message}`;
+        }
+
+        setFirestoreError(errorMsg);
+        setLoading(false);
+      }
+    };
+
+    fetchAvailableNumbers();
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -71,24 +126,89 @@ const SendMessage: React.FC = () => {
     };
   }, []);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!messageInput.trim()) return;
 
-    const newMessage: SentMessage = {
-      id: Date.now().toString(),
-      text: messageInput.trim(),
-      timestamp: new Date()
+    // Update messageData with the message
+    const updatedMessageData = {
+      message: messageInput.trim(),
+      orderId: messageData.orderId
     };
+    setMessageData(updatedMessageData);
 
-    setSentMessages(prev => [...prev, newMessage]);
-    setMessageInput('');
+    // Log to console
+    console.log('Message Data:', updatedMessageData);
+
+    setIsSending(true);
+    setApiError(null);
+
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        setApiError('You are not authenticated or your token is invalid');
+        setIsSending(false);
+        return;
+      }
+
+      const idToken = await currentUser.getIdToken();
+
+      const response = await fetch('https://replyshortsmsusa-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedMessageData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success - add message to chat
+        const newMessage: SentMessage = {
+          id: Date.now().toString(),
+          text: messageInput.trim(),
+          timestamp: new Date()
+        };
+        setSentMessages(prev => [...prev, newMessage]);
+        setMessageInput('');
+        setIsSending(false);
+      } else {
+        // Handle errors
+        let errorMessage = 'Please contact our customer support';
+
+        if (data.message === 'Unauthorized') {
+          errorMessage = 'You are not authenticated or your token is invalid';
+          setMessageInput(''); // Clear textarea
+        } else if (data.message === 'Missing parameters in request body') {
+          errorMessage = 'Please refresh and try again';
+          // Keep textarea content
+        } else if (data.message === 'Insufficient balance') {
+          errorMessage = 'You do not have enough balance to send an SMS to this number';
+          // Keep textarea content
+        } else if (data.message === 'Order not found') {
+          errorMessage = 'Please contact our customer support';
+          // Keep textarea content
+        } else if (data.message === 'Cannot reply to SMS for this order') {
+          errorMessage = 'You cannot send an SMS to this number';
+          setMessageInput(''); // Clear textarea
+        } else if (data.message === 'Internal Server Error') {
+          errorMessage = 'Please contact our customer support';
+          // Keep textarea content
+        }
+
+        setApiError(errorMessage);
+        setIsSending(false);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setApiError('Please contact our customer support');
+      setIsSending(false);
+    }
   };
 
   const handleSearch = async () => {
-    // Check if code has been received
-    const selectedNumberData = numbers.find(n => n.number === selectedNumber);
-    
-    if (!selectedNumberData?.codeReceived) {
+    if (!selectedNumber) {
       setShowErrorModal(true);
       return;
     }
@@ -99,9 +219,19 @@ const SendMessage: React.FC = () => {
     try {
       // Simulate API call - replace with actual API endpoint
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const countryCode = selectedNumberData?.code || 'US';
-      
+
+      // Load previous messages from messagesSent array
+      if (selectedNumberData?.messagesSent && selectedNumberData.messagesSent.length > 0) {
+        const previousMessages: SentMessage[] = selectedNumberData.messagesSent.map((msg, index) => ({
+          id: `prev-${index}`,
+          text: msg,
+          timestamp: new Date() // We don't have timestamps for old messages, so use current time
+        }));
+        setSentMessages(previousMessages);
+      } else {
+        setSentMessages([]); // Clear messages if no previous messages
+      }
+
       // Mock data for empty simcard numbers
       const mockResults: NumberOption[] = [
         {
@@ -109,7 +239,7 @@ const SendMessage: React.FC = () => {
           number: '555-0123',
           price: 25.00,
           country: 'United States',
-          countryCode: countryCode,
+          countryCode: 'US',
           countryPrefix: '+1',
           duration: 30,
           successRate: 99
@@ -188,19 +318,32 @@ const SendMessage: React.FC = () => {
                         </label>
                         <div className="relative group" ref={dropdownRef}>
                           <div
-                            onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-                            className="w-full pl-12 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                            onClick={() => !loading && !firestoreError && availableNumbers.length > 0 && setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                            className={`w-full pl-12 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner transition-all duration-300 flex items-center justify-between ${
+                              loading || firestoreError || availableNumbers.length === 0
+                                ? 'cursor-not-allowed opacity-50'
+                                : 'cursor-pointer hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50'
+                            }`}
                           >
-                            <div className="flex items-center">
+                            <div className="flex items-center w-full">
                               <div className="absolute left-4">
-                                {numbers[0]?.flag}
+                                <svg className="w-5 h-4 inline-block" viewBox="0 0 60 40">
+                                  <rect width="60" height="40" fill="#B22234"/>
+                                  <rect width="60" height="3" y="3" fill="white"/>
+                                  <rect width="60" height="3" y="9" fill="white"/>
+                                  <rect width="60" height="3" y="15" fill="white"/>
+                                  <rect width="60" height="3" y="21" fill="white"/>
+                                  <rect width="60" height="3" y="27" fill="white"/>
+                                  <rect width="60" height="3" y="33" fill="white"/>
+                                  <rect width="24" height="21" fill="#3C3B6E"/>
+                                </svg>
                               </div>
                               <span className={selectedNumber ? '' : 'text-slate-400'}>
-                                {selectedNumber || 'Choose'}
+                                {loading ? 'Loading...' : (availableNumbers.length === 0 && !loading ? 'No numbers available' : (selectedNumber || 'Choose'))}
                               </span>
                             </div>
                           </div>
-                          
+
                           <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                             <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -210,21 +353,41 @@ const SendMessage: React.FC = () => {
                           {/* Custom Dropdown Options */}
                           {isCountryDropdownOpen && (
                             <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
-                              {numbers.map((numberOption) => (
-                                <div
-                                  key={numberOption.code}
-                                  onClick={() => {
-                                    setSelectedNumber(numberOption.number);
-                                    setIsCountryDropdownOpen(false);
-                                  }}
-                                  className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-                                >
-                                  <div className="mr-1">
-                                    {numberOption.flag}
-                                  </div>
-                                  <span className="text-white">{numberOption.number}</span>
+                              {availableNumbers.length === 0 ? (
+                                <div className="px-4 py-3 text-slate-400 text-center">
+                                  No numbers available
                                 </div>
-                              ))}
+                              ) : (
+                                availableNumbers.map((orderData) => {
+                                  const numberStr = '+' + String(orderData.number);
+                                  return (
+                                    <div
+                                      key={numberStr}
+                                      onClick={() => {
+                                        setSelectedNumber(numberStr);
+                                        setSelectedNumberData(orderData);
+                                        setMessageData({ ...messageData, orderId: orderData.orderId || '' });
+                                        setIsCountryDropdownOpen(false);
+                                      }}
+                                      className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                                    >
+                                      <div className="mr-2">
+                                        <svg className="w-5 h-4 inline-block" viewBox="0 0 60 40">
+                                          <rect width="60" height="40" fill="#B22234"/>
+                                          <rect width="60" height="3" y="3" fill="white"/>
+                                          <rect width="60" height="3" y="9" fill="white"/>
+                                          <rect width="60" height="3" y="15" fill="white"/>
+                                          <rect width="60" height="3" y="21" fill="white"/>
+                                          <rect width="60" height="3" y="27" fill="white"/>
+                                          <rect width="60" height="3" y="33" fill="white"/>
+                                          <rect width="24" height="21" fill="#3C3B6E"/>
+                                        </svg>
+                                      </div>
+                                      <span className="text-white">{numberStr}</span>
+                                    </div>
+                                  );
+                                })
+                              )}
                             </div>
                           )}
                         </div>
@@ -235,15 +398,15 @@ const SendMessage: React.FC = () => {
                         <div className="hidden md:block text-sm font-semibold text-transparent uppercase tracking-wider">
                           Search
                         </div>
-                        <button 
+                        <button
                           onClick={handleSearch}
-                          disabled={isSearching || !selectedNumber}
+                          disabled={loading || isSearching || !selectedNumber || !!firestoreError}
                           className="group px-8 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[150px]"
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                          
+
                           <div className="relative z-10 flex items-center justify-center">
-                            {isSearching ? (
+                            {loading || isSearching ? (
                               <svg className="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                               </svg>
@@ -270,8 +433,8 @@ const SendMessage: React.FC = () => {
               <div className="relative z-10">
                 {/* Back Button */}
                 <div className="mb-5">
-                  <button 
-                    onClick={() => setHasSearched(false)}
+                  <button
+                    onClick={() => window.location.reload()}
                     className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
                   >
                     <svg className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,10 +452,10 @@ const SendMessage: React.FC = () => {
                     Send SMS
                   </h1>
                   <p className="text-slate-300 text-md">
-                    {searchResults.length > 0 
+                    {searchResults.length > 0
                       ? (
                           <span>
-                            To number {selectedNumber} for {numbers.find(n => n.number === selectedNumber)?.service}
+                            To number {selectedNumber} {selectedNumberData?.serviceName && `for ${selectedNumberData.serviceName}`}
                           </span>
                         )
                       : (
@@ -314,14 +477,16 @@ const SendMessage: React.FC = () => {
                       >
                         {/* Chat Interface */}
                         <div className="flex flex-col h-96">
-                          {/* Received Message */}
-                          <div className="flex justify-start mb-3">
-                            <div className="relative bg-slate-700/50 rounded-lg px-4 py-2 max-w-[85%] sm:max-w-sm md:max-w-md">
-                              <p className="text-white text-sm break-words" style={{ textAlign: 'justify' }}>{numbers.find(n => n.number === selectedNumber)?.messageReceived}</p>
-                              {/* Chat bubble tail */}
-                              <div className="absolute left-0 top-3 w-0 h-0 border-t-8 border-t-transparent border-r-8 border-r-slate-700/50 border-b-8 border-b-transparent -translate-x-2"></div>
+                          {/* Received Message - SMS from Order */}
+                          {selectedNumberData?.sms && (
+                            <div className="flex justify-start mb-3">
+                              <div className="relative bg-slate-700/50 rounded-lg px-4 py-2 max-w-[85%] sm:max-w-sm md:max-w-md">
+                                <p className="text-white text-sm break-words" style={{ textAlign: 'justify' }}>{selectedNumberData.sms}</p>
+                                {/* Chat bubble tail */}
+                                <div className="absolute left-0 top-3 w-0 h-0 border-t-8 border-t-transparent border-r-8 border-r-slate-700/50 border-b-8 border-b-transparent -translate-x-2"></div>
+                              </div>
                             </div>
-                          </div>
+                          )}
 
                           {/* Messages Area */}
                           <div className="flex-1 overflow-y-auto mb-4 space-y-3 px-3">
@@ -343,22 +508,29 @@ const SendMessage: React.FC = () => {
                               value={messageInput}
                               onChange={(e) => setMessageInput(e.target.value)}
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
+                                if (e.key === 'Enter' && !e.shiftKey && !isSending) {
                                   e.preventDefault();
                                   handleSendMessage();
                                 }
                               }}
-                              className="flex-1 px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 resize-none h-12 overflow-y-auto"
+                              disabled={isSending}
+                              className="flex-1 px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 resize-none h-12 overflow-y-auto disabled:opacity-50 disabled:cursor-not-allowed"
                               rows={3}
                             />
                             <button
                               onClick={handleSendMessage}
-                              disabled={!messageInput.trim()}
+                              disabled={!messageInput.trim() || isSending}
                               className="px-4 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-emerald-500/25 h-12 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                              </svg>
+                              {isSending ? (
+                                <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                              ) : (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                </svg>
+                              )}
                             </button>
                           </div>
                         </div>
@@ -382,9 +554,9 @@ const SendMessage: React.FC = () => {
           </>
         )}
 
-        {/* Error Modal */}
+        {/* Error Modal - No Number Selected */}
         {showErrorModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
             <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-70 h-58">
               <div className="text-center">
                 <div className="mb-4">
@@ -395,9 +567,59 @@ const SendMessage: React.FC = () => {
                   </div>
                 </div>
                 <h3 className="text-lg font-medium text-white mb-2">Error</h3>
-                <p className="text-blue-200 mb-4">You haven't received a code yet, nothing to reply</p>
+                <p className="text-blue-200 mb-4">Please select a number first</p>
                 <button
                   onClick={() => setShowErrorModal(false)}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Error Modal - Firestore Connection Error */}
+        {firestoreError && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Connection Error</h3>
+                <p className="text-blue-200 mb-4">{firestoreError}</p>
+                <button
+                  onClick={() => setFirestoreError(null)}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Error Modal - API Error */}
+        {apiError && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+                <p className="text-blue-200 mb-4">{apiError}</p>
+                <button
+                  onClick={() => setApiError(null)}
                   className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
                 >
                   OK
