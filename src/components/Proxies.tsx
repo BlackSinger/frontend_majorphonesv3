@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { getAuth } from 'firebase/auth';
 
 interface CardOption {
   id: string;
@@ -27,6 +30,26 @@ const Proxies: React.FC = () => {
   const stateDropdownRef = useRef<HTMLDivElement>(null);
   const durationDropdownRef = useRef<HTMLDivElement>(null);
   const stateInputRef = useRef<HTMLInputElement>(null);
+
+  // Global object to store proxy selection
+  const [proxySelection, setProxySelection] = useState({
+    duration: 0,
+    state: ''
+  });
+
+  // Proxy prices from Firestore
+  const [proxyPrices, setProxyPrices] = useState({
+    hour: 1,
+    day: 2,
+    week: 5,
+    month: 20
+  });
+
+  // Purchase states
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [isPurchaseDisabled, setIsPurchaseDisabled] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const usaStates = [
     { code: 'NA', name: 'Any State' },
@@ -94,6 +117,31 @@ const Proxies: React.FC = () => {
     state.name.toLowerCase().includes(stateSearchTerm.toLowerCase())
   );
 
+  // Fetch proxy prices from Firestore on component mount
+  useEffect(() => {
+    const fetchProxyPrices = async () => {
+      try {
+        const proxyDocRef = doc(db, 'fees', 'proxy');
+        const proxyDocSnap = await getDoc(proxyDocRef);
+
+        if (proxyDocSnap.exists()) {
+          const data = proxyDocSnap.data();
+          setProxyPrices({
+            hour: data.hour || 1,
+            day: data.day || 2,
+            week: data.week || 5,
+            month: data.month || 20
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching proxy prices:', error);
+        // Keep default prices if error
+      }
+    };
+
+    fetchProxyPrices();
+  }, []);
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -144,14 +192,15 @@ const Proxies: React.FC = () => {
     }
   };
 
-  const getProxyPrice = (duration: string) => {
-    const prices = {
-      '1 hour': 5,
-      '1 day': 12,
-      '7 days': 80,
-      '30 days': 120
+  // Get proxy price based on duration from Firestore prices
+  const getProxyPrice = (duration: string): number => {
+    const priceMap: { [key: string]: number } = {
+      '1 hour': proxyPrices.hour,
+      '1 day': proxyPrices.day,
+      '7 days': proxyPrices.week,
+      '30 days': proxyPrices.month
     };
-    return prices[duration as keyof typeof prices] || 5;
+    return priceMap[duration] || proxyPrices.hour;
   };
 
   const getStateName = (fullStateName: string) => {
@@ -162,9 +211,35 @@ const Proxies: React.FC = () => {
     return fullStateName;
   };
 
+  // Convert duration string to number
+  const getDurationNumber = (duration: string): number => {
+    const durationMap: { [key: string]: number } = {
+      '1 hour': 0,
+      '1 day': 1,
+      '7 days': 7,
+      '30 days': 30
+    };
+    return durationMap[duration] || 0;
+  };
+
+  // Get state code from state name
+  const getStateCode = (stateName: string): string => {
+    const state = usaStates.find(s => s.name === stateName);
+    return state ? state.code : 'NA';
+  };
+
   const handleSearch = async () => {
     setIsSearching(true);
     setHasSearched(false);
+
+    // Update proxy selection object
+    const stateCode = getStateCode(selectedState);
+    const durationNum = getDurationNumber(selectedDuration);
+
+    setProxySelection({
+      duration: durationNum,
+      state: stateCode
+    });
 
     try {
       // Simulate API call
@@ -190,6 +265,88 @@ const Proxies: React.FC = () => {
     } finally {
       setIsSearching(false);
       setHasSearched(true);
+    }
+  };
+
+  // Handle purchase click - call cloud function
+  const handlePurchase = async () => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      setErrorMessage('You are not authenticated or your token is invalid');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setIsPurchasing(true);
+    setIsPurchaseDisabled(true);
+
+    try {
+      // Get Firebase ID token
+      const idToken = await currentUser.getIdToken();
+
+      // Make API call to purchase proxy cloud function
+      const response = await fetch('https://buymobileproxyusa-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(proxySelection)
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success - redirect to History with Proxies tab
+        navigate('/history?tab=proxies');
+      } else {
+        // Handle error responses
+        let errorMsg = 'An unknown error occurred';
+        let shouldKeepDisabled = false;
+
+        if (data.message === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+          shouldKeepDisabled = true;
+        } else if (data.message === 'You cannot buy a proxy, because you have used Amazon Pay') {
+          errorMsg = 'Users that deposit with Amazon Pay cannot purchase proxies';
+          shouldKeepDisabled = true;
+        } else if (data.message === 'duration is required') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'state is required') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'Invalid duration') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'Invalid price') {
+          errorMsg = 'When tyring to purchase this proxy, please contact our customer support';
+        } else if (data.message === 'Insufficient balance') {
+          errorMsg = 'You do not have enough balance to make the purchase';
+        } else if (data.message === 'Error generating token') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'Invalid state') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'Error purchasing proxy') {
+          errorMsg = 'We ran out of proxies, try again later';
+        } else if (data.message === 'Internal Server Error') {
+          errorMsg = 'Please contact our customer support';
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+        setIsPurchasing(false);
+
+        // Keep disabled only for Unauthorized and Amazon Pay errors
+        if (!shouldKeepDisabled) {
+          setIsPurchaseDisabled(false);
+        }
+      }
+    } catch (error) {
+      console.error('Purchase proxy error:', error);
+      setErrorMessage('Please contact our customer support');
+      setShowErrorModal(true);
+      setIsPurchasing(false);
+      setIsPurchaseDisabled(false);
     }
   };
 
@@ -259,7 +416,8 @@ const Proxies: React.FC = () => {
                                 onChange={handleStateInputChange}
                                 onClick={handleStateInputClick}
                                 placeholder="Type or choose state"
-                                className="w-full pl-4 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 placeholder-slate-400"
+                                disabled={isSearching}
+                                className="w-full pl-4 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 placeholder-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"
                               />
                               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                 <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isStateDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -298,8 +456,8 @@ const Proxies: React.FC = () => {
                           </label>
                           <div className="relative group" ref={durationDropdownRef}>
                             <div
-                              onClick={() => setIsDurationDropdownOpen(!isDurationDropdownOpen)}
-                              className="w-full pl-4 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                              onClick={() => !isSearching && setIsDurationDropdownOpen(!isDurationDropdownOpen)}
+                              className={`w-full pl-4 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${isSearching ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                             >
                               <span>{selectedDuration}</span>
                             </div>
@@ -367,8 +525,8 @@ const Proxies: React.FC = () => {
                 <div className="relative z-10">
                   {/* Back Button */}
                   <div className="mb-5">
-                    <button 
-                      onClick={() => setHasSearched(false)}
+                    <button
+                      onClick={() => window.location.reload()}
                       className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
                     >
                       <svg className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -441,10 +599,17 @@ const Proxies: React.FC = () => {
                               </div>
                               {/* Purchase Button - full width */}
                               <button
-                                onClick={() => navigate('/history?tab=proxies')}
-                                className="w-full px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-md"
+                                onClick={handlePurchase}
+                                disabled={isPurchasing || isPurchaseDisabled}
+                                className="w-full px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                               >
-                                Purchase
+                                {isPurchasing ? (
+                                  <div className="flex items-center justify-center">
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                  </div>
+                                ) : (
+                                  'Purchase'
+                                )}
                               </button>
                             </div>
 
@@ -469,10 +634,15 @@ const Proxies: React.FC = () => {
                             </div>
 
                             <button
-                              onClick={() => navigate('/history?tab=proxies')}
-                              className="hidden md:block px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm"
+                              onClick={handlePurchase}
+                              disabled={isPurchasing || isPurchaseDisabled}
+                              className="hidden md:flex md:items-center md:justify-center px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[120px]"
                             >
-                              Purchase
+                              {isPurchasing ? (
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              ) : (
+                                'Purchase'
+                              )}
                             </button>
                           </div>
                         </div>
@@ -495,6 +665,31 @@ const Proxies: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+              <p className="text-blue-200 mb-4">{errorMessage}</p>
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };

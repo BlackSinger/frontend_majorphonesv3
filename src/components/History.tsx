@@ -5,7 +5,71 @@ import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
-import { getAuth } from 'firebase/auth';
+
+// Import Short logic functions
+import {
+  getShortDisplayStatus,
+  getShortStatusColor,
+  calculateShortDuration,
+  getShortAvailableActions,
+  handleCancelShort,
+  handleReuseNumber
+} from './ShortLogic';
+
+// Import Middle logic functions
+import {
+  getMiddleDisplayStatus,
+  getMiddleStatusColor,
+  calculateMiddleDuration,
+  getMiddleAvailableActions,
+  handleCancelMiddle,
+  handleActivateMiddle
+} from './MiddleLogic';
+
+// Import Long logic functions
+import {
+  getLongStatusColor,
+  calculateLongDuration,
+  getLongAvailableActions,
+  handleCancelLong,
+  handleActivateLong
+} from './LongLogic';
+
+// Import Empty SIM logic functions
+import {
+  getEmptySimStatusColor,
+  calculateEmptySimDuration,
+  getEmptySimAvailableActions,
+  handleCancelEmptySim,
+  handleActivateEmptySim
+} from './EmptySimLogic';
+
+// Import Virtual Card logic and types
+import {
+  type VirtualCardRecord,
+  type VCCOrderDocument,
+  handleCopyCardNumber as handleCopyCardNumberVC,
+  filterVirtualCards,
+  convertVCCDocumentToRecord,
+  formatPrice
+} from './VirtualCardLogic';
+
+// Import Proxy logic and types
+import {
+  type ProxyRecord,
+  type ProxyOrderDocument,
+  proxyDurations,
+  filterProxyStates,
+  handleProxyStateSelect,
+  handleProxyStateInputChange,
+  handleProxyStateInputClick,
+  handleProxyInfoClick,
+  handleCopyProxyId,
+  handleCopyProxyField,
+  filterProxies,
+  convertProxyDocumentToRecord,
+  formatProxyPrice
+} from './ProxyLogic';
 
 interface HistoryRecord {
   id: string;
@@ -30,29 +94,7 @@ interface HistoryRecord {
   orderId?: string; // Order ID para operaciones con Cloud Functions
 }
 
-interface VirtualCardRecord {
-  id: string;
-  purchaseDate: string;
-  price: number;
-  cardNumber: string;
-  expirationDate: string;
-  cvv: string;
-  funds: number;
-}
-
-interface ProxyRecord {
-  id: string;
-  purchaseDate: string;
-  expirationDate: string;
-  usaState: string;
-  price: number;
-  duration: string;
-  ip: string;
-  httpsPort: string;
-  socks5Port: string;
-  user: string;
-  password: string;
-}
+// VirtualCardRecord and ProxyRecord interfaces are now imported from their respective logic files
 
 // Countdown Timer Component - DO NOT re-render if status changes
 const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: string; onTimeout?: () => void; updatedAt?: Date }> = React.memo(({ createdAt, recordId, status, onTimeout, updatedAt }) => {
@@ -284,6 +326,14 @@ const History: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [showErrorModal, setShowErrorModal] = useState(false);
 
+  // Virtual Card Firestore states
+  const [vccData, setVccData] = useState<VirtualCardRecord[]>([]);
+  const [isLoadingVCC, setIsLoadingVCC] = useState(true);
+
+  // Proxy Firestore states
+  const [proxyFirestoreData, setProxyFirestoreData] = useState<ProxyRecord[]>([]);
+  const [isLoadingProxies, setIsLoadingProxies] = useState(true);
+
   // Force re-render every minute to update action buttons availability
   const [, setForceUpdate] = useState(0);
 
@@ -306,43 +356,14 @@ const History: React.FC = () => {
 
   const itemsPerPage = 10;
 
-  // Function to check if a Short number has timed out (for display purposes only)
-  const hasTimedOut = (record: HistoryRecord): boolean => {
-    if (record.serviceType !== 'Short' || record.status !== 'Pending' || !record.createdAt) {
-      return false;
-    }
-    const now = new Date().getTime();
-    // Use updatedAt if available (for reused numbers), otherwise use createdAt
-    const startTime = record.updatedAt ? record.updatedAt.getTime() : record.createdAt.getTime();
-    const fiveMinutes = 5 * 60 * 1000; // 5:00 in milliseconds
-    const expiryTime = startTime + fiveMinutes;
-    return now >= expiryTime;
-  };
-
-  // Function to check if a Middle number has timed out (for display purposes only)
-  const hasMiddleTimedOut = (record: HistoryRecord): boolean => {
-    if (record.serviceType !== 'Middle' || record.status !== 'Active' || !record.createdAt) {
-      return false;
-    }
-    const hasSms = record.code && record.code.trim() !== '';
-    // If SMS already received, don't show as timed out
-    if (hasSms) {
-      return false;
-    }
-    const now = new Date().getTime();
-    const startTime = record.createdAt.getTime();
-    const fiveMinutes = 5 * 60 * 1000; // 5:00 in milliseconds
-    const expiryTime = startTime + fiveMinutes;
-    return now >= expiryTime;
-  };
+  // hasTimedOut and hasMiddleTimedOut are now imported from ShortLogic and MiddleLogic
 
   // Function to get display status (visual only, doesn't modify Firestore)
   const getDisplayStatus = (record: HistoryRecord): string => {
-    if (hasTimedOut(record)) {
-      return 'Timed out';
-    }
-    if (hasMiddleTimedOut(record)) {
-      return 'Inactive';
+    if (record.serviceType === 'Short') {
+      return getShortDisplayStatus(record);
+    } else if (record.serviceType === 'Middle') {
+      return getMiddleDisplayStatus(record);
     }
     return record.status;
   };
@@ -422,259 +443,17 @@ const History: React.FC = () => {
 
   // Function to calculate duration based on type and properties
   const calculateDuration = (type: string, createdAt: Date, expiry: Date, reuse?: boolean, maySend?: boolean): string => {
-    const durationMs = expiry.getTime() - createdAt.getTime();
-
     if (type === 'Short') {
-      if (reuse === true && maySend === false) {
-        const durationHours = Math.round(durationMs / (1000 * 60 * 60));
-        return `Reusable for ${durationHours} hours`;
-      } else if (reuse === false && maySend === false) {
-        const durationMinutes = Math.round(durationMs / (1000 * 60));
-        return `Single use for ${durationMinutes} minutes`;
-      } else if (reuse === false && maySend === true) {
-        const durationMinutes = Math.round(durationMs / (1000 * 60));
-        return `Receive/Respond for ${durationMinutes} minutes`;
-      }
+      return calculateShortDuration(createdAt, expiry, reuse, maySend);
     } else if (type === 'Middle') {
-      const durationDays = Math.round(durationMs / (1000 * 60 * 60 * 24));
-      return `${durationDays} day${durationDays !== 1 ? 's' : ''}`;
-    } else if (type === 'Long' || type === 'Empty simcard') {
-      const durationDays = Math.round(durationMs / (1000 * 60 * 60 * 24));
-      return `${durationDays} days`;
+      return calculateMiddleDuration(createdAt, expiry);
+    } else if (type === 'Long') {
+      return calculateLongDuration(createdAt, expiry);
+    } else if (type === 'Empty simcard') {
+      return calculateEmptySimDuration(createdAt, expiry);
     }
-
-    // Return empty string for unknown types
     return '';
   };
-
-  // Mock history data for virtual debit cards
-  const virtualCardData: VirtualCardRecord[] = [
-    {
-      id: 'vc-1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p',
-      purchaseDate: '2024-01-15 13:56',
-      price: 4.50,
-      cardNumber: '4532 1234 5678 9012',
-      expirationDate: '12/27',
-      cvv: '123',
-      funds: 0
-    },
-    {
-      id: 'vc-2b3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7q',
-      purchaseDate: '2024-01-14 5:43',
-      price: 7.00,
-      cardNumber: '5555 4444 3333 2222',
-      expirationDate: '08/26',
-      cvv: '456',
-      funds: 3
-    },
-    {
-      id: 'vc-3c4d5e6f-7g8h-9i0j-1k2l-3m4n5o6p7q8r',
-      purchaseDate: '2024-01-12 12:00',
-      price: 4.50,
-      cardNumber: '4111 1111 1111 1111',
-      expirationDate: '05/28',
-      cvv: '789',
-      funds: 0
-    },
-    {
-      id: 'vc-4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9s',
-      purchaseDate: '2024-01-10 8:19',
-      price: 7.00,
-      cardNumber: '5105 1051 0510 5100',
-      expirationDate: '11/25',
-      cvv: '012',
-      funds: 3
-    },
-    {
-      id: 'vc-5e6f7g8h-9i0j-1k2l-3m4n-5o6p7q8r9s0t',
-      purchaseDate: '2024-01-08 1:00',
-      price: 4.50,
-      cardNumber: '4000 0000 0000 0002',
-      expirationDate: '03/29',
-      cvv: '345',
-      funds: 0
-    },
-    {
-      id: 'vc-6f7g8h9i-0j1k-2l3m-4n5o6p7q8r9s0t1u',
-      purchaseDate: '2024-01-05 5:46',
-      price: 7.00,
-      cardNumber: '5200 8282 8282 8210',
-      expirationDate: '07/26',
-      cvv: '678',
-      funds: 3
-    },
-    {
-      id: 'vc-7g8h9i0j-1k2l-3m4n-5o6p-7q8r9s0t1u2v',
-      purchaseDate: '2024-01-04 11:22',
-      price: 4.50,
-      cardNumber: '4242 4242 4242 4242',
-      expirationDate: '09/27',
-      cvv: '321',
-      funds: 0
-    },
-    {
-      id: 'vc-8h9i0j1k-2l3m-4n5o-6p7q-8r9s0t1u2v3w',
-      purchaseDate: '2024-01-03 16:15',
-      price: 7.00,
-      cardNumber: '5555 5555 5555 4444',
-      expirationDate: '10/25',
-      cvv: '987',
-      funds: 3
-    },
-    {
-      id: 'vc-9i0j1k2l-3m4n-5o6p-7q8r-9s0t1u2v3w4x',
-      purchaseDate: '2024-01-02 9:30',
-      price: 4.50,
-      cardNumber: '4000 0000 0000 0069',
-      expirationDate: '04/28',
-      cvv: '654',
-      funds: 0
-    },
-    {
-      id: 'vc-0j1k2l3m-4n5o-6p7q-8r9s-0t1u2v3w4x5y',
-      purchaseDate: '2024-01-01 14:45',
-      price: 7.00,
-      cardNumber: '6011 0000 0000 0004',
-      expirationDate: '06/26',
-      cvv: '147',
-      funds: 3
-    },
-    {
-      id: 'vc-1k2l3m4n-5o6p-7q8r-9s0t-1u2v3w4x5y6z',
-      purchaseDate: '2023-12-31 20:00',
-      price: 4.50,
-      cardNumber: '3782 822463 10005',
-      expirationDate: '12/27',
-      cvv: '258',
-      funds: 0
-    }
-  ];
-
-  // USA States list
-  const usaStates = [
-    { code: 'All States', name: 'All States' },
-    { code: 'AL', name: 'Alabama (AL)' },
-    { code: 'AK', name: 'Alaska (AK)' },
-    { code: 'AZ', name: 'Arizona (AZ)' },
-    { code: 'AR', name: 'Arkansas (AR)' },
-    { code: 'CA', name: 'California (CA)' },
-    { code: 'CO', name: 'Colorado (CO)' },
-    { code: 'CT', name: 'Connecticut (CT)' },
-    { code: 'DE', name: 'Delaware (DE)' },
-    { code: 'FL', name: 'Florida (FL)' },
-    { code: 'GA', name: 'Georgia (GA)' },
-    { code: 'HI', name: 'Hawaii (HI)' },
-    { code: 'ID', name: 'Idaho (ID)' },
-    { code: 'IL', name: 'Illinois (IL)' },
-    { code: 'IN', name: 'Indiana (IN)' },
-    { code: 'IA', name: 'Iowa (IA)' },
-    { code: 'KS', name: 'Kansas (KS)' },
-    { code: 'KY', name: 'Kentucky (KY)' },
-    { code: 'LA', name: 'Louisiana (LA)' },
-    { code: 'ME', name: 'Maine (ME)' },
-    { code: 'MD', name: 'Maryland (MD)' },
-    { code: 'MA', name: 'Massachusetts (MA)' },
-    { code: 'MI', name: 'Michigan (MI)' },
-    { code: 'MN', name: 'Minnesota (MN)' },
-    { code: 'MS', name: 'Mississippi (MS)' },
-    { code: 'MO', name: 'Missouri (MO)' },
-    { code: 'MT', name: 'Montana (MT)' },
-    { code: 'NE', name: 'Nebraska (NE)' },
-    { code: 'NV', name: 'Nevada (NV)' },
-    { code: 'NH', name: 'New Hampshire (NH)' },
-    { code: 'NJ', name: 'New Jersey (NJ)' },
-    { code: 'NM', name: 'New Mexico (NM)' },
-    { code: 'NY', name: 'New York (NY)' },
-    { code: 'NC', name: 'North Carolina (NC)' },
-    { code: 'ND', name: 'North Dakota (ND)' },
-    { code: 'OH', name: 'Ohio (OH)' },
-    { code: 'OK', name: 'Oklahoma (OK)' },
-    { code: 'OR', name: 'Oregon (OR)' },
-    { code: 'PA', name: 'Pennsylvania (PA)' },
-    { code: 'RI', name: 'Rhode Island (RI)' },
-    { code: 'SC', name: 'South Carolina (SC)' },
-    { code: 'SD', name: 'South Dakota (SD)' },
-    { code: 'TN', name: 'Tennessee (TN)' },
-    { code: 'TX', name: 'Texas (TX)' },
-    { code: 'UT', name: 'Utah (UT)' },
-    { code: 'VT', name: 'Vermont (VT)' },
-    { code: 'VA', name: 'Virginia (VA)' },
-    { code: 'WA', name: 'Washington (WA)' },
-    { code: 'WV', name: 'West Virginia (WV)' },
-    { code: 'WI', name: 'Wisconsin (WI)' },
-    { code: 'WY', name: 'Wyoming (WY)' }
-  ];
-
-  const proxyDurations = ['All Durations', '1 hour', '1 day', '7 days', '30 days'];
-
-  // Mock proxy data
-  const proxyData: ProxyRecord[] = [
-    {
-      id: '6b7ac1aa-192e-454e-aa92-b7885d701771',
-      purchaseDate: '2024-10-13 2:28',
-      expirationDate: '2024-10-13 3:28',
-      usaState: 'Florida (FL)',
-      price: 5,
-      duration: '1 hour',
-      ip: '85.239.54.237',
-      httpsPort: '49999',
-      socks5Port: '50000',
-      user: 'b7z3kR9',
-      password: 'm8t2YQouxI'
-    },
-    {
-      id: 'a8c5d3bb-293f-565f-bb03-c8996e812882',
-      purchaseDate: '2024-10-12 14:15',
-      expirationDate: '2024-10-13 14:15',
-      usaState: 'California (CA)',
-      price: 12,
-      duration: '1 day',
-      ip: '192.168.45.123',
-      httpsPort: '48888',
-      socks5Port: '49000',
-      user: 'b7z3kR9',
-      password: 'n5r8TPlmxK'
-    },
-    {
-      id: 'f2e9a1cc-384a-676a-cc14-d9aa7f923993',
-      purchaseDate: '2024-10-11 9:30',
-      expirationDate: '2024-10-18 9:30',
-      usaState: 'Texas (TX)',
-      price: 80,
-      duration: '7 days',
-      ip: '203.156.78.89',
-      httpsPort: '47777',
-      socks5Port: '48000',
-      user: 'b7z3kR9',
-      password: 'k6j9UMnpxL'
-    },
-    {
-      id: 'b4f6c2dd-495b-787b-dd25-eabb8g034aa4',
-      purchaseDate: '2024-10-10 16:45',
-      expirationDate: '2024-11-09 16:45',
-      usaState: 'New York (NY)',
-      price: 120,
-      duration: '30 days',
-      ip: '172.244.91.156',
-      httpsPort: '46666',
-      socks5Port: '47000',
-      user: 'b7z3kR9',
-      password: 'h2g4VQrsnM'
-    },
-    {
-      id: 'g7h3e4ee-5a6c-898c-ee36-fcc9i145bb5',
-      purchaseDate: '2024-10-09 11:20',
-      expirationDate: '2024-10-09 12:20',
-      usaState: 'Nevada (NV)',
-      price: 5,
-      duration: '1 hour',
-      ip: '98.234.67.201',
-      httpsPort: '45555',
-      socks5Port: '46000',
-      user: 'b7z3kR9',
-      password: 'p1m3WXtuvN'
-    }
-  ];
 
   const serviceTypeOptions = [
     'All',
@@ -696,16 +475,31 @@ const History: React.FC = () => {
   };
 
   // Filter states based on search term for proxies
-  const filteredStates = usaStates.filter(state =>
-    state.name.toLowerCase().includes(proxyStateSearchTerm.toLowerCase())
-  );
+  const filteredStates = filterProxyStates(proxyStateSearchTerm);
 
-  // Get state name without abbreviation for proxies
-  const getStateName = (fullStateName: string) => {
-    if (fullStateName.includes('(')) {
-      return fullStateName.split(' (')[0];
-    }
-    return fullStateName;
+  // Wrapper functions for proxy handlers to make them compatible with React events
+  const handleProxyStateInputChangeWrapper = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleProxyStateInputChange(e.target.value, setProxyStateSearchTerm);
+  };
+
+  const handleProxyStateInputClickWrapper = () => {
+    handleProxyStateInputClick(setIsProxyStateDropdownOpen);
+  };
+
+  const handleProxyStateSelectWrapper = (state: string) => {
+    handleProxyStateSelect(state, setSelectedProxyState, setIsProxyStateDropdownOpen, setProxyStateSearchTerm);
+  };
+
+  const handleProxyInfoClickWrapper = (record: ProxyRecord) => {
+    handleProxyInfoClick(record, setSelectedProxyRecord, setShowProxyInfoModal, setIsProxyIdCopied);
+  };
+
+  const handleCopyProxyIdWrapper = () => {
+    handleCopyProxyId(selectedProxyRecord, setIsProxyIdCopied);
+  };
+
+  const handleCopyProxyFieldWrapper = (fieldValue: string, fieldKey: string) => {
+    handleCopyProxyField(fieldValue, fieldKey, setCopiedProxyFields);
   };
 
   // Close dropdowns when clicking outside
@@ -816,42 +610,13 @@ const History: React.FC = () => {
 
   // Filter proxy data based on selected filters
   const filteredProxyData = useMemo(() => {
-    let filtered = proxyData;
-
-    if (selectedProxyState !== 'All States') {
-      filtered = filtered.filter(record => record.usaState === selectedProxyState);
-    }
-
-    if (selectedProxyDuration !== 'All Durations') {
-      filtered = filtered.filter(record => record.duration === selectedProxyDuration);
-    }
-
-    return filtered;
-  }, [selectedProxyState, selectedProxyDuration]);
+    return filterProxies(proxyFirestoreData, selectedProxyState, selectedProxyDuration);
+  }, [proxyFirestoreData, selectedProxyState, selectedProxyDuration]);
 
   // Filter virtual card data based on selected filters
   const filteredVirtualCardData = useMemo(() => {
-    let filtered = virtualCardData;
-
-    // Filter by card number (normalize spaces)
-    if (cardNumberSearch.trim()) {
-      const searchTerm = cardNumberSearch.replace(/\s/g, '').toLowerCase();
-      filtered = filtered.filter(record =>
-        record.cardNumber.replace(/\s/g, '').toLowerCase().includes(searchTerm)
-      );
-    }
-
-    // Filter by funds
-    if (fundsFilter !== 'All') {
-      if (fundsFilter === '$0') {
-        filtered = filtered.filter(record => record.funds === 0);
-      } else if (fundsFilter === '$3') {
-        filtered = filtered.filter(record => record.funds === 3);
-      }
-    }
-
-    return filtered;
-  }, [cardNumberSearch, fundsFilter]);
+    return filterVirtualCards(vccData, cardNumberSearch, fundsFilter);
+  }, [vccData, cardNumberSearch, fundsFilter]);
 
   // Calculate pagination for numbers table
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -944,7 +709,7 @@ const History: React.FC = () => {
 
       // Log para debug - identificar status inválidos
       if (!allowedStatuses.includes(statusValue as any)) {
-        console.warn(`⚠️ Status inválido detectado para orden ${docData.orderId}:`, {
+        console.warn(`⚠️ Invalid status detected for order ${docData.orderId}:`, {
           statusOriginal: docData.status,
           statusNormalizado: statusValue,
           tipo: docData.type,
@@ -993,7 +758,6 @@ const History: React.FC = () => {
       (querySnapshot) => {
         if (!isSubscribed) return;
 
-        // **LA CORRECCIÓN CLAVE ESTÁ AQUÍ**
         // Actualiza el estado de forma funcional y atómica para todos los cambios.
         setFirestoreData(currentData => {
             let nextData = [...currentData]; // Crea una copia mutable del estado actual
@@ -1072,61 +836,149 @@ const History: React.FC = () => {
     };
   }, [activeTab]); // ONLY activeTab - uid is stable via ref
 
-  // Get status color based on type and status
-  const getStatusColor = (status: string, serviceType: string) => {
-    if (serviceType === 'Short Numbers') {
-      switch (status) {
-        case 'Completed':
-          return 'text-blue-400 border-blue-500/30 bg-blue-500/20';
-        case 'Pending':
-          return 'text-orange-400 border-orange-500/30 bg-orange-500/20';
-        case 'Cancelled':
-          return 'text-red-400 border-red-500/30 bg-red-500/20';
-        case 'Expired':
-          return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
-        case 'Timed out':
-          return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
-        default:
-          return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
-      }
-    } else if (serviceType === 'Middle' || serviceType === 'Middle Numbers' ||
-               serviceType === 'Long' || serviceType === 'Long Numbers' ||
-               serviceType === 'Empty SIM card' || serviceType === 'Empty Simcard') {
-      switch (status) {
-        case 'Active':
-          return 'text-green-400 border-green-500/30 bg-green-500/20';
-        case 'Cancelled':
-          return 'text-red-400 border-red-500/30 bg-red-500/20';
-        case 'Inactive':
-          return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
-        case 'Expired':
-          return 'text-red-400 border-red-500/30 bg-red-500/20';
-        case 'Timed out':
-          return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
-        default:
-          return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
-      }
+  // Fetch VCC Orders from Firestore
+  useEffect(() => {
+    if (activeTab !== 'virtualCards') {
+      return;
     }
 
-    // Fallback to original colors
-    switch (status) {
-      case 'Active':
-        return 'text-green-400 border-green-500/30 bg-green-500/20';
-      case 'Completed':
-        return 'text-blue-400 border-blue-500/30 bg-blue-500/20';
-      case 'Pending':
-        return 'text-yellow-400 border-yellow-500/30 bg-yellow-500/20';
-      case 'Inactive':
-        return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
-      case 'Expired':
-        return 'text-red-400 border-red-500/30 bg-red-500/20';
-      case 'Cancelled':
-        return 'text-red-400 border-red-500/30 bg-red-500/20';
-      case 'Timed out':
-        return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
-      default:
-        return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
+    if (!currentUser) {
+      console.error('No authenticated user');
+      setIsLoadingVCC(false);
+      return;
     }
+
+    const uid = currentUser.uid;
+    setIsLoadingVCC(true);
+    let isSubscribed = true;
+
+    const vccOrdersRef = collection(db, 'vccOrders');
+    const q = query(
+      vccOrdersRef,
+      where('uid', '==', uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (!isSubscribed) return;
+
+        const vccRecords: VirtualCardRecord[] = snapshot.docs.map(doc => {
+          const data = doc.data() as VCCOrderDocument;
+          return convertVCCDocumentToRecord(data);
+        });
+
+        setVccData(vccRecords);
+        setIsLoadingVCC(false);
+      },
+      (error: any) => {
+        if (!isSubscribed) return;
+        console.error('Error fetching VCC orders:', error);
+
+        // Handle specific Firebase errors
+        let errorMsg = 'An error occurred when loading the cards, please try again';
+
+        if (error?.code === 'permission-denied') {
+          errorMsg = 'Access denied, you cannot check these cards';
+        } else if (error?.code === 'unavailable') {
+          errorMsg = 'Service temporarily unavailable, please try again';
+        } else if (error?.code === 'unauthenticated') {
+          errorMsg = 'You are not authenticated';
+        } else if (error?.message) {
+          errorMsg = `Error: ${error.message}`;
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+        setIsLoadingVCC(false);
+      }
+    );
+
+    return () => {
+      isSubscribed = false;
+      unsubscribe();
+    };
+  }, [activeTab]);
+
+  // Fetch Proxy Orders from Firestore
+  useEffect(() => {
+    if (activeTab !== 'proxies') {
+      return;
+    }
+
+    if (!currentUser) {
+      console.error('No authenticated user');
+      setIsLoadingProxies(false);
+      return;
+    }
+
+    const uid = currentUser.uid;
+    setIsLoadingProxies(true);
+    let isSubscribed = true;
+
+    const proxyOrdersRef = collection(db, 'proxyOrders');
+    const q = query(
+      proxyOrdersRef,
+      where('uid', '==', uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (!isSubscribed) return;
+
+        const proxyRecords: ProxyRecord[] = snapshot.docs.map(doc => {
+          const data = doc.data() as ProxyOrderDocument;
+          return convertProxyDocumentToRecord(data);
+        });
+
+        setProxyFirestoreData(proxyRecords);
+        setIsLoadingProxies(false);
+      },
+      (error: any) => {
+        if (!isSubscribed) return;
+        console.error('Error fetching proxy orders:', error);
+
+        // Handle specific Firebase errors
+        let errorMsg = 'An error occurred when loading the proxies, please try again';
+
+        if (error?.code === 'permission-denied') {
+          errorMsg = 'Access denied, you cannot check these proxies';
+        } else if (error?.code === 'unavailable') {
+          errorMsg = 'Service temporarily unavailable, please try again';
+        } else if (error?.code === 'unauthenticated') {
+          errorMsg = 'You are not authenticated';
+        } else if (error?.message) {
+          errorMsg = `Error: ${error.message}`;
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+        setIsLoadingProxies(false);
+      }
+    );
+
+    return () => {
+      isSubscribed = false;
+      unsubscribe();
+    };
+  }, [activeTab]);
+
+  // Get status color based on type and status
+  // Updated to delegate to service-specific functions
+  const getStatusColor = (status: string, serviceType: string) => {
+    if (serviceType === 'Short' || serviceType === 'Short Numbers') {
+      return getShortStatusColor(status);
+    } else if (serviceType === 'Middle' || serviceType === 'Middle Numbers') {
+      return getMiddleStatusColor(status);
+    } else if (serviceType === 'Long' || serviceType === 'Long Numbers') {
+      return getLongStatusColor(status);
+    } else if (serviceType === 'Empty simcard' || serviceType === 'Empty SIM card' || serviceType === 'Empty Simcard') {
+      return getEmptySimStatusColor(status);
+    }
+    return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
   };
 
   // Get service type color
@@ -1205,17 +1057,7 @@ const History: React.FC = () => {
     }
   };
 
-  const handleCopyCardNumber = async (cardNumber: string, cardId: string) => {
-    try {
-      await navigator.clipboard.writeText(cardNumber);
-      setCopiedCardNumbers(prev => ({ ...prev, [cardId]: true }));
-      setTimeout(() => {
-        setCopiedCardNumbers(prev => ({ ...prev, [cardId]: false }));
-      }, 2000);
-    } catch (err) {
-      console.error('Failed to copy card number:', err);
-    }
-  };
+  // Function now imported from VirtualCardLogic as handleCopyCardNumberVC
 
   const handleCopyUuid = async () => {
     try {
@@ -1228,180 +1070,24 @@ const History: React.FC = () => {
   };
 
   // Proxy-specific handlers
-  const handleProxyStateSelect = (stateName: string) => {
-    setSelectedProxyState(stateName);
-    setIsProxyStateDropdownOpen(false);
-    setProxyStateSearchTerm('');
-  };
+  // Functions now imported from ProxyLogic: handleProxyStateSelect, handleProxyStateInputChange, handleProxyStateInputClick
 
-  const handleProxyStateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setProxyStateSearchTerm(value);
+  // Functions now imported from ProxyLogic: handleProxyInfoClick, handleCopyProxyId, handleCopyProxyField
 
-    if (value === '') {
-      setSelectedProxyState('');
-    }
-
-    if (!isProxyStateDropdownOpen) {
-      setIsProxyStateDropdownOpen(true);
-    }
-  };
-
-  const handleProxyStateInputClick = () => {
-    setIsProxyStateDropdownOpen(true);
-    if (proxyStateInputRef.current) {
-      proxyStateInputRef.current.focus();
-    }
-  };
-
-  const handleProxyInfoClick = (record: ProxyRecord) => {
-    setSelectedProxyRecord(record);
-    setShowProxyInfoModal(true);
-    setIsProxyIdCopied(false);
-  };
-
-  const handleCopyProxyId = async () => {
-    if (selectedProxyRecord) {
-      try {
-        await navigator.clipboard.writeText(selectedProxyRecord.id);
-        setIsProxyIdCopied(true);
-        setTimeout(() => setIsProxyIdCopied(false), 2000);
-      } catch (err) {
-        console.error('Failed to copy Order ID:', err);
-      }
-    }
-  };
-
-  const handleCopyProxyField = async (fieldValue: string, fieldKey: string) => {
-    try {
-      await navigator.clipboard.writeText(fieldValue);
-      setCopiedProxyFields(prev => ({ ...prev, [fieldKey]: true }));
-      setTimeout(() => {
-        setCopiedProxyFields(prev => ({ ...prev, [fieldKey]: false }));
-      }, 2000);
-    } catch (err) {
-      console.error('Failed to copy field:', err);
-    }
-  };
-
-  // Helper function to check if 2:45 minutes have passed since creation
-  const hasTwoFortyFiveMinutesPassed = (createdAt?: Date): boolean => {
-    if (!createdAt) return true; // If no createdAt, allow actions
-    const now = new Date().getTime();
-    const created = createdAt.getTime();
-    const twoMinutesFortyFive = 2 * 60 * 1000 + 45 * 1000; // 2:45 in milliseconds
-    return (now - created) >= twoMinutesFortyFive;
-  };
+  // Function now imported from ShortLogic
 
   // Get available actions based on service type, status, reuse and maySend
   const getAvailableActions = (record: HistoryRecord) => {
-    const { serviceType, status, reuse, maySend, code, createdAt, expiry } = record;
-    const hasSms = code && code.trim() !== '';
-    const displayStatus = getDisplayStatus(record); // Get visual status
+    const { serviceType } = record;
 
     if (serviceType === 'Short') {
-      // If visually showing "Timed out", no actions available
-      if (displayStatus === 'Timed out') {
-        return [];
-      }
-
-      // Check for Reuse first - if reuse is true and Completed, always show Reuse
-      if (reuse === true && status === 'Completed') {
-        return ['Reuse'];
-      }
-
-      if (reuse === true && maySend === false) {
-        // Reusable type
-        if (status === 'Pending') {
-          // Only allow Cancel if 2:45 minutes have passed AND no SMS received
-          if (!hasSms && hasTwoFortyFiveMinutesPassed(createdAt)) {
-            return ['Cancel'];
-          }
-          return []; // Disabled if less than 2:45 minutes or SMS received
-        }
-      } else if (reuse === false && maySend === false) {
-        // Single use type
-        if (status === 'Pending') {
-          // Only allow Cancel if 2:45 minutes have passed AND no SMS received
-          if (!hasSms && hasTwoFortyFiveMinutesPassed(createdAt)) {
-            return ['Cancel'];
-          }
-          return []; // Disabled if less than 2:45 minutes or SMS received
-        }
-        // For other statuses (Completed, Cancelled, Timed out) - no actions
-        return [];
-      } else if (reuse === false && maySend === true) {
-        // Receive/Respond type
-        if (status === 'Pending') {
-          // Only allow Cancel if 2:45 minutes have passed AND no SMS received
-          if (!hasSms && hasTwoFortyFiveMinutesPassed(createdAt)) {
-            return ['Cancel'];
-          }
-          return []; // Disabled if less than 2:45 minutes or SMS received
-        } else if (status === 'Completed') {
-          // Check if expiry is still valid (greater than current time) and has SMS
-          if (hasSms && expiry) {
-            const now = new Date();
-            if (expiry.getTime() > now.getTime()) {
-              // Within 5-minute window, show Send button
-              return ['Send'];
-            }
-          }
-          // If no SMS, expired, or no expiry - no actions
-          return [];
-        }
-        // No actions for other statuses
-        return [];
-      }
+      return getShortAvailableActions(record);
     } else if (serviceType === 'Middle') {
-      const { code } = record;
-      const hasSms = code && code.trim() !== '';
-
-      // Check if displaying as Inactive (ficticio) - disable actions
-      if (displayStatus === 'Inactive' && status === 'Active') {
-        // Ficticio Inactive (still Active in Firestore) - no actions (disabled)
-        return [];
-      }
-
-      if (status === 'Active') {
-        if (hasSms) {
-          // Active with SMS - no actions (disabled)
-          return [];
-        } else {
-          // Active without SMS - only Cancel
-          return ['Cancel'];
-        }
-      } else if (status === 'Inactive') {
-        // Real Inactive status (from Firestore) - always show Activate (regardless of SMS)
-        return ['Activate'];
-      } else if (status === 'Cancelled' || status === 'Expired') {
-        // Cancelled or Expired - no actions (disabled)
-        return [];
-      }
-    } else if (serviceType === 'Long' || serviceType === 'Empty simcard') {
-      const { code } = record;
-      const hasSms = code && code.trim() !== '';
-
-      if (status === 'Active') {
-        if (hasSms) {
-          // Active with SMS - no actions (disabled)
-          return [];
-        } else {
-          // Active without SMS - only Cancel
-          return ['Cancel'];
-        }
-      } else if (status === 'Inactive') {
-        if (hasSms) {
-          // Inactive with SMS - only Activate
-          return ['Activate'];
-        } else {
-          // Inactive without SMS - Cancel and Activate
-          return ['Cancel', 'Activate'];
-        }
-      } else if (status === 'Cancelled' || status === 'Expired') {
-        // Cancelled or Expired - no actions (disabled)
-        return [];
-      }
+      return getMiddleAvailableActions(record);
+    } else if (serviceType === 'Long') {
+      return getLongAvailableActions(record);
+    } else if (serviceType === 'Empty simcard') {
+      return getEmptySimAvailableActions(record);
     }
 
     return [];
@@ -1415,252 +1101,11 @@ const History: React.FC = () => {
     }));
   };
 
-  // Handle cancel short number
-  const handleCancelShort = async (orderId: string) => {
-    const currentUser = getAuth().currentUser;
+  // Function now imported from ShortLogic
 
-    if (!currentUser) {
-      setErrorMessage('You are not authenticated or your token is invalid');
-      setShowErrorModal(true);
-      return;
-    }
+  // Function now imported from MiddleLogic
 
-    // Set cancelling state
-    setCancellingOrderId(orderId);
-
-    try {
-      // Get Firebase ID token
-      const idToken = await currentUser.getIdToken();
-
-      // Make API call to cancel short number cloud function
-      const response = await fetch('https://cancelshortnumber-ezeznlhr5a-uc.a.run.app', {
-        method: 'POST',
-        headers: {
-          'authorization': `${idToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ orderId })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        // Success - the listener will automatically update the table
-        // No need to do anything, just clear the cancelling state
-        setCancellingOrderId(null);
-      } else {
-        // Handle error responses
-        let errorMsg = 'An unknown error occurred';
-
-        if (data.message === 'Unauthorized') {
-          errorMsg = 'You are not authenticated or your token is invalid';
-        } else if (data.message === 'Bad Request: Missing orderId' || data.message === 'Order not found') {
-          errorMsg = 'Please refresh the page and try again';
-        } else if (data.message === 'Error cancelling number') {
-          errorMsg = 'This number could not be cancelled, please try again or contact our customer support';
-        } else if (data.message === 'Error updating balance') {
-          errorMsg = 'Please refresh the page and try again';
-        } else if (data.message === 'Internal Server Error') {
-          errorMsg = 'Please contact our customer support';
-        }
-
-        setErrorMessage(errorMsg);
-        setShowErrorModal(true);
-        setCancellingOrderId(null);
-      }
-    } catch (error) {
-      console.error('Cancel order error:', error);
-      setErrorMessage('Please contact our customer support');
-      setShowErrorModal(true);
-      setCancellingOrderId(null);
-    }
-  };
-
-  // Handle cancel middle number
-  const handleCancelMiddle = async (recordId: string, orderId?: string) => {
-    if (!orderId) {
-      setErrorMessage('Invalid order ID');
-      setShowErrorModal(true);
-      return;
-    }
-
-    const auth = getAuth();
-    const currentUser = auth.currentUser;
-
-    if (!currentUser) {
-      setErrorMessage('You are not authenticated or your token is invalid');
-      setShowErrorModal(true);
-      return;
-    }
-
-    // Set cancelling state
-    setCancellingOrderId(recordId);
-
-    try {
-      // Get Firebase ID token
-      const idToken = await currentUser.getIdToken();
-
-      // Make API call to cancel middle number cloud function
-      const response = await fetch('https://cancelmiddleusa-ezeznlhr5a-uc.a.run.app', {
-        method: 'POST',
-        headers: {
-          'authorization': `${idToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ orderId })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        // Success - the listener will automatically update the status to Cancelled
-        // Backend will change status to Cancelled and buttons will be disabled
-        // No need to clear cancelling state - keep buttons disabled
-      } else {
-        // Handle error responses
-        let errorMsg = 'An unknown error occurred';
-        let shouldClearCancelling = true;
-
-        if (data.message === 'Unauthorized') {
-          errorMsg = 'You are not authenticated or your token is invalid';
-          shouldClearCancelling = false; // Keep buttons disabled for Unauthorized
-        } else if (data.message === 'Order not found') {
-          errorMsg = 'Please refresh the page and try again';
-        } else if (data.message === 'Internal error') {
-          errorMsg = 'Please contact our customer support';
-        } else if (data.message === 'Number cannot be cancelled') {
-          errorMsg = 'This number cannot be cancelled';
-        } else if (data.message === 'Error cancelling middle') {
-          errorMsg = 'When trying to cancel the number, please try again';
-        } else if (data.message === 'Internal Server Error') {
-          errorMsg = 'Please contact our customer support';
-        }
-
-        setErrorMessage(errorMsg);
-        setShowErrorModal(true);
-
-        if (shouldClearCancelling) {
-          setCancellingOrderId(null);
-        }
-      }
-    } catch (error) {
-      console.error('Cancel middle number error:', error);
-      setErrorMessage('Please contact our customer support');
-      setShowErrorModal(true);
-      setCancellingOrderId(null);
-    }
-  };
-
-  // Handle Reuse number
-  const handleReuseNumber = async (orderId: string) => {
-    const currentUser = getAuth().currentUser;
-
-    if (!currentUser) {
-      setErrorMessage('You are not authenticated or your token is invalid');
-      setShowErrorModal(true);
-      return;
-    }
-
-    // Set reusing state
-    setReusingOrderId(orderId);
-
-    try {
-      // Get Firebase ID token
-      const idToken = await currentUser.getIdToken();
-
-      // TODO: Replace with actual cloud function URL
-      const response = await fetch('https://activatereuseusa-ezeznlhr5a-uc.a.run.app', {
-        method: 'POST',
-        headers: {
-          'authorization': `${idToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ orderId })
-      });
-
-      const data = await response.json();
-      console.log('Reuse number response:', JSON.stringify(data,null,2));
-      if (data.success) {
-        // Check if the message is 'Number is awake'
-        if (data.message === 'Number is awake') {
-          console.log('Number is awake detected for orderId:', orderId);
-          // Update the record to set codeAwakeAt based on updatedAt
-          setFirestoreData(currentData => {
-            const updated = currentData.map(record => {
-              if (record.id === orderId) {
-                console.log('Found record:', {
-                  id: record.id,
-                  asleep: record.asleep,
-                  updatedAt: record.updatedAt,
-                  status: record.status
-                });
-                // Use updatedAt as the starting point for the 5-minute timer
-                const startTime = record.updatedAt || new Date();
-                console.log('Setting codeAwakeAt to:', startTime);
-                return { ...record, codeAwakeAt: startTime };
-              }
-              return record;
-            });
-            console.log('Updated firestoreData');
-            return updated;
-          });
-        }
-        // Success - the listener will automatically update the table
-        setReusingOrderId(null);
-      } else {
-        // Handle error responses
-        let errorMsg = 'An unknown error occurred';
-        let shouldShowError = true;
-
-        if ((data.message === 'Number is asleep' || data.message === 'Number is sleeping') && data.time) {
-          // Number is sleeping - update local state to show wake up timer
-          const wakeUpTime = new Date(data.time);
-          const now = new Date();
-          const timeDiff = wakeUpTime.getTime() - now.getTime();
-
-          if (timeDiff > 0) {
-            // Update the record locally to add awakeIn
-            setFirestoreData(currentData => 
-              currentData.map(record => 
-                record.id === orderId 
-                  ? { ...record, awakeIn: wakeUpTime }
-                  : record
-              )
-            );
-            shouldShowError = false; // Don't show error, show timer instead
-            setReusingOrderId(null);
-          } else {
-            errorMsg = 'This number is ready to be reused. Please try again.';
-          }
-        } else if (data.message === 'Insufficient balance' && data.price) {
-          // Format price to show only 2 decimals or as integer if no decimals
-          const formattedPrice = data.price % 1 === 0 ? data.price.toString() : data.price.toFixed(2);
-          errorMsg = `Insufficient balance. You need $${formattedPrice} to reuse this number`;
-        } else if (data.message === 'Error activating reuse') {
-          errorMsg = 'This number can no longer be reused';
-        } else if (data.message === 'Unauthorized') {
-          errorMsg = 'You are not authenticated or your token is invalid';
-        } else if (data.message === 'Bad Request: Missing orderId' || data.message === 'Order not found') {
-          errorMsg = 'Please refresh the page and try again';
-        } else if (data.message) {
-          errorMsg = data.message;
-        } else if (data.message === 'Internal Server Error') {
-          errorMsg = 'Please contact our customer support';
-        }
-
-        if (shouldShowError) {
-          setErrorMessage(errorMsg);
-          setShowErrorModal(true);
-          setReusingOrderId(null);
-        }
-      }
-    } catch (error) {
-      console.error('Reuse number error:', error);
-      setErrorMessage('Please contact our customer support');
-      setShowErrorModal(true);
-      setReusingOrderId(null);
-    }
-  };
+  // Function now imported from ShortLogic
 
   // Handle action click
   const handleActionClick = async (action: string, record: HistoryRecord) => {
@@ -1670,17 +1115,21 @@ const History: React.FC = () => {
 
     // Handle Cancel action
     if (action === 'Cancel') {
-      if (record.serviceType === 'Middle') {
-        await handleCancelMiddle(record.id, record.orderId);
-      } else {
-        await handleCancelShort(record.id);
+      if (record.serviceType === 'Short') {
+        await handleCancelShort(record.orderId || '', setErrorMessage, setShowErrorModal, setCancellingOrderId);
+      } else if (record.serviceType === 'Middle') {
+        await handleCancelMiddle(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setCancellingOrderId);
+      } else if (record.serviceType === 'Long') {
+        await handleCancelLong(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setCancellingOrderId);
+      } else if (record.serviceType === 'Empty simcard') {
+        await handleCancelEmptySim(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setCancellingOrderId);
       }
       return;
     }
 
     // Handle Reuse action
     if (action === 'Reuse') {
-      await handleReuseNumber(record.id);
+      await handleReuseNumber(record.orderId || '', setErrorMessage, setShowErrorModal, setReusingOrderId);
       return;
     }
 
@@ -1690,89 +1139,22 @@ const History: React.FC = () => {
       return;
     }
 
-    // Handle Activate action
+    // Handle Activate action - use service-specific activate functions
     if (action === 'Activate') {
-      await handleActivateNumber(record.id, record.orderId);
+      if (record.serviceType === 'Middle') {
+        await handleActivateMiddle(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setActivatingOrderId);
+      } else if (record.serviceType === 'Long') {
+        await handleActivateLong(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setActivatingOrderId);
+      } else if (record.serviceType === 'Empty simcard') {
+        await handleActivateEmptySim(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setActivatingOrderId);
+      }
       return;
     }
 
     // TODO: Implement other functionalities
   };
 
-  // Handle Activate Number
-  const handleActivateNumber = async (recordId: string, orderId?: string) => {
-    if (!orderId) {
-      setErrorMessage('Invalid order ID');
-      setShowErrorModal(true);
-      return;
-    }
-
-    setActivatingOrderId(recordId);
-
-    try {
-      const auth = getAuth();
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        setErrorMessage('You are not authenticated or your token is invalid');
-        setShowErrorModal(true);
-        setActivatingOrderId(null);
-        return;
-      }
-
-      const idToken = await currentUser.getIdToken();
-
-      const response = await fetch('https://activatemiddleusa-ezeznlhr5a-uc.a.run.app', {
-        method: 'POST',
-        headers: {
-          'authorization': `${idToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ orderId })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        // Success - backend will change status to Active, component will re-render
-        console.log('Service activated successfully:', data);
-        setActivatingOrderId(null);
-        // Data will auto-update via Firestore listener
-      } else {
-        // Handle errors
-        let errorMsg = 'Please contact our customer support';
-
-        if (data.message === 'Unauthorized') {
-          errorMsg = 'You are not authenticated or your token is invalid';
-          // Don't clear activatingOrderId - keep buttons disabled for Unauthorized
-        } else if (data.message === 'Invalid orderId') {
-          errorMsg = 'Please refresh the page and try again';
-          setActivatingOrderId(null); // Re-enable buttons
-        } else if (data.message === 'Error waking up middle') {
-          errorMsg = 'When trying to activate this number, please try again';
-          setActivatingOrderId(null); // Re-enable buttons
-        } else if (data.message === 'Error getting time of wake up') {
-          errorMsg = 'Please refresh the page and try again';
-          setActivatingOrderId(null); // Re-enable buttons
-        } else if (data.message === 'Internal Server Error') {
-          errorMsg = 'Please contact our customer support';
-          setActivatingOrderId(null); // Re-enable buttons
-        }
-
-        setErrorMessage(errorMsg);
-        setShowErrorModal(true);
-
-        // Only clear activatingOrderId if not Unauthorized
-        if (data.message !== 'Unauthorized' && activatingOrderId) {
-          // Already cleared above for specific errors
-        }
-      }
-    } catch (error) {
-      console.error('Error activating number:', error);
-      setErrorMessage('Please contact our customer support');
-      setShowErrorModal(true);
-      setActivatingOrderId(null);
-    }
-  };
+  // Function removed - now using service-specific versions (handleActivateMiddle, handleActivateLong, handleActivateEmptySim)
 
   return (
     <DashboardLayout currentPath="/history">
@@ -2377,7 +1759,15 @@ const History: React.FC = () => {
 
                 {/* Virtual Cards Table */}
                 <div className="overflow-x-auto overflow-y-visible">
-                  {filteredVirtualCardData.length > 0 ? (
+                  {isLoadingVCC ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                      <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <p className="text-slate-400 mt-4">Loading cards...</p>
+                    </div>
+                  ) : filteredVirtualCardData.length > 0 ? (
                     <>
                       <table className="w-full">
                         <thead>
@@ -2421,7 +1811,7 @@ const History: React.FC = () => {
                                 <div className="font-mono text-white text-center">
                                   {record.cardNumber}
                                   <button
-                                    onClick={() => handleCopyCardNumber(record.cardNumber, record.id)}
+                                    onClick={() => handleCopyCardNumberVC(record.cardNumber, record.id, setCopiedCardNumbers)}
                                     className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
                                     title={copiedCardNumbers[record.id] ? "Copied!" : "Copy Card Number"}
                                   >
@@ -2538,8 +1928,8 @@ const History: React.FC = () => {
                             ref={proxyStateInputRef}
                             type="text"
                             value={proxyStateSearchTerm || selectedProxyState || ''}
-                            onChange={handleProxyStateInputChange}
-                            onClick={handleProxyStateInputClick}
+                            onChange={handleProxyStateInputChangeWrapper}
+                            onClick={handleProxyStateInputClickWrapper}
                             placeholder="Type or choose state"
                             className="w-full pl-4 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 placeholder-slate-400"
                           />
@@ -2557,7 +1947,7 @@ const History: React.FC = () => {
                               filteredStates.map((state) => (
                                 <div
                                   key={state.code}
-                                  onClick={() => handleProxyStateSelect(state.name)}
+                                  onClick={() => handleProxyStateSelectWrapper(state.name)}
                                   className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
                                 >
                                   <span className="text-white">{state.name}</span>
@@ -2616,7 +2006,15 @@ const History: React.FC = () => {
 
                 {/* Proxies Table */}
                 <div className="overflow-x-auto overflow-y-visible">
-                  {filteredProxyData.length > 0 ? (
+                  {isLoadingProxies ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                      <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <p className="text-slate-400 mt-4">Loading proxies...</p>
+                    </div>
+                  ) : filteredProxyData.length > 0 ? (
                     <>
                       <table className="w-full">
                         <thead>
@@ -2642,7 +2040,7 @@ const History: React.FC = () => {
                               <td className="py-4 px-6">
                                 <div className="flex items-center justify-center">
                                   <button
-                                    onClick={() => handleProxyInfoClick(record)}
+                                    onClick={() => handleProxyInfoClickWrapper(record)}
                                     className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
                                     title="View Information"
                                   >
@@ -2654,14 +2052,14 @@ const History: React.FC = () => {
                                 </div>
                               </td>
                               <td className="py-4 px-6 text-center">
-                                <span className="text-emerald-400 font-semibold">${record.price}</span>
+                                <span className="text-emerald-400 font-semibold">${formatProxyPrice(record.price)}</span>
                               </td>
                               <td className="py-4 px-6 text-white text-center">{record.duration}</td>
                               <td className="py-4 px-6">
                                 <div className="font-mono text-white text-center">
                                   {record.ip}
                                   <button
-                                    onClick={() => handleCopyProxyField(record.ip, `ip-${record.id}`)}
+                                    onClick={() => handleCopyProxyFieldWrapper(record.ip, `ip-${record.id}`)}
                                     className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
                                     title={copiedProxyFields[`ip-${record.id}`] ? "Copied!" : "Copy IP"}
                                   >
@@ -2892,7 +2290,7 @@ const History: React.FC = () => {
                     <span className="text-slate-300">Order ID: </span>
                     <span className="text-emerald-400 break-all">{selectedProxyRecord.id}
                       <button
-                        onClick={handleCopyProxyId}
+                        onClick={handleCopyProxyIdWrapper}
                         className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
                         title={isProxyIdCopied ? "Copied!" : "Copy Order ID"}
                       >

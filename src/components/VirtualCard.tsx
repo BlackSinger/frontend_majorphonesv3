@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
+import { getAuth } from 'firebase/auth';
 
 interface CardOption {
   id: string;
@@ -20,21 +21,105 @@ const VirtualCard: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // Global object to store card selection
+  const [cardSelection, setCardSelection] = useState({
+    balance: false
+  });
+
+  // Purchase states
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [isPurchaseDisabled, setIsPurchaseDisabled] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleErrorModalClose = () => {
+    setShowErrorModal(false);
+  };
+
+  const handlePurchase = async () => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      setErrorMessage('You are not authenticated or your token is invalid');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setIsPurchasing(true);
+    setIsPurchaseDisabled(true);
+
+    try {
+      const idToken = await currentUser.getIdToken();
+
+      const response = await fetch('https://getvcc-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(cardSelection)
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        navigate('/history?tab=virtualCards');
+      } else {
+        let errorMsg = 'An unknown error occurred';
+        let shouldKeepDisabled = false;
+
+        if (data.message === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+          shouldKeepDisabled = true;
+        } else if (data.message === 'You cannot get a VCC, because you have used Amazon Pay') {
+          errorMsg = 'Users that deposit with Amazon Pay cannot purchase virtual cards';
+          shouldKeepDisabled = true;
+        } else if (data.message === 'No VCC available') {
+          errorMsg = 'We ran out of virtual cards, try again later';
+        } else if (data.message === 'Insufficient balance') {
+          errorMsg = 'You do not have enough balance to make the purchase';
+        } else if (data.message === 'Internal Server Error') {
+          errorMsg = 'Please contact our customer support';
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+        setIsPurchasing(false);
+
+        if (!shouldKeepDisabled) {
+          setIsPurchaseDisabled(false);
+        }
+      }
+    } catch (error) {
+      console.error('Purchase VCC error:', error);
+      setErrorMessage('Please contact our customer support');
+      setShowErrorModal(true);
+      setIsPurchasing(false);
+      setIsPurchaseDisabled(false);
+    }
+  };
+
   const handleSearch = async () => {
     setIsSearching(true);
     setHasSearched(false);
 
+    // Update card selection object with the balance choice
+    setCardSelection({
+      balance: hasBalance
+    });
+
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       // Mock data for virtual card
       const mockResults: CardOption[] = [
         {
           id: '1',
-          cardNumber: '4532 1234 5678 9012',
-          expirationDate: '12/27',
-          cvv: '123',
+          cardNumber: '',
+          expirationDate: '',
+          cvv: '',
           cardFunds: hasBalance ? 3 : 0,
           price: hasBalance ? 7 : 4.5,
           hasBalance: hasBalance
@@ -295,13 +380,18 @@ const VirtualCard: React.FC = () => {
 
                             {/* Centered Purchase Button */}
                             <div className="flex justify-center">
-                              <button 
-                                onClick={() => navigate('/history?tab=virtualCards')}
-                                className="group relative px-8 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-2xl transition-all duration-300 shadow-xl hover:shadow-blue-500/30 hover:scale-[1.02] text-md overflow-hidden max-w-xs"
+                              <button
+                                onClick={handlePurchase}
+                                disabled={isPurchasing || isPurchaseDisabled}
+                                className="group relative px-8 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-xl hover:shadow-blue-500/30 hover:scale-[1.02] text-md overflow-hidden w-[150px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                               >
                                 <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-blue-700 hover:from-green-500 hover:to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                 <div className="relative z-10 flex items-center justify-center">
-                                  Purchase
+                                  {isPurchasing ? (
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                  ) : (
+                                    'Purchase'
+                                  )}
                                 </div>
                               </button>
                             </div>
@@ -326,6 +416,31 @@ const VirtualCard: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+              <p className="text-blue-200 mb-4">{errorMessage}</p>
+              <button
+                onClick={handleErrorModalClose}
+                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };
