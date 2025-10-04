@@ -259,7 +259,7 @@ const Middle: React.FC = () => {
 
       // Get Firebase ID token
       const idToken = await currentUser.getIdToken();
-
+      console.log(JSON.stringify(globalPurchaseData));
       // Make API call to buymiddleusa cloud function
       const response = await fetch('https://buymiddleusa-ezeznlhr5a-uc.a.run.app', {
         method: 'POST',

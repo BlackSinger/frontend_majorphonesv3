@@ -2,15 +2,22 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '../firebase/config';
+import { useAuthState } from 'react-firebase-hooks/auth';
 
 interface TicketRecord {
   id: string;
+  ticketId: string;
   date: string;
   lastUpdate: string;
   issue: string;
   subject: string;
   status: 'open' | 'closed';
   issueDescription: string;
+  createdAt: any;
+  updatedAt: any;
+  type: string;
 }
 
 const Tickets: React.FC = () => {
@@ -18,9 +25,10 @@ const Tickets: React.FC = () => {
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const tabFromUrl = searchParams.get('tab');
-  
+  const [user] = useAuthState(auth);
+
   const [activeTab, setActiveTab] = useState<'numbers'>('numbers');
-  const [issueFilter, setIssueFilter] = useState<string>('All');
+  const [issueFilter, setIssueFilter] = useState<string>('All Issues');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [isIssueDropdownOpen, setIsIssueDropdownOpen] = useState(false);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
@@ -45,114 +53,167 @@ const Tickets: React.FC = () => {
   const [chatImages, setChatImages] = useState<File[]>([]);
   const [isChatDragOver, setIsChatDragOver] = useState(false);
 
+  // Firestore states
+  const [ticketData, setTicketData] = useState<TicketRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [openActionMenus, setOpenActionMenus] = useState<{[key: string]: boolean}>({});
   const issueDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const issueTypeDropdownRef = useRef<HTMLDivElement>(null);
   const actionMenuRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
-  
+
   const itemsPerPage = 10;
 
-  // Mock ticket data for tickets
-  const ticketData: TicketRecord[] = [
-    {
-      id: '3bbf097f-d4cb-4257-a3da-2dcc4a35cd05',
-      date: '2024-10-13 2:28',
-      lastUpdate: '2024-10-13 5:28',
-      issue: 'Payment',
-      subject: "I don't have my balance",
-      status: 'open',
-      issueDescription: "I made a payment yesterday but my balance hasn't been updated yet. I used my credit card and the transaction shows as completed on my bank statement, but the balance on my account is still the same. Can you please check what happened?"
-    },
-    {
-      id: 'allf097f-d4cb-4257-a3da-2dcc4a35cd05',
-      date: '2024-10-12 8:15',
-      lastUpdate: '2024-10-12 14:30',
-      issue: 'Numbers',
-      subject: 'I did not receive my code',
-      status: 'closed',
-      issueDescription: "I purchased a number for Google verification but it's been 30 minutes and I still haven't received any SMS code. The number shows as active in my account but no messages are appearing. I need this urgently for my business account setup."
-    },
-    {
-      id: '9fk1l09q-d4cb-4257-a3da-2dcc4a35cd05',
-      date: '2024-10-11 16:45',
-      lastUpdate: '2024-10-12 9:20',
-      issue: 'Numbers',
-      subject: 'SMS code not received for verification',
-      status: 'open',
-      issueDescription: "I'm trying to verify my WhatsApp account using the number I purchased, but the SMS verification code is not arriving. I've tried multiple times but still no success. The number appears to be active but not receiving messages."
-    },
-    {
-      id: 'f7c8d921-4b3a-4e5f-8c9d-1a2b3c4d5e6f',
-      date: '2024-10-10 12:30',
-      lastUpdate: '2024-10-11 10:15',
-      issue: 'Virtual Debit Cards',
-      subject: 'My card does not work',
-      status: 'closed',
-      issueDescription: "My virtual debit card was declined when trying to make an online purchase. I tried on multiple websites and the same error occurs. The card has sufficient balance and is within the validity period. Please help me understand what might be wrong."
-    },
-    {
-      id: '1f2e3d4c-5b6a-4e7f-8c9d-0a1b2c3d4e5f',
-      date: '2024-10-09 9:20',
-      lastUpdate: '2024-10-10 15:45',
-      issue: 'Proxies',
-      subject: 'Refund request for not working proxies',
-      status: 'open',
-      issueDescription: "I purchased 5 proxy addresses yesterday but none of them are working properly. They keep timing out and I can't establish a stable connection. I've tested them on multiple devices and networks. I would like a refund or replacement proxies that actually work."
-    },
-    {
-      id: '2a5c9e9f-7d6b-4c3a-918f-5b4c3d2e1f0a',
-      date: '2024-10-08 14:10',
-      lastUpdate: '2024-10-09 11:30',
-      issue: 'Other',
-      subject: 'Need to change email address',
-      status: 'closed',
-      issueDescription: "I need to update my account email address as I no longer have access to my old email. I can provide verification through my phone number and other account details. Please let me know what information you need to process this change."
-    },
-    {
-      id: '2a5c8e9f-7d6b-4c3a-9e8f-5b4c3d2e1f0a',
-      date: '2024-10-07 11:55',
-      lastUpdate: '2024-10-08 8:40',
-      issue: 'Numbers',
-      subject: 'Phone number not working for specific service',
-      status: 'open',
-      issueDescription: "The number I purchased is supposed to work with Instagram but when I try to use it for verification, it says the number is not supported. I specifically selected a number that was listed as compatible with Instagram. Can you help me get a working number?"
-    },
-    {
-      id: 'alñq8e9f-7d6b-4c3a-9e8f-5b4c3d2e1f0a',
-      date: '2024-10-06 7:30',
-      lastUpdate: '2024-10-07 13:20',
-      issue: 'Payment',
-      subject: 'Error 500 when trying to deposit',
-      status: 'closed',
-      issueDescription: "Every time I try to make a deposit, I get an Error 500 message and the transaction fails. I've tried different payment methods and browsers but the same error persists. This is preventing me from adding funds to my account."
-    },
-    {
-      id: '8f3e5c7d-2b1a-4e6f-9c8d-7a5b3c1e2f4d',
-      date: '2024-10-05 18:45',
-      lastUpdate: '2024-10-06 16:25',
-      issue: 'Payment',
-      subject: 'Duplicate charge on my credit card',
-      status: 'open',
-      issueDescription: "I was charged twice for the same transaction yesterday. I only made one purchase but my credit card shows two identical charges. I have the transaction IDs for both charges. Please refund the duplicate charge as soon as possible."
-    },
-    {
-      id: '443e5c7d-2b1a-4e6f-9c8d-7a5b3c102f4d',
-      date: '2024-10-04 13:15',
-      lastUpdate: '2024-10-05 12:50',
-      issue: 'Virtual Debit Cards',
-      subject: 'My card is not working for all services',
-      status: 'closed',
-      issueDescription: "My virtual debit card works for some online services but not others. It works fine for Amazon and eBay but gets declined on Netflix and Spotify. Is there a restriction on certain types of services? I need it to work for subscription services."
+  // Format timestamp to readable date format
+  const formatDate = (timestamp: any): string => {
+    if (!timestamp) return '-';
+
+    try {
+      let date: Date;
+
+      // Handle Firestore Timestamp
+      if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+        date = timestamp.toDate();
+      }
+      // Handle regular Date object
+      else if (timestamp instanceof Date) {
+        date = timestamp;
+      }
+      // Handle timestamp in milliseconds
+      else if (typeof timestamp === 'number') {
+        date = new Date(timestamp);
+      }
+      // Handle string
+      else if (typeof timestamp === 'string') {
+        date = new Date(timestamp);
+      }
+      else {
+        return '-';
+      }
+
+      // Format: 10/3/2025, 4:01:03 PM
+      return date.toLocaleString('en-US', {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '-';
     }
-  ];
+  };
+
+  // Map ticket type to display name
+  const mapTypeToDisplayName = (type: string): string => {
+    const typeValue = String(type || '').toLowerCase();
+
+    switch (typeValue) {
+      case 'number':
+        return 'Number';
+      case 'payment':
+        return 'Payment';
+      case 'vcc':
+        return 'Virtual Debit Card';
+      case 'proxy':
+        return 'Proxy';
+      case 'general':
+        return 'Other';
+      default:
+        return 'Other';
+    }
+  };
+
+  // Load tickets from Firestore
+  useEffect(() => {
+    if (activeTab !== 'numbers') {
+      setIsLoading(false);
+      return;
+    }
+
+    if (!user) {
+      setIsLoading(false);
+      setTicketData([]);
+      return;
+    }
+
+    setIsLoading(true);
+    let isSubscribed = true;
+
+    const ticketsRef = collection(db, 'tickets');
+    const q = query(ticketsRef, where('uid', '==', user.uid));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        if (!isSubscribed) return;
+
+        const tickets: TicketRecord[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+
+          tickets.push({
+            id: doc.id,
+            ticketId: data.ticketId || doc.id,
+            date: formatDate(data.createdAt),
+            lastUpdate: formatDate(data.updatedAt),
+            issue: mapTypeToDisplayName(String(data.type || '')),
+            subject: data.subject || '',
+            status: (String(data.status || 'open').toLowerCase() === 'closed' ? 'closed' : 'open') as 'open' | 'closed',
+            issueDescription: data.issueDescription || '',
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt,
+            type: String(data.type || '').toLowerCase()
+          });
+        });
+
+        // Sort by createdAt descending (most recent first)
+        tickets.sort((a, b) => {
+          const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+          const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+          return bTime - aTime;
+        });
+
+        setTicketData(tickets);
+        setIsLoading(false);
+      },
+      (error: any) => {
+        if (!isSubscribed) return;
+
+        console.error('Error loading tickets:', error);
+
+        let errorMsg = 'An error occurred while loading tickets, please contact support';
+
+        if (error.code === 'permission-denied') {
+          errorMsg = 'You do not have permission to access tickets';
+        } else if (error.code === 'unavailable') {
+          errorMsg = 'Tickets are temporarily unavailable, please try again later';
+        } else if (error.message?.includes('network')) {
+          errorMsg = 'Network connection error, please check your internet connection';
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+        setIsLoading(false);
+      }
+    );
+
+    return () => {
+      isSubscribed = false;
+      unsubscribe();
+    };
+  }, [user, activeTab]);
 
   const issueOptions = [
-    'All',
+    'All Issues',
     'Payment',
-    'Numbers',
-    'Virtual Debit Cards',
-    'Proxies',
+    'Number',
+    'Virtual Debit Card',
+    'Proxy',
     'Other'
   ];
 
@@ -204,7 +265,7 @@ const Tickets: React.FC = () => {
   const filteredData = useMemo(() => {
     let filtered = ticketData;
 
-    if (issueFilter !== 'All') {
+    if (issueFilter !== 'All Issues') {
       filtered = filtered.filter(record => record.issue === issueFilter);
     }
 
@@ -213,7 +274,7 @@ const Tickets: React.FC = () => {
     }
 
     return filtered;
-  }, [issueFilter, statusFilter]);
+  }, [ticketData, issueFilter, statusFilter]);
 
 
   // Calculate pagination for numbers table
@@ -310,7 +371,7 @@ const Tickets: React.FC = () => {
   const handleCopyInfoId = async () => {
     if (selectedRecord) {
       try {
-        await navigator.clipboard.writeText(selectedRecord.id);
+        await navigator.clipboard.writeText(selectedRecord.ticketId);
         setIsInfoIdCopied(true);
         setTimeout(() => setIsInfoIdCopied(false), 2000);
       } catch (err) {
@@ -631,7 +692,7 @@ const Tickets: React.FC = () => {
                           onClick={() => setIsIssueDropdownOpen(!isIssueDropdownOpen)}
                           className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
                         >
-                          <span>{issueFilter === 'All' ? 'All Issues' : issueFilter}</span>
+                          <span>{issueFilter}</span>
                         </div>
 
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -652,7 +713,7 @@ const Tickets: React.FC = () => {
                                 }}
                                 className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
                               >
-                                <span className="text-white">{issue === 'All' ? 'All Issues' : issue}</span>
+                                <span className="text-white">{issue}</span>
                               </div>
                             ))}
                           </div>
@@ -704,7 +765,15 @@ const Tickets: React.FC = () => {
 
             {/* Table */}
             <div className="overflow-x-auto overflow-y-visible">
-              {filteredData.length > 0 ? (
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p className="text-slate-400 mt-4">Loading tickets...</p>
+                </div>
+              ) : filteredData.length > 0 ? (
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-700/50">
@@ -738,7 +807,7 @@ const Tickets: React.FC = () => {
                           </div>
                         </td>
                         <td className="py-4 px-6 text-white text-center">{record.issue}</td>
-                        <td className="py-4 px-6 text-white text-left">{record.subject}</td>
+                        <td className="py-4 px-6 text-white text-center">{record.subject}</td>
                         <td className="py-4 px-6">
                           <span className={`inline-block px-3 py-2 rounded-xl text-sm font-semibold border w-24 text-center ${
                             record.status === 'open'
@@ -1262,7 +1331,7 @@ const Tickets: React.FC = () => {
 
         {/* Information Modal */}
         {showInfoModal && selectedRecord && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
             <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
               <div className="text-center">
                 <div className="mb-4">
@@ -1274,7 +1343,7 @@ const Tickets: React.FC = () => {
                 <div className="space-y-4 text-left">
                   <div>
                     <span className="text-slate-300">Ticket ID: </span>
-                    <span className="text-emerald-400 break-all">{selectedRecord.id}
+                    <span className="text-emerald-400 break-all">{selectedRecord.ticketId}
                       <button
                         onClick={handleCopyInfoId}
                         className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
@@ -1316,7 +1385,7 @@ const Tickets: React.FC = () => {
 
         {/* Error Modal */}
         {showErrorModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
             <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
               <div className="text-center">
                 <div className="mb-4">
