@@ -2406,7 +2406,7 @@ const History: React.FC = () => {
                     <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
                   </div>
                 </div>
-                <h3 className="text-lg font-medium text-white mb-6">Information</h3>
+                <h3 className="text-lg font-medium text-white mb-2">Information</h3>
                 <div className="space-y-4 text-left">
                   <div>
                     <span className="text-slate-300">Order ID: </span>
@@ -2464,7 +2464,7 @@ const History: React.FC = () => {
                     <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
                   </div>
                 </div>
-                <h3 className="text-lg font-medium text-white mb-6">Proxy Information</h3>
+                <h3 className="text-lg font-medium text-white mb-2">Proxy Information</h3>
                 <div className="space-y-4 text-left">
                   <div>
                     <span className="text-slate-300">Order ID: </span>

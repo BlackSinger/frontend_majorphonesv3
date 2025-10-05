@@ -5,6 +5,19 @@ import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import { getAuth } from 'firebase/auth';
+
+interface ResponseImage {
+  url: string;
+  fileName: string;
+}
+
+interface TicketResponse {
+  message: string;
+  isUser: boolean;
+  timestamp?: any;
+  images?: ResponseImage[];
+}
 
 interface TicketRecord {
   id: string;
@@ -14,7 +27,9 @@ interface TicketRecord {
   issue: string;
   subject: string;
   status: 'open' | 'closed';
-  issueDescription: string;
+  message: string;
+  images: ResponseImage[];
+  response: TicketResponse[];
   createdAt: any;
   updatedAt: any;
   type: string;
@@ -52,6 +67,9 @@ const Tickets: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const [chatImages, setChatImages] = useState<File[]>([]);
   const [isChatDragOver, setIsChatDragOver] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [isCreatingTicket, setIsCreatingTicket] = useState(false);
+  const [checkingTicketId, setCheckingTicketId] = useState<string | null>(null);
 
   // Firestore states
   const [ticketData, setTicketData] = useState<TicketRecord[]>([]);
@@ -164,7 +182,9 @@ const Tickets: React.FC = () => {
             issue: mapTypeToDisplayName(String(data.type || '')),
             subject: data.subject || '',
             status: (String(data.status || 'open').toLowerCase() === 'closed' ? 'closed' : 'open') as 'open' | 'closed',
-            issueDescription: data.issueDescription || '',
+            message: data.message || '',
+            images: data.images || [],
+            response: data.response || [],
             createdAt: data.createdAt,
             updatedAt: data.updatedAt,
             type: String(data.type || '').toLowerCase()
@@ -219,10 +239,10 @@ const Tickets: React.FC = () => {
 
   const issueTypeOptions = [
     'Payment',
-    'Numbers',
-    'Virtual Debit Cards',
-    'Proxies',
-    'Others'
+    'Number',
+    'Virtual Debit Card',
+    'Proxy',
+    'Other'
   ];
 
   const statusOptions = [
@@ -389,21 +409,86 @@ const Tickets: React.FC = () => {
   };
 
   // Handle check action
-  const handleCheckClick = (record: TicketRecord) => {
-    setSelectedTicket(record);
-    setShowTicketChat(true);
+  const handleCheckClick = async (record: TicketRecord) => {
+    if (!user) return;
 
-    // Add a mock admin response for demonstration
-    const mockAdminResponse = {
-      id: 'admin-response-1',
-      text: "Thank you for contacting us. We have reviewed your issue and our technical team is currently investigating the problem. We will provide you with an update in 2-24 hours.",
-      timestamp: new Date(),
-      isAdmin: true
-    };
+    setCheckingTicketId(record.ticketId);
 
-    setChatMessages([mockAdminResponse]);
-    setChatInput('');
-    setChatImages([]);
+    try {
+      // Get Firebase ID token
+      const currentUser = getAuth().currentUser;
+      if (!currentUser) {
+        setCheckingTicketId(null);
+        setErrorMessage("You are not authenticated");
+        setShowErrorModal(true);
+        return;
+      }
+      const idToken = await currentUser.getIdToken();
+
+      // Send to Cloud Function
+      const response = await fetch('https://readticket-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ticketId: record.ticketId
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success && data.message === "readTicket successful") {
+        // Success: Show chat interface
+        setSelectedTicket(record);
+        setShowTicketChat(true);
+
+        // Initialize chat with admin response only
+        const mockAdminResponse = {
+          id: 'admin-response-1',
+          text: "Thank you for contacting us. We have reviewed your issue and our technical team is currently investigating the problem. We will provide you with an update in 2-24 hours.",
+          timestamp: new Date(),
+          isAdmin: true
+        };
+
+        setChatMessages([mockAdminResponse]);
+        setChatInput('');
+        setChatImages([]);
+        setCheckingTicketId(null);
+      } else {
+        // Handle error responses
+        if (data.message === "Unauthorized") {
+          setErrorMessage("You are not authenticated or your token is invalid");
+          setShowErrorModal(true);
+          // Keep checkingTicketId to keep all buttons disabled
+          return;
+        }
+
+        // For all other errors, enable buttons
+        setCheckingTicketId(null);
+
+        if (data.message === "ticketId is required") {
+          setErrorMessage("Please refresh the page and try again");
+          setShowErrorModal(true);
+        } else if (data.message === "Ticket not found") {
+          setErrorMessage("When trying to check this message, please contact our customer support");
+          setShowErrorModal(true);
+        } else if (data.message === "Internal Server Error") {
+          setErrorMessage("Please contact our customer support");
+          setShowErrorModal(true);
+        } else {
+          setErrorMessage("An unexpected error occurred, please try again");
+          setShowErrorModal(true);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error reading ticket:', error);
+      setCheckingTicketId(null);
+      setErrorMessage("Network error, please check your connection and try again");
+      setShowErrorModal(true);
+    }
   };
 
   // Handle issue type change
@@ -421,15 +506,15 @@ const Tickets: React.FC = () => {
   const getIdPlaceholder = (issueType: string) => {
     switch (issueType) {
       case 'Payment':
-        return 'Payment ID';
-      case 'Numbers':
-        return 'Number ID';
-      case 'Virtual Debit Cards':
-        return 'Virtual Debit Card ID';
-      case 'Proxies':
-        return 'Proxy ID';
+        return 'ID';
+      case 'Number':
+        return 'ID';
+      case 'Virtual Debit Card':
+        return 'ID';
+      case 'Proxy':
+        return 'ID';
       default:
-        return 'Enter ID';
+        return 'ID';
     }
   };
 
@@ -466,6 +551,12 @@ const Tickets: React.FC = () => {
       // Check format
       if (!isValidImageFormat(file)) {
         showError('You can only upload images in JPEG, JPG, PNG and WEBP format');
+        return;
+      }
+
+      // Check individual file size (max 3MB per image)
+      if (bytesToMB(file.size) > 3) {
+        showError('Each image cannot weigh more than 3MB');
         return;
       }
 
@@ -540,6 +631,12 @@ const Tickets: React.FC = () => {
         return;
       }
 
+      // Check individual file size (max 3MB per image)
+      if (bytesToMB(file.size) > 3) {
+        showError('Each image cannot weigh more than 3MB');
+        return;
+      }
+
       // Check if adding this file would exceed count limit
       const currentTotal = chatImages.length + validFiles.length;
       if (currentTotal >= 5) {
@@ -598,19 +695,215 @@ const Tickets: React.FC = () => {
   };
 
   // Send chat message
-  const sendChatMessage = () => {
+  const sendChatMessage = async () => {
     if (!chatInput.trim() && chatImages.length === 0) return;
+    if (!selectedTicket || !user) return;
 
-    const newMessage = {
-      id: Date.now().toString(),
-      text: chatInput.trim(),
-      timestamp: new Date(),
-      images: chatImages.length > 0 ? [...chatImages] : undefined
-    };
+    setIsSendingMessage(true);
 
-    setChatMessages(prev => [...prev, newMessage]);
-    setChatInput('');
-    setChatImages([]);
+    try {
+      // Get Firebase ID token
+      const currentUser = getAuth().currentUser;
+      if (!currentUser) {
+        setIsSendingMessage(false);
+        setErrorMessage("You are not authenticated");
+        setShowErrorModal(true);
+        return;
+      }
+      const idToken = await currentUser.getIdToken();
+
+      // Create FormData
+      const formData = new FormData();
+
+      // Add required fields
+      formData.append('ticketId', selectedTicket.ticketId);
+      formData.append('message', chatInput.trim());
+
+      // Add images if any
+      if (chatImages.length > 0) {
+        chatImages.forEach((image) => {
+          formData.append('files', image);
+        });
+      }
+
+      // Send to Cloud Function
+      const response = await fetch('https://userresponseticket-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.message === "Ticket updated successfully") {
+        // Success: Add message to UI, clear inputs, enable controls
+        const newMessage = {
+          id: Date.now().toString(),
+          text: chatInput.trim(),
+          timestamp: new Date(),
+          images: chatImages.length > 0 ? [...chatImages] : undefined
+        };
+
+        setChatMessages(prev => [...prev, newMessage]);
+        setChatInput('');
+        setChatImages([]);
+        setIsSendingMessage(false);
+      } else {
+        // Handle error responses
+        if (data.message === "Unauthorized") {
+          setErrorMessage("You are not authenticated or your token is invalid");
+          setShowErrorModal(true);
+          setChatInput('');
+          setChatImages([]);
+          // Keep isSendingMessage true to keep controls disabled
+          return;
+        }
+
+        // For all other errors, enable controls and show error
+        setIsSendingMessage(false);
+
+        console.log(data.message);
+
+        if (data.message === "Ticket ID is required") {
+          setErrorMessage("Please refresh the page and try again");
+          setShowErrorModal(true);
+        } else if (data.message === "Message is required") {
+          setErrorMessage("Your message must contain text, not just images");
+          setShowErrorModal(true);
+        } else if (data.message === "Ticket not found") {
+          setErrorMessage("When trying to send this message, please contact our customer support");
+          setShowErrorModal(true);
+        } else if (data.message === "Error processing form data") {
+          setErrorMessage("Please refresh the page and try again");
+          setShowErrorModal(true);
+        } else if (data.message === "Internal Server Error") {
+          setErrorMessage("Please contact our customer support");
+          setShowErrorModal(true);
+        } else {
+          setErrorMessage("An unexpected error occurred, please try again");
+          setShowErrorModal(true);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setIsSendingMessage(false);
+      setErrorMessage("Network error, please check your connection and try again");
+      setShowErrorModal(true);
+    }
+  };
+
+  // Map issue type to API type value
+  const mapIssueTypeToApiType = (issueType: string): string => {
+    switch (issueType) {
+      case 'Payment':
+        return 'payment';
+      case 'Number':
+        return 'number';
+      case 'Virtual Debit Card':
+        return 'vcc';
+      case 'Proxy':
+        return 'proxy';
+      case 'Other':
+        return 'general';
+      default:
+        return 'general';
+    }
+  };
+
+  // Create ticket
+  const handleCreateTicket = async () => {
+    if (!user) return;
+
+    setIsCreatingTicket(true);
+
+    try {
+      // Get Firebase ID token
+      const currentUser = getAuth().currentUser;
+      if (!currentUser) {
+        setIsCreatingTicket(false);
+        setErrorMessage("You are not authenticated");
+        setShowErrorModal(true);
+        return;
+      }
+      const idToken = await currentUser.getIdToken();
+
+      // Create FormData
+      const formData = new FormData();
+
+      // Add required fields
+      formData.append('subject', ticketSubject.trim());
+      formData.append('message', issueDescription.trim());
+
+      // Add optional type field
+      if (selectedIssueType) {
+        formData.append('type', mapIssueTypeToApiType(selectedIssueType));
+      }
+
+      // Add conditional orderId field
+      if (ticketId.trim()) {
+        formData.append('orderId', ticketId.trim());
+      }
+
+      // Add images if any
+      if (uploadedImages.length > 0) {
+        uploadedImages.forEach((image) => {
+          formData.append('files', image);
+        });
+      }
+
+      // Send to Cloud Function
+      const response = await fetch('https://createticket-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.message === "Ticket created successfully") {
+        // Success: Refresh the page to show the new ticket
+        window.location.reload();
+      } else {
+        // Handle error responses
+        if (data.message === "Unauthorized") {
+          setErrorMessage("You are not authenticated or your token is invalid");
+          setShowErrorModal(true);
+          // Keep isCreatingTicket true to keep controls disabled
+          return;
+        }
+
+        // For all other errors, enable controls
+        setIsCreatingTicket(false);
+
+        if (data.message === "Order ID, subject, and message are required") {
+          setErrorMessage("You have not completed the form");
+          setShowErrorModal(true);
+        } else if (data.message === "Subject and message are required") {
+          setErrorMessage("You have not completed the form");
+          setShowErrorModal(true);
+        } else if (data.message === "Error processing form data") {
+          setErrorMessage("Please refresh the page and try again");
+          setShowErrorModal(true);
+        } else if (data.message === "Internal Server Error") {
+          setErrorMessage("Please contact our customer support");
+          setShowErrorModal(true);
+        } else {
+          setErrorMessage("An unexpected error occurred, please try again");
+          setShowErrorModal(true);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      setIsCreatingTicket(false);
+      setErrorMessage("Network error, please check your connection and try again");
+      setShowErrorModal(true);
+    }
   };
 
   return (
@@ -669,7 +962,8 @@ const Tickets: React.FC = () => {
                   <div className="pb-3">
                     <button
                       onClick={() => setShowCreateTicket(true)}
-                      className="py-3 px-5 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-sm rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50">
+                      disabled={checkingTicketId !== null}
+                      className="py-3 px-5 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-sm rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
                       Create new ticket
                     </button>
                   </div>
@@ -807,7 +1101,7 @@ const Tickets: React.FC = () => {
                           </div>
                         </td>
                         <td className="py-4 px-6 text-white text-center">{record.issue}</td>
-                        <td className="py-4 px-6 text-white text-center">{record.subject}</td>
+                        <td className="py-4 px-6 text-white text-center">{record.subject.charAt(0).toUpperCase() + record.subject.slice(1)}</td>
                         <td className="py-4 px-6">
                           <span className={`inline-block px-3 py-2 rounded-xl text-sm font-semibold border w-24 text-center ${
                             record.status === 'open'
@@ -821,9 +1115,17 @@ const Tickets: React.FC = () => {
                           <div className="flex items-center justify-center">
                             <button
                               onClick={() => handleCheckClick(record)}
-                              className="py-2 px-6 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-sm rounded-xl transition-all duration-300 shadow-lg hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50"
+                              disabled={checkingTicketId !== null}
+                              className="w-20 h-9 flex items-center justify-center bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-sm rounded-xl transition-all duration-300 shadow-lg hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                             >
-                              Check
+                              {checkingTicketId === record.ticketId ? (
+                                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                              ) : (
+                                'Check'
+                              )}
                             </button>
                           </div>
                         </td>
@@ -916,7 +1218,9 @@ const Tickets: React.FC = () => {
                 {/* Back Button */}
                 <div className="mb-5">
                   <button
-                    onClick={() => setShowCreateTicket(false)}
+                    onClick={() => {
+                      window.location.reload();
+                    }}
                     className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
                   >
                     <svg className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -945,8 +1249,12 @@ const Tickets: React.FC = () => {
                   </label>
                   <div className="relative group" ref={issueTypeDropdownRef}>
                     <div
-                      onClick={() => setIsIssueTypeDropdownOpen(!isIssueTypeDropdownOpen)}
-                      className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                      onClick={() => !isCreatingTicket && setIsIssueTypeDropdownOpen(!isIssueTypeDropdownOpen)}
+                      className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${
+                        isCreatingTicket
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'cursor-pointer hover:border-slate-500/50'
+                      }`}
                     >
                       <span className={selectedIssueType ? 'text-white' : 'text-slate-400'}>
                         {selectedIssueType || 'Issue with'}
@@ -979,7 +1287,7 @@ const Tickets: React.FC = () => {
                 {/* Form Fields Based on Selected Issue Type */}
                 {selectedIssueType && (
                   <div className="mt-8 space-y-6">
-                    {/* Subject and ID inputs (for Payment, Numbers, Virtual Debit Cards, Proxies) */}
+                    {/* Subject and ID inputs (for Payment, , Virtual Debit Card, Proxy) */}
                     {selectedIssueType !== 'Others' && (
                       <div className="flex flex-col lg:flex-row gap-6">
                         <div className="flex-1">
@@ -994,8 +1302,9 @@ const Tickets: React.FC = () => {
                                 setTicketSubject(e.target.value);
                               }
                             }}
-                            className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50"
-                            placeholder="Ticket Subject"
+                            disabled={isCreatingTicket}
+                            className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            placeholder="Subject"
                             maxLength={50}
                           />
                           <div className="text-right text-xs text-slate-400 mt-1">
@@ -1004,16 +1313,18 @@ const Tickets: React.FC = () => {
                         </div>
                         <div className="flex-1">
                           <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
-                            {selectedIssueType === 'Numbers' && 'Enter Number ID'}
-                            {selectedIssueType === 'Virtual Debit Cards' && 'Enter Card ID'}
-                            {selectedIssueType === 'Proxies' && 'Enter Proxy ID'}
+                            {selectedIssueType === 'Number' && 'Enter Order ID'}
+                            {selectedIssueType === 'Virtual Debit Card' && 'Enter Order ID'}
+                            {selectedIssueType === 'Proxy' && 'Enter Order ID'}
                             {selectedIssueType === 'Payment' && 'Enter Payment ID'}
+                            {selectedIssueType === 'Other' && 'Enter ID'}
                           </label>
                           <input
                             type="text"
                             value={ticketId}
                             onChange={(e) => setTicketId(e.target.value)}
-                            className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50"
+                            disabled={isCreatingTicket}
+                            className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                             placeholder={getIdPlaceholder(selectedIssueType)}
                           />
                         </div>
@@ -1034,8 +1345,9 @@ const Tickets: React.FC = () => {
                               setTicketSubject(e.target.value);
                             }
                           }}
-                          className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50"
-                          placeholder="Ticket Subject"
+                          disabled={isCreatingTicket}
+                          className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          placeholder="Subject"
                           maxLength={50}
                         />
                         <div className="text-right text-xs text-slate-400 mt-1">
@@ -1056,8 +1368,9 @@ const Tickets: React.FC = () => {
                             setIssueDescription(e.target.value);
                           }
                         }}
-                        className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50 min-h-[120px] resize-y"
-                        placeholder="Description of the issue"
+                        disabled={isCreatingTicket}
+                        className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50 min-h-[120px] resize-y disabled:opacity-50 disabled:cursor-not-allowed"
+                        placeholder="Issue"
                         maxLength={300}
                       />
                       <div className="text-right text-xs text-slate-400 mt-1">
@@ -1073,14 +1386,16 @@ const Tickets: React.FC = () => {
 
                       {/* Upload area */}
                       <div
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                        onClick={handleClickUpload}
-                        className={`border-2 border-dashed rounded-2xl p-6 text-center bg-slate-800/30 transition-all duration-300 cursor-pointer ${
-                          isDragOver
-                            ? 'border-emerald-400 bg-emerald-500/10'
-                            : 'border-slate-600/50 hover:border-emerald-500/50'
+                        onDragOver={!isCreatingTicket ? handleDragOver : undefined}
+                        onDragLeave={!isCreatingTicket ? handleDragLeave : undefined}
+                        onDrop={!isCreatingTicket ? handleDrop : undefined}
+                        onClick={!isCreatingTicket ? handleClickUpload : undefined}
+                        className={`border-2 border-dashed rounded-2xl p-6 text-center bg-slate-800/30 transition-all duration-300 ${
+                          isCreatingTicket
+                            ? 'opacity-50 cursor-not-allowed'
+                            : isDragOver
+                            ? 'border-emerald-400 bg-emerald-500/10 cursor-pointer'
+                            : 'border-slate-600/50 hover:border-emerald-500/50 cursor-pointer'
                         }`}
                       >
                         {uploadedImages.length === 0 ? (
@@ -1120,7 +1435,8 @@ const Tickets: React.FC = () => {
                                         e.stopPropagation();
                                         removeImage(index);
                                       }}
-                                      className="w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 leading-none flex-shrink-0"
+                                      disabled={isCreatingTicket}
+                                      className="w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 leading-none flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-500"
                                     >
                                       ×
                                     </button>
@@ -1138,10 +1454,18 @@ const Tickets: React.FC = () => {
                     {/* Open Ticket button */}
                     <div className="flex justify-center">
                       <button
-                        onClick={() => console.log('Open ticket clicked')}
-                        className="py-3 px-8 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-[1.03] border border-emerald-500/30 hover:border-emerald-400/50"
+                        onClick={handleCreateTicket}
+                        disabled={isCreatingTicket}
+                        className="py-3 px-8 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-[1.03] border border-emerald-500/30 hover:border-emerald-400/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                       >
-                        Open ticket
+                        {isCreatingTicket ? (
+                          <svg className="animate-spin h-5 w-5 text-white mx-auto" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : (
+                          'Open ticket'
+                        )}
                       </button>
                     </div>
                   </div>
@@ -1159,7 +1483,9 @@ const Tickets: React.FC = () => {
                 {/* Back Button */}
                 <div className="mb-5">
                   <button
-                    onClick={() => setShowTicketChat(false)}
+                    onClick={() => {
+                      window.location.reload();
+                    }}
                     className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
                   >
                     <svg className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1200,10 +1526,34 @@ const Tickets: React.FC = () => {
                 <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 border-blue-500/50 transition-all duration-300 shadow-lg shadow-blue-500/25" style={{ boxShadow: '0 0 24px rgba(59, 130, 246, 0.25)' }}>
                   {/* Chat Interface */}
                   <div className="flex flex-col h-[500px] sm:h-96">
-                    {/* Initial user message (issue description) */}
+                    {/* Initial user message (message from Firestore) */}
                     <div className="flex justify-end mb-3">
                       <div className="relative bg-emerald-600/80 rounded-lg px-4 py-2 max-w-[85%] sm:max-w-sm md:max-w-md">
-                        <p className="text-white text-sm break-words" style={{ textAlign: 'justify' }}>{selectedTicket.issueDescription}</p>
+                        {selectedTicket.message && (
+                          <p className="text-white text-sm break-words mb-2" style={{ textAlign: 'justify' }}>{selectedTicket.message}</p>
+                        )}
+                        {/* Images from initial ticket */}
+                        {selectedTicket.images && selectedTicket.images.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            <div className="text-xs mb-1 text-emerald-200">
+                              Attachments ({selectedTicket.images.length}):
+                            </div>
+                            {selectedTicket.images.map((image, imgIndex) => (
+                              <div
+                                key={imgIndex}
+                                onClick={() => {
+                                  window.open(image.url, '_blank');
+                                }}
+                                className="flex items-center space-x-2 rounded px-2 py-1 cursor-pointer hover:opacity-80 transition-opacity bg-emerald-700/30"
+                              >
+                                <svg className="w-3 h-3 flex-shrink-0 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span className="text-xs truncate text-emerald-200">{image.fileName}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {/* Chat bubble tail for sent messages */}
                         <div className="absolute right-0 top-3 w-0 h-0 border-t-8 border-t-transparent border-l-8 border-l-emerald-600/80 border-b-8 border-b-transparent translate-x-2"></div>
                       </div>
@@ -1211,39 +1561,93 @@ const Tickets: React.FC = () => {
 
                     {/* Messages Area */}
                     <div className="flex-1 overflow-y-auto mb-4 space-y-3 px-3">
-                      {chatMessages.map((message) => (
-                        <div key={message.id} className={`flex ${message.isAdmin ? 'justify-start' : 'justify-end'}`}>
+                      {/* Admin initial response - only the first message which is always admin */}
+                      {chatMessages.filter(msg => msg.isAdmin).map((message) => (
+                        <div key={message.id} className="flex justify-start">
+                          <div className="relative bg-slate-700/50 rounded-lg px-4 py-2 max-w-[85%] sm:max-w-sm md:max-w-md">
+                            <p className="text-white text-sm break-words" style={{ textAlign: 'justify' }}>{message.text}</p>
+                            {/* Chat bubble tail */}
+                            <div className="absolute left-0 top-3 w-0 h-0 border-t-8 border-t-transparent border-r-8 border-r-slate-700/50 border-b-8 border-b-transparent -translate-x-2"></div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Additional responses from Firestore */}
+                      {selectedTicket.response && selectedTicket.response.length > 0 && selectedTicket.response.map((response, index) => (
+                        <div key={`response-${index}`} className={`flex ${response.isUser ? 'justify-end' : 'justify-start'}`}>
                           <div className={`relative rounded-lg px-4 py-2 max-w-[85%] sm:max-w-sm md:max-w-md ${
-                            message.isAdmin
-                              ? 'bg-slate-700/50'
-                              : 'bg-emerald-600/80'
+                            response.isUser
+                              ? 'bg-emerald-600/80'
+                              : 'bg-slate-700/50'
                           }`}>
-                            {message.text && (
-                              <p className="text-white text-sm break-words mb-2" style={{ textAlign: 'justify' }}>{message.text}</p>
+                            {response.message && (
+                              <p className="text-white text-sm break-words mb-2" style={{ textAlign: 'justify' }}>{response.message}</p>
                             )}
-                            {message.images && message.images.length > 0 && (
+                            {/* Images from Firestore response */}
+                            {response.images && response.images.length > 0 && (
                               <div className="mt-2 space-y-1">
-                                <div className={`text-xs mb-1 ${message.isAdmin ? 'text-slate-200' : 'text-emerald-200'}`}>
-                                  Attachments ({message.images.length}):
+                                <div className={`text-xs mb-1 ${response.isUser ? 'text-emerald-200' : 'text-slate-200'}`}>
+                                  Attachments ({response.images.length}):
                                 </div>
-                                {message.images.map((image, index) => (
-                                  <div key={index} className={`flex items-center space-x-2 rounded px-2 py-1 ${
-                                    message.isAdmin ? 'bg-slate-600/30' : 'bg-emerald-700/30'
-                                  }`}>
-                                    <svg className={`w-3 h-3 flex-shrink-0 ${message.isAdmin ? 'text-slate-200' : 'text-emerald-200'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                {response.images.map((image, imgIndex) => (
+                                  <div
+                                    key={imgIndex}
+                                    onClick={() => {
+                                      window.open(image.url, '_blank');
+                                    }}
+                                    className={`flex items-center space-x-2 rounded px-2 py-1 cursor-pointer hover:opacity-80 transition-opacity ${
+                                      response.isUser ? 'bg-emerald-700/30' : 'bg-slate-600/30'
+                                    }`}
+                                  >
+                                    <svg className={`w-3 h-3 flex-shrink-0 ${response.isUser ? 'text-emerald-200' : 'text-slate-200'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
-                                    <span className={`text-xs truncate ${message.isAdmin ? 'text-slate-200' : 'text-emerald-200'}`}>{image.name}</span>
+                                    <span className={`text-xs truncate ${response.isUser ? 'text-emerald-200' : 'text-slate-200'}`}>{image.fileName}</span>
                                   </div>
                                 ))}
                               </div>
                             )}
                             {/* Chat bubble tail */}
-                            {message.isAdmin ? (
-                              <div className="absolute left-0 top-3 w-0 h-0 border-t-8 border-t-transparent border-r-8 border-r-slate-700/50 border-b-8 border-b-transparent -translate-x-2"></div>
-                            ) : (
+                            {response.isUser ? (
                               <div className="absolute right-0 top-3 w-0 h-0 border-t-8 border-t-transparent border-l-8 border-l-emerald-600/80 border-b-8 border-b-transparent translate-x-2"></div>
+                            ) : (
+                              <div className="absolute left-0 top-3 w-0 h-0 border-t-8 border-t-transparent border-r-8 border-r-slate-700/50 border-b-8 border-b-transparent -translate-x-2"></div>
                             )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* New messages from user (sent during this session) */}
+                      {chatMessages.filter(msg => !msg.isAdmin).map((message) => (
+                        <div key={message.id} className="flex justify-end">
+                          <div className="relative bg-emerald-600/80 rounded-lg px-4 py-2 max-w-[85%] sm:max-w-sm md:max-w-md">
+                            {message.text && (
+                              <p className="text-white text-sm break-words" style={{ textAlign: 'justify' }}>{message.text}</p>
+                            )}
+                            {message.images && message.images.length > 0 && (
+                              <div className="mt-2 space-y-1">
+                                <div className="text-xs mb-1 text-emerald-200">
+                                  Attachments ({message.images.length}):
+                                </div>
+                                {message.images.map((image, index) => (
+                                  <div
+                                    key={index}
+                                    onClick={() => {
+                                      const imageUrl = URL.createObjectURL(image);
+                                      window.open(imageUrl, '_blank');
+                                    }}
+                                    className="flex items-center space-x-2 rounded px-2 py-1 cursor-pointer hover:opacity-80 transition-opacity bg-emerald-700/30"
+                                  >
+                                    <svg className="w-3 h-3 flex-shrink-0 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span className="text-xs truncate text-emerald-200">{image.name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {/* Chat bubble tail */}
+                            <div className="absolute right-0 top-3 w-0 h-0 border-t-8 border-t-transparent border-l-8 border-l-emerald-600/80 border-b-8 border-b-transparent translate-x-2"></div>
                           </div>
                         </div>
                       ))}
@@ -1271,7 +1675,8 @@ const Tickets: React.FC = () => {
                                   </div>
                                   <button
                                     onClick={() => removeChatImage(index)}
-                                    className="w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 flex-shrink-0 ml-2"
+                                    disabled={isSendingMessage}
+                                    className="w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 flex-shrink-0 ml-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-500"
                                   >
                                     ×
                                   </button>
@@ -1287,19 +1692,20 @@ const Tickets: React.FC = () => {
                             value={chatInput}
                             onChange={(e) => setChatInput(e.target.value)}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter' && !e.shiftKey) {
+                              if (e.key === 'Enter' && !e.shiftKey && !isSendingMessage) {
                                 e.preventDefault();
                                 sendChatMessage();
                               }
                             }}
-                            className="flex-1 min-w-0 px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 resize-none h-10 text-sm"
+                            disabled={isSendingMessage}
+                            className="flex-1 min-w-0 px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 resize-none h-10 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             rows={2}
                           />
 
                           {/* Image upload button */}
                           <button
                             onClick={handleChatClickUpload}
-                            disabled={chatImages.length >= 5}
+                            disabled={chatImages.length >= 5 || isSendingMessage}
                             className="px-2 py-2 bg-slate-600/50 hover:bg-slate-500/50 text-white rounded-xl transition-all duration-300 h-10 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                             title="Upload images"
                           >
@@ -1311,12 +1717,19 @@ const Tickets: React.FC = () => {
                           {/* Send button */}
                           <button
                             onClick={sendChatMessage}
-                            disabled={!chatInput.trim() && chatImages.length === 0}
+                            disabled={(!chatInput.trim() && chatImages.length === 0) || isSendingMessage}
                             className="px-2 py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-emerald-500/25 h-10 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                            </svg>
+                            {isSendingMessage ? (
+                              <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                            ) : (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                              </svg>
+                            )}
                           </button>
                         </div>
                       </div>
@@ -1339,7 +1752,7 @@ const Tickets: React.FC = () => {
                     <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
                   </div>
                 </div>
-                <h3 className="text-lg font-medium text-white mb-6">Information</h3>
+                <h3 className="text-lg font-medium text-white mb-2">Information</h3>
                 <div className="space-y-4 text-left">
                   <div>
                     <span className="text-slate-300">Ticket ID: </span>
@@ -1395,7 +1808,7 @@ const Tickets: React.FC = () => {
                     </svg>
                   </div>
                 </div>
-                <h3 className="text-lg font-medium text-white mb-6">Error</h3>
+                <h3 className="text-lg font-medium text-white mb-2">Error</h3>
                 <div className="text-center mb-6">
                   <p className="text-slate-300">{errorMessage}</p>
                 </div>
