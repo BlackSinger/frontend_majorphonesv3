@@ -22,6 +22,7 @@ import {
   getMiddleStatusColor,
   calculateMiddleDuration,
   getMiddleAvailableActions,
+  getMiddleCountdownTime,
   handleCancelMiddle,
   handleActivateMiddle
 } from './MiddleLogic';
@@ -160,6 +161,46 @@ const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: stri
   return (
     <span className="font-mono text-yellow-500 font-semibold">
       {minutes}:{seconds.toString().padStart(2, '0')}
+    </span>
+  );
+});
+
+// Middle Countdown Timer Component - Shows 5 minute countdown for Middle Active numbers
+const MiddleCountdownTimer: React.FC<{ record: HistoryRecord; onTimeout?: () => void }> = React.memo(({ record, onTimeout }) => {
+  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      // Import the function from MiddleLogic
+      const countdown = getMiddleCountdownTime(record);
+      setTimeLeft(countdown);
+
+      // If countdown expired, call onTimeout
+      if (countdown === null && onTimeout) {
+        onTimeout();
+      }
+    };
+
+    // Initial calculation
+    updateCountdown();
+
+    // Update every second
+    const interval = setInterval(() => {
+      updateCountdown();
+    }, 1000);
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
+  }, [record, onTimeout]);
+
+  // If no countdown, show dash
+  if (timeLeft === null) {
+    return <span className="font-mono text-slate-400">-</span>;
+  }
+
+  return (
+    <span className="font-mono text-yellow-400 font-semibold">
+      {timeLeft}
     </span>
   );
 });
@@ -405,14 +446,18 @@ const History: React.FC = () => {
         return { type: 'text', value: smsValue };
       }
     } else if (serviceType === 'Middle') {
+      // Check for Middle countdown first (Active without SMS)
+      const countdownTime = getMiddleCountdownTime(record);
+      if (countdownTime !== null) {
+        // Show countdown timer (5:00 -> 0:00)
+        return { type: 'middleCountdown', value: countdownTime };
+      }
+
+      // No countdown - show regular status-based values
       switch (status) {
         case 'Active':
-          if (hasSms) {
-            return { type: 'text', value: smsValue };
-          } else {
-            // Show countdown timer for Middle Active without SMS (5 minutes)
-            return { type: 'countdown', value: null, createdAt };
-          }
+          // If we reach here, countdown expired (showing Inactive ficticio) or has SMS
+          return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
         case 'Inactive':
           return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
         case 'Expired':
@@ -1496,7 +1541,23 @@ const History: React.FC = () => {
                               } else {
                                 return <span className="font-mono text-slate-400">-</span>;
                               }
-                            } else if (record.serviceType === 'Middle' || record.serviceType === 'Long' || record.serviceType === 'Empty simcard') {
+                            } else if (record.serviceType === 'Middle') {
+                              // Middle: Show countdown timer when Active (always, even with SMS)
+                              if (record.status === 'Active') {
+                                return <MiddleCountdownTimer
+                                  record={record}
+                                  onTimeout={() => setForceUpdate(prev => prev + 1)}
+                                />;
+                              }
+
+                              // Not Active - show SMS or dash
+                              const hasSms = record.code && record.code.trim() !== '';
+                              if (hasSms) {
+                                return <span className="font-mono text-blue-500 font-semibold">{record.code}</span>;
+                              } else {
+                                return <span className="font-mono text-slate-400">-</span>;
+                              }
+                            } else if (record.serviceType === 'Long' || record.serviceType === 'Empty simcard') {
                               const hasSms = record.code && record.code.trim() !== '';
                               if (record.status === 'Active') {
                                 return hasSms ? (

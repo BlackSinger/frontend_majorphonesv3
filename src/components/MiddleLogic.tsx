@@ -23,25 +23,115 @@ interface HistoryRecord {
   orderId?: string;
 }
 
+// Store activation timestamps locally (orderId -> activation timestamp)
+// Load from localStorage on initialization
+const loadActivationTimestamps = (): { [orderId: string]: number } => {
+  try {
+    const stored = localStorage.getItem('middleActivationTimestamps');
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    console.error('Error loading activation timestamps:', error);
+    return {};
+  }
+};
+
+const activationTimestamps: { [orderId: string]: number } = loadActivationTimestamps();
+
+// Save to localStorage whenever timestamps change
+const saveActivationTimestamps = () => {
+  try {
+    localStorage.setItem('middleActivationTimestamps', JSON.stringify(activationTimestamps));
+  } catch (error) {
+    console.error('Error saving activation timestamps:', error);
+  }
+};
+
 // Function to check if a Middle number has timed out (for display purposes only)
 export const hasMiddleTimedOut = (record: HistoryRecord): boolean => {
-  if (record.serviceType !== 'Middle' || record.status !== 'Active' || !record.createdAt) {
+  const recordId = record.orderId || record.id;
+
+  // If status is not Active, clear timestamp and return false
+  if (record.serviceType !== 'Middle' || record.status !== 'Active') {
+    clearActivationTime(recordId);
     return false;
   }
-  const hasSms = record.code && record.code.trim() !== '';
-  // If SMS already received, don't show as timed out
-  if (hasSms) {
-    return false;
+
+  // Use stored activation timestamp for this order
+  const activationTime = activationTimestamps[recordId];
+  if (!activationTime) {
+    return false; // No activation timestamp stored yet
   }
+
   const now = new Date().getTime();
-  const startTime = record.createdAt.getTime();
-  const fiveMinutes = 5 * 60 * 1000; // 5:00 in milliseconds
-  const expiryTime = startTime + fiveMinutes;
+  const threeMinutes = 3 * 60 * 1000; // 3:00 in milliseconds
+  const expiryTime = activationTime + threeMinutes;
   return now >= expiryTime;
+};
+
+// Store activation timestamp when activating
+export const recordActivationTime = (orderId: string) => {
+  const timestamp = new Date().getTime();
+  // Store with the orderId to ensure we can find it later
+  activationTimestamps[orderId] = timestamp;
+  saveActivationTimestamps();
+};
+
+// Clear activation timestamp (when SMS arrives or status changes to Inactive)
+export const clearActivationTime = (orderId: string) => {
+  delete activationTimestamps[orderId];
+  saveActivationTimestamps();
+};
+
+// Get remaining time for Middle countdown (returns null if not applicable, or time string like "4:32")
+export const getMiddleCountdownTime = (record: HistoryRecord): string | null => {
+  // Show countdown ALWAYS when status is Active (even if there's already SMS)
+  if (record.serviceType !== 'Middle' || record.status !== 'Active') {
+    return null;
+  }
+
+  // Try multiple ID variations to find the activation timestamp
+  const possibleIds = [
+    record.orderId,
+    record.id,
+    record.orderId || record.id
+  ].filter(Boolean);
+
+  let activationTime: number | undefined;
+  for (const id of possibleIds) {
+    if (activationTimestamps[id as string]) {
+      activationTime = activationTimestamps[id as string];
+      break;
+    }
+  }
+
+  // If no activation time found, create one NOW and save it
+  if (!activationTime) {
+    activationTime = new Date().getTime();
+    // Save with all possible IDs
+    for (const id of possibleIds) {
+      activationTimestamps[id as string] = activationTime;
+    }
+    saveActivationTimestamps();
+  }
+
+  const now = new Date().getTime();
+  const threeMinutes = 3 * 60 * 1000; // 3:00 in milliseconds
+  const elapsed = now - activationTime;
+  const remaining = threeMinutes - elapsed;
+
+  if (remaining <= 0) {
+    return null; // Time expired, will show "-"
+  }
+
+  // Format as M:SS
+  const minutes = Math.floor(remaining / 60000);
+  const seconds = Math.floor((remaining % 60000) / 1000);
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 };
 
 // Get display status for Middle numbers
 export const getMiddleDisplayStatus = (record: HistoryRecord): string => {
+  // Show fictitious "Inactive" when status is Active but timed out (5 min) without new SMS
   if (hasMiddleTimedOut(record)) {
     return 'Inactive';
   }
@@ -90,8 +180,25 @@ export const getMiddleAvailableActions = (record: HistoryRecord): string[] => {
       // Active with SMS - no actions (disabled)
       return [];
     } else {
-      // Active without SMS - only Cancel
-      return ['Cancel'];
+      // Active without SMS - check if 3 minutes have passed
+      const recordId = record.orderId || record.id;
+      const activationTime = activationTimestamps[recordId];
+
+      if (!activationTime) {
+        return []; // No activation time recorded, disable
+      }
+
+      const now = new Date().getTime();
+      const oneMinute = 1 * 60 * 1000; // 1:00 in milliseconds
+      const timeSinceActivation = now - activationTime;
+
+      if (timeSinceActivation >= oneMinute) {
+        // 1 minute passed - show Cancel
+        return ['Cancel'];
+      } else {
+        // Less than 1 minute - no actions (disabled)
+        return [];
+      }
     }
   } else if (status === 'Inactive') {
     // Real Inactive status (from Firestore) - always show Activate (regardless of SMS)
@@ -221,7 +328,11 @@ export const handleActivateMiddle = async (
     const data = await response.json();
 
     if (response.ok && data.success) {
-      // Success - the listener will automatically update the status to Active
+      // Success - record activation time with BOTH recordId and orderId
+      const timestamp = new Date().getTime();
+      activationTimestamps[recordId] = timestamp;
+      activationTimestamps[orderId] = timestamp;
+      saveActivationTimestamps();
       setActivatingOrderId(null);
     } else {
       // Handle error responses
