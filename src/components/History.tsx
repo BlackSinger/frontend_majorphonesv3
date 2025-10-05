@@ -29,9 +29,11 @@ import {
 
 // Import Long logic functions
 import {
+  getLongDisplayStatus,
   getLongStatusColor,
   calculateLongDuration,
   getLongAvailableActions,
+  getLongCountdownTime,
   handleCancelLong,
   handleActivateLong
 } from './LongLogic';
@@ -165,14 +167,52 @@ const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: stri
   );
 });
 
-// Middle Countdown Timer Component - Shows 5 minute countdown for Middle Active numbers
+// Middle Countdown Timer Component - Shows 3 minute countdown for Middle Active numbers
 const MiddleCountdownTimer: React.FC<{ record: HistoryRecord; onTimeout?: () => void }> = React.memo(({ record, onTimeout }) => {
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
   useEffect(() => {
     const updateCountdown = () => {
-      // Import the function from MiddleLogic
       const countdown = getMiddleCountdownTime(record);
+      setTimeLeft(countdown);
+
+      // If countdown expired, call onTimeout
+      if (countdown === null && onTimeout) {
+        onTimeout();
+      }
+    };
+
+    // Initial calculation
+    updateCountdown();
+
+    // Update every second
+    const interval = setInterval(() => {
+      updateCountdown();
+    }, 1000);
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
+  }, [record, onTimeout]);
+
+  // If no countdown, show dash
+  if (timeLeft === null) {
+    return <span className="font-mono text-slate-400">-</span>;
+  }
+
+  return (
+    <span className="font-mono text-yellow-400 font-semibold">
+      {timeLeft}
+    </span>
+  );
+});
+
+// Long Countdown Timer Component - Shows 3 minute countdown for Long Active numbers
+const LongCountdownTimer: React.FC<{ record: HistoryRecord; onTimeout?: () => void }> = React.memo(({ record, onTimeout }) => {
+  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const countdown = getLongCountdownTime(record);
       setTimeLeft(countdown);
 
       // If countdown expired, call onTimeout
@@ -397,14 +437,14 @@ const History: React.FC = () => {
 
   const itemsPerPage = 10;
 
-  // hasTimedOut and hasMiddleTimedOut are now imported from ShortLogic and MiddleLogic
-
   // Function to get display status (visual only, doesn't modify Firestore)
   const getDisplayStatus = (record: HistoryRecord): string => {
     if (record.serviceType === 'Short') {
       return getShortDisplayStatus(record);
     } else if (record.serviceType === 'Middle') {
       return getMiddleDisplayStatus(record);
+    } else if (record.serviceType === 'Long') {
+      return getLongDisplayStatus(record);
     }
     return record.status;
   };
@@ -468,9 +508,18 @@ const History: React.FC = () => {
           return { type: 'text', value: smsValue };
       }
     } else if (serviceType === 'Long' || serviceType === 'Empty simcard') {
+      // Check for Long countdown first (Active without SMS)
+      const countdownTime = getLongCountdownTime(record);
+      if (countdownTime !== null) {
+        // Show countdown timer (5:00 -> 0:00)
+        return { type: 'longCountdown', value: countdownTime };
+      }
+
+      // No countdown - show regular status-based values
       switch (status) {
         case 'Active':
-          return hasSms ? { type: 'text', value: smsValue } : { type: 'spinner', value: null };
+          // If we reach here, countdown expired (showing Inactive ficticio) or has SMS
+          return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
         case 'Inactive':
           return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
         case 'Expired':
@@ -514,6 +563,8 @@ const History: React.FC = () => {
         return ['All types', 'Single use', 'Reusable', 'Receive/Respond'];
       case 'Middle Numbers':
         return ['All types', '1 day', '7 days', '14 days'];
+      case 'Long Numbers':
+        return ['All types', '30 days', '365 days'];
       default:
         return ['All types'];
     }
@@ -646,6 +697,9 @@ const History: React.FC = () => {
         });
       } else if (serviceTypeFilter === 'Middle Numbers') {
         // For Middle Numbers, filter by duration
+        filtered = filtered.filter(record => record.duration === numberTypeFilter);
+      } else if (serviceTypeFilter === 'Long Numbers') {
+        // For Long Numbers, filter by duration
         filtered = filtered.filter(record => record.duration === numberTypeFilter);
       }
     }
@@ -1114,13 +1168,6 @@ const History: React.FC = () => {
     }
   };
 
-  // Proxy-specific handlers
-  // Functions now imported from ProxyLogic: handleProxyStateSelect, handleProxyStateInputChange, handleProxyStateInputClick
-
-  // Functions now imported from ProxyLogic: handleProxyInfoClick, handleCopyProxyId, handleCopyProxyField
-
-  // Function now imported from ShortLogic
-
   // Get available actions based on service type, status, reuse and maySend
   const getAvailableActions = (record: HistoryRecord) => {
     const { serviceType } = record;
@@ -1145,12 +1192,6 @@ const History: React.FC = () => {
       [recordId]: !prev[recordId]
     }));
   };
-
-  // Function now imported from ShortLogic
-
-  // Function now imported from MiddleLogic
-
-  // Function now imported from ShortLogic
 
   // Handle action click
   const handleActionClick = async (action: string, record: HistoryRecord) => {
@@ -1198,8 +1239,6 @@ const History: React.FC = () => {
 
     // TODO: Implement other functionalities
   };
-
-  // Function removed - now using service-specific versions (handleActivateMiddle, handleActivateLong, handleActivateEmptySim)
 
   return (
     <DashboardLayout currentPath="/history">
@@ -1312,8 +1351,8 @@ const History: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Number Type Filter - Conditional for Short and Middle Numbers */}
-                    {(serviceTypeFilter === 'Short Numbers' || serviceTypeFilter === 'Middle Numbers') && (
+                    {/* Number Type Filter - Conditional for Short, Middle, Long Numbers */}
+                    {(serviceTypeFilter === 'Short Numbers' || serviceTypeFilter === 'Middle Numbers' || serviceTypeFilter === 'Long Numbers') && (
                       <div className="flex-1">
                         <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
                           Number Type
@@ -1557,7 +1596,23 @@ const History: React.FC = () => {
                               } else {
                                 return <span className="font-mono text-slate-400">-</span>;
                               }
-                            } else if (record.serviceType === 'Long' || record.serviceType === 'Empty simcard') {
+                            } else if (record.serviceType === 'Long') {
+                              // Long: Show countdown timer when Active (always, even with SMS)
+                              if (record.status === 'Active') {
+                                return <LongCountdownTimer
+                                  record={record}
+                                  onTimeout={() => setForceUpdate(prev => prev + 1)}
+                                />;
+                              }
+
+                              // Not Active - show SMS or dash
+                              const hasSms = record.code && record.code.trim() !== '';
+                              if (hasSms) {
+                                return <span className="font-mono text-blue-500 font-semibold">{record.code}</span>;
+                              } else {
+                                return <span className="font-mono text-slate-400">-</span>;
+                              }
+                            } else if (record.serviceType === 'Empty simcard') {
                               const hasSms = record.code && record.code.trim() !== '';
                               if (record.status === 'Active') {
                                 return hasSms ? (
