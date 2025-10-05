@@ -40,9 +40,11 @@ import {
 
 // Import Empty SIM logic functions
 import {
+  getEmptySimDisplayStatus,
   getEmptySimStatusColor,
   calculateEmptySimDuration,
   getEmptySimAvailableActions,
+  getEmptySimCountdownTime,
   handleCancelEmptySim,
   handleActivateEmptySim
 } from './EmptySimLogic';
@@ -213,6 +215,45 @@ const LongCountdownTimer: React.FC<{ record: HistoryRecord; onTimeout?: () => vo
   useEffect(() => {
     const updateCountdown = () => {
       const countdown = getLongCountdownTime(record);
+      setTimeLeft(countdown);
+
+      // If countdown expired, call onTimeout
+      if (countdown === null && onTimeout) {
+        onTimeout();
+      }
+    };
+
+    // Initial calculation
+    updateCountdown();
+
+    // Update every second
+    const interval = setInterval(() => {
+      updateCountdown();
+    }, 1000);
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
+  }, [record, onTimeout]);
+
+  // If no countdown, show dash
+  if (timeLeft === null) {
+    return <span className="font-mono text-slate-400">-</span>;
+  }
+
+  return (
+    <span className="font-mono text-yellow-400 font-semibold">
+      {timeLeft}
+    </span>
+  );
+});
+
+// Empty SIM Countdown Timer Component - Shows 3 minute countdown for Empty SIM Active numbers
+const EmptySimCountdownTimer: React.FC<{ record: HistoryRecord; onTimeout?: () => void }> = React.memo(({ record, onTimeout }) => {
+  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const countdown = getEmptySimCountdownTime(record);
       setTimeLeft(countdown);
 
       // If countdown expired, call onTimeout
@@ -445,6 +486,8 @@ const History: React.FC = () => {
       return getMiddleDisplayStatus(record);
     } else if (record.serviceType === 'Long') {
       return getLongDisplayStatus(record);
+    } else if (record.serviceType === 'Empty simcard') {
+      return getEmptySimDisplayStatus(record);
     }
     return record.status;
   };
@@ -507,12 +550,34 @@ const History: React.FC = () => {
         default:
           return { type: 'text', value: smsValue };
       }
-    } else if (serviceType === 'Long' || serviceType === 'Empty simcard') {
+    } else if (serviceType === 'Long') {
       // Check for Long countdown first (Active without SMS)
       const countdownTime = getLongCountdownTime(record);
       if (countdownTime !== null) {
         // Show countdown timer (5:00 -> 0:00)
         return { type: 'longCountdown', value: countdownTime };
+      }
+
+      // No countdown - show regular status-based values
+      switch (status) {
+        case 'Active':
+          // If we reach here, countdown expired (showing Inactive ficticio) or has SMS
+          return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
+        case 'Inactive':
+          return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
+        case 'Expired':
+          return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
+        case 'Cancelled':
+          return { type: 'text', value: '-' };
+        default:
+          return { type: 'text', value: smsValue };
+      }
+    } else if (serviceType === 'Empty simcard') {
+      // Check for EmptySimCard countdown first (Active without SMS)
+      const countdownTime = getEmptySimCountdownTime(record);
+      if (countdownTime !== null) {
+        // Show countdown timer (5:00 -> 0:00)
+        return { type: 'emptySimCountdown', value: countdownTime };
       }
 
       // No countdown - show regular status-based values
@@ -1074,7 +1139,7 @@ const History: React.FC = () => {
       return getMiddleStatusColor(status);
     } else if (serviceType === 'Long' || serviceType === 'Long Numbers') {
       return getLongStatusColor(status);
-    } else if (serviceType === 'Empty simcard' || serviceType === 'Empty SIM card' || serviceType === 'Empty Simcard') {
+    } else if (serviceType === 'Empty simcard' || serviceType === 'Empty SIM card' || serviceType === 'Empty Simcard' || serviceType === 'Empty SIM cards') {
       return getEmptySimStatusColor(status);
     }
     return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
@@ -1089,7 +1154,7 @@ const History: React.FC = () => {
         return 'bg-orange-500/10 text-orange-400';
       case 'Long Numbers':
         return 'bg-purple-500/10 text-purple-400';
-      case 'Empty SIM card':
+      case 'Empty SIM cards':
         return 'bg-cyan-500/10 text-cyan-400';
       default:
         return 'bg-gray-500/10 text-gray-400';
@@ -1613,21 +1678,20 @@ const History: React.FC = () => {
                                 return <span className="font-mono text-slate-400">-</span>;
                               }
                             } else if (record.serviceType === 'Empty simcard') {
-                              const hasSms = record.code && record.code.trim() !== '';
+                              // Empty SIM: Show countdown timer when Active (always, even with SMS)
                               if (record.status === 'Active') {
-                                return hasSms ? (
-                                  <span className="font-mono text-blue-500 font-semibold">{record.code}</span>
-                                ) : (
-                                  <div className="flex justify-center">
-                                    <div className="w-5 h-5 border-2 border-slate-400/30 border-t-slate-200 rounded-full animate-spin"></div>
-                                  </div>
-                                );
+                                return <EmptySimCountdownTimer
+                                  record={record}
+                                  onTimeout={() => setForceUpdate(prev => prev + 1)}
+                                />;
+                              }
+
+                              // Not Active - show SMS or dash
+                              const hasSms = record.code && record.code.trim() !== '';
+                              if (hasSms) {
+                                return <span className="font-mono text-blue-500 font-semibold">{record.code}</span>;
                               } else {
-                                return hasSms ? (
-                                  <span className="font-mono text-blue-500 font-semibold">{record.code}</span>
-                                ) : (
-                                  <span className="font-mono text-slate-400">-</span>
-                                );
+                                return <span className="font-mono text-slate-400">-</span>;
                               }
                             }
                             return <span className="font-mono text-slate-400">-</span>;

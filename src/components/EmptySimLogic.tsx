@@ -23,6 +23,121 @@ interface HistoryRecord {
   orderId?: string;
 }
 
+// Store activation timestamps locally (orderId -> activation timestamp)
+// Load from localStorage on initialization
+const loadActivationTimestamps = (): { [orderId: string]: number } => {
+  try {
+    const stored = localStorage.getItem('emptySimActivationTimestamps');
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    console.error('Error loading activation timestamps:', error);
+    return {};
+  }
+};
+
+const activationTimestamps: { [orderId: string]: number } = loadActivationTimestamps();
+
+// Save to localStorage whenever timestamps change
+const saveActivationTimestamps = () => {
+  try {
+    localStorage.setItem('emptySimActivationTimestamps', JSON.stringify(activationTimestamps));
+  } catch (error) {
+    console.error('Error saving activation timestamps:', error);
+  }
+};
+
+// Function to check if an Empty SIM has timed out (for display purposes only)
+export const hasEmptySimTimedOut = (record: HistoryRecord): boolean => {
+  const recordId = record.orderId || record.id;
+
+  // If status is not Active, clear timestamp and return false
+  if (record.serviceType !== 'Empty simcard' || record.status !== 'Active') {
+    clearActivationTime(recordId);
+    return false;
+  }
+
+  // Use stored activation timestamp for this order
+  const activationTime = activationTimestamps[recordId];
+  if (!activationTime) {
+    return false; // No activation timestamp stored yet
+  }
+
+  const now = new Date().getTime();
+  const threeMinutes = 3 * 60 * 1000; // 3:00 in milliseconds
+  const expiryTime = activationTime + threeMinutes;
+  return now >= expiryTime;
+};
+
+// Store activation timestamp when activating
+export const recordActivationTime = (orderId: string) => {
+  const timestamp = new Date().getTime();
+  // Store with the orderId to ensure we can find it later
+  activationTimestamps[orderId] = timestamp;
+  saveActivationTimestamps();
+};
+
+// Clear activation timestamp (when SMS arrives or status changes to Inactive)
+export const clearActivationTime = (orderId: string) => {
+  delete activationTimestamps[orderId];
+  saveActivationTimestamps();
+};
+
+// Get remaining time for Empty SIM countdown (returns null if not applicable, or time string like "2:32")
+export const getEmptySimCountdownTime = (record: HistoryRecord): string | null => {
+  // Show countdown ALWAYS when status is Active (even if there's already SMS)
+  if (record.serviceType !== 'Empty simcard' || record.status !== 'Active') {
+    return null;
+  }
+
+  // Try multiple ID variations to find the activation timestamp
+  const possibleIds = [
+    record.orderId,
+    record.id,
+    record.orderId || record.id
+  ].filter(Boolean);
+
+  let activationTime: number | undefined;
+  for (const id of possibleIds) {
+    if (activationTimestamps[id as string]) {
+      activationTime = activationTimestamps[id as string];
+      break;
+    }
+  }
+
+  // If no activation time found, create one NOW and save it
+  if (!activationTime) {
+    activationTime = new Date().getTime();
+    // Save with all possible IDs
+    for (const id of possibleIds) {
+      activationTimestamps[id as string] = activationTime;
+    }
+    saveActivationTimestamps();
+  }
+
+  const now = new Date().getTime();
+  const threeMinutes = 3 * 60 * 1000; // 3:00 in milliseconds
+  const elapsed = now - activationTime;
+  const remaining = threeMinutes - elapsed;
+
+  if (remaining <= 0) {
+    return null; // Time expired, will show "-"
+  }
+
+  // Format as M:SS
+  const minutes = Math.floor(remaining / 60000);
+  const seconds = Math.floor((remaining % 60000) / 1000);
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
+
+// Get display status for Empty SIM cards
+export const getEmptySimDisplayStatus = (record: HistoryRecord): string => {
+  // Show fictitious "Inactive" when status is Active but timed out (3 min) without new SMS
+  if (hasEmptySimTimedOut(record)) {
+    return 'Inactive';
+  }
+  return record.status;
+};
+
 // Get status color for Empty SIM cards
 export const getEmptySimStatusColor = (status: string) => {
   switch (status) {
@@ -48,27 +163,46 @@ export const calculateEmptySimDuration = (createdAt: Date, expiry: Date): string
   return `${durationDays} days`;
 };
 
-// Get available actions for Empty SIM cards (identical to Long)
+// Get available actions for Empty SIM cards
 export const getEmptySimAvailableActions = (record: HistoryRecord): string[] => {
   const { status, code } = record;
   const hasSms = code && code.trim() !== '';
+  const displayStatus = getEmptySimDisplayStatus(record);
+
+  // Check if displaying as Inactive (ficticio) - disable actions
+  if (displayStatus === 'Inactive' && status === 'Active') {
+    // Ficticio Inactive (still Active in Firestore) - no actions (disabled)
+    return [];
+  }
 
   if (status === 'Active') {
     if (hasSms) {
       // Active with SMS - no actions (disabled)
       return [];
     } else {
-      // Active without SMS - only Cancel
-      return ['Cancel'];
+      // Active without SMS - check if 3 minutes have passed
+      const recordId = record.orderId || record.id;
+      const activationTime = activationTimestamps[recordId];
+
+      if (!activationTime) {
+        return []; // No activation time recorded, disable
+      }
+
+      const now = new Date().getTime();
+      const oneMinute = 1 * 60 * 1000; // 1:00 in milliseconds
+      const timeSinceActivation = now - activationTime;
+
+      if (timeSinceActivation >= oneMinute) {
+        // 1 minute passed - show Cancel
+        return ['Cancel'];
+      } else {
+        // Less than 1 minute - no actions (disabled)
+        return [];
+      }
     }
   } else if (status === 'Inactive') {
-    if (hasSms) {
-      // Inactive with SMS - only Activate
-      return ['Activate'];
-    } else {
-      // Inactive without SMS - Cancel and Activate
-      return ['Cancel', 'Activate'];
-    }
+    // Real Inactive status (from Firestore) - always show Activate (regardless of SMS)
+    return ['Activate'];
   } else if (status === 'Cancelled' || status === 'Expired') {
     // Cancelled or Expired - no actions (disabled)
     return [];
@@ -77,7 +211,7 @@ export const getEmptySimAvailableActions = (record: HistoryRecord): string[] => 
   return [];
 };
 
-// Handle cancel Empty SIM card (uses same endpoint as Middle/Long)
+// Handle cancel Empty SIM card
 export const handleCancelEmptySim = async (
   recordId: string,
   orderId: string | undefined,
@@ -108,7 +242,7 @@ export const handleCancelEmptySim = async (
     const idToken = await currentUser.getIdToken();
 
     // Make API call to cancel Empty SIM card cloud function (same as middle)
-    const response = await fetch('https://cancelmiddleusa-ezeznlhr5a-uc.a.run.app', {
+    const response = await fetch('https://cancelsimcardusa-ezeznlhr5a-uc.a.run.app', {
       method: 'POST',
       headers: {
         'authorization': `${idToken}`,
@@ -121,6 +255,7 @@ export const handleCancelEmptySim = async (
 
     if (response.ok && data.success) {
       // Success - the listener will automatically update the status to Cancelled
+      // Backend will change status to Cancelled and buttons will be disabled      
       setCancellingOrderId(null);
     } else {
       // Handle error responses
@@ -128,12 +263,12 @@ export const handleCancelEmptySim = async (
 
       if (data.message === 'Unauthorized') {
         errorMsg = 'You are not authenticated or your token is invalid';
-      } else if (data.message === 'Bad Request: Missing orderId' || data.message === 'Order not found') {
+      } else if (data.message === 'Order not found') {
         errorMsg = 'Please refresh the page and try again';
-      } else if (data.message === 'Error cancelling number') {
+      } else if (data.message === 'Internal error') {
+        errorMsg = 'Please refresh the page and try again';
+      } else if (data.message === 'Number cannot be cancelled' || data.message === 'Error cancelling simcard') {
         errorMsg = 'This number could not be cancelled, please try again or contact our customer support';
-      } else if (data.message === 'Error updating balance') {
-        errorMsg = 'Please refresh the page and try again';
       } else if (data.message === 'Internal Server Error') {
         errorMsg = 'Please contact our customer support';
       }
@@ -180,8 +315,8 @@ export const handleActivateEmptySim = async (
     // Get Firebase ID token
     const idToken = await currentUser.getIdToken();
 
-    // Make API call to activate Empty SIM card cloud function (same as middle)
-    const response = await fetch('https://activatemiddleusa-ezeznlhr5a-uc.a.run.app', {
+    // Make API call to activate Empty SIM card cloud function
+    const response = await fetch('https://activateemptysimcardusa-ezeznlhr5a-uc.a.run.app', {
       method: 'POST',
       headers: {
         'authorization': `${idToken}`,
@@ -193,7 +328,11 @@ export const handleActivateEmptySim = async (
     const data = await response.json();
 
     if (response.ok && data.success) {
-      // Success - the listener will automatically update the status to Active
+      // Success - record activation time with BOTH recordId and orderId
+      const timestamp = new Date().getTime();
+      activationTimestamps[recordId] = timestamp;
+      activationTimestamps[orderId] = timestamp;
+      saveActivationTimestamps();
       setActivatingOrderId(null);
     } else {
       // Handle error responses
@@ -201,13 +340,11 @@ export const handleActivateEmptySim = async (
 
       if (data.message === 'Unauthorized') {
         errorMsg = 'You are not authenticated or your token is invalid';
-      } else if (data.message === 'Bad Request: Missing orderId' || data.message === 'Order not found') {
+      } else if (data.message === 'Invalid orderId') {
         errorMsg = 'Please refresh the page and try again';
-      } else if (data.message === 'Number is not inactive') {
-        errorMsg = 'This number is not inactive and cannot be activated';
-      } else if (data.message === 'Error activating number') {
+      } else if (data.message === 'Error waking up long') {
         errorMsg = 'This number could not be activated, please try again or contact our customer support';
-      } else if (data.message === 'Error updating balance') {
+      } else if (data.message === 'Error getting time of wake up') {
         errorMsg = 'Please refresh the page and try again';
       } else if (data.message === 'Internal Server Error') {
         errorMsg = 'Please contact our customer support';
