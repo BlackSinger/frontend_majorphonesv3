@@ -13,7 +13,7 @@ import {
   calculateShortDuration,
   getShortAvailableActions,
   handleCancelShort,
-  handleReuseNumber
+  // handleReuseNumber
 } from './ShortLogic';
 
 // Import Middle logic functions
@@ -92,7 +92,7 @@ interface HistoryRecord {
   maySend?: boolean;
   asleep?: boolean; // Indica si el número está dormido (sleeping) en Firestore
   createdAt?: Date; // Timestamp de creación para calcular el contador
-  updatedAt?: Date; // Timestamp de última actualización (usado en reuse)
+  // updatedAt?: Date; // Timestamp de última actualización (usado en reuse)
   expiry?: Date; // Timestamp de expiración para validar Send
   awakeIn?: Date; // Timestamp cuando el número despertará (para números sleeping)
   codeAwakeAt?: Date; // Timestamp cuando el contador de 5 minutos en Code debe iniciar (cuando el número está awake)
@@ -102,7 +102,7 @@ interface HistoryRecord {
 // VirtualCardRecord and ProxyRecord interfaces are now imported from their respective logic files
 
 // Countdown Timer Component - DO NOT re-render if status changes
-const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: string; onTimeout?: () => void; updatedAt?: Date }> = React.memo(({ createdAt, recordId, status, onTimeout, updatedAt }) => {
+const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: string; onTimeout?: () => void; /* updatedAt?: Date */ }> = React.memo(({ createdAt, recordId, status, onTimeout, /* updatedAt */ }) => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
 
   useEffect(() => {
@@ -115,7 +115,8 @@ const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: stri
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
       // Use updatedAt if available (for reused numbers), otherwise use createdAt
-      const startTime = updatedAt ? updatedAt.getTime() : createdAt.getTime();
+      // const startTime = updatedAt ? updatedAt.getTime() : createdAt.getTime();
+      const startTime = createdAt.getTime();
       const fiveMinutes = 5 * 60 * 1000; // 5:00 in milliseconds
       const expiryTime = startTime + fiveMinutes;
       const remaining = expiryTime - now;
@@ -147,7 +148,7 @@ const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: stri
 
     // Cleanup on unmount
     return () => clearInterval(interval);
-  }, [createdAt, updatedAt, status, onTimeout]);
+  }, [createdAt, /* updatedAt, */ status, onTimeout]);
 
   // If status changed to non-Pending, don't render
   if (status !== 'Pending') {
@@ -463,7 +464,7 @@ const History: React.FC = () => {
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
 
   // Reusing state - track which order is being reused
-  const [reusingOrderId, setReusingOrderId] = useState<string | null>(null);
+  // const [reusingOrderId, setReusingOrderId] = useState<string | null>(null);
 
   // Activating state - track which order is being activated
   const [activatingOrderId, setActivatingOrderId] = useState<string | null>(null);
@@ -625,7 +626,7 @@ const History: React.FC = () => {
   const getNumberTypeOptions = (serviceType: string) => {
     switch (serviceType) {
       case 'Short Numbers':
-        return ['All types', 'Single use', 'Reusable', 'Receive/Respond'];
+        return ['All types', 'Single use', /* 'Reusable', */ 'Receive/Respond'];
       case 'Middle Numbers':
         return ['All types', '1 day', '7 days', '14 days'];
       case 'Long Numbers':
@@ -728,7 +729,7 @@ const History: React.FC = () => {
   // Helper function to determine number type for Short numbers
   const getShortNumberType = (record: HistoryRecord) => {
     const { reuse, maySend } = record;
-    if (reuse === true && maySend === false) return 'Reusable';
+    // if (reuse === true && maySend === false) return 'Reusable';
     if (reuse === false && maySend === false) return 'Single use';
     if (reuse === false && maySend === true) return 'Receive/Respond';
     return 'Unknown';
@@ -910,7 +911,7 @@ const History: React.FC = () => {
         reuse: docData.reuse,
         maySend: docData.maySend,
         createdAt: createdAt,
-        updatedAt: docData.updatedAt?.toDate?.() || null,
+        // updatedAt: docData.updatedAt?.toDate?.() || null,
         expiry: expiry,
         orderId: docData.orderId || docId
       };
@@ -1279,10 +1280,10 @@ const History: React.FC = () => {
     }
 
     // Handle Reuse action
-    if (action === 'Reuse') {
-      await handleReuseNumber(record.orderId || '', setErrorMessage, setShowErrorModal, setReusingOrderId);
-      return;
-    }
+    // if (action === 'Reuse') {
+    //   await handleReuseNumber(record.orderId || '', setErrorMessage, setShowErrorModal, setReusingOrderId);
+    //   return;
+    // }
 
     // Handle Send action
     if (action === 'Send') {
@@ -1366,7 +1367,7 @@ const History: React.FC = () => {
               <>
                 {/* Check if any operation is in progress */}
                 {(() => {
-                  const isProcessing = cancellingOrderId !== null || reusingOrderId !== null || activatingOrderId !== null;
+                  const isProcessing = cancellingOrderId !== null || /* reusingOrderId !== null || */ activatingOrderId !== null;
                   
                   return (
                     <>
@@ -1639,7 +1640,7 @@ const History: React.FC = () => {
                                   createdAt={record.createdAt}
                                   recordId={record.id}
                                   status={record.status}
-                                  updatedAt={record.updatedAt}
+                                  // updatedAt={record.updatedAt}
                                   onTimeout={() => setForceUpdate(prev => prev + 1)}
                                 />;
                               } else {
@@ -1730,14 +1731,14 @@ const History: React.FC = () => {
                               const availableActions = getAvailableActions(record);
                               const hasActions = availableActions.length > 0;
                               const isCancelling = cancellingOrderId === record.id;
-                              const isReusing = reusingOrderId === record.id;
+                              // const isReusing = reusingOrderId === record.id;
                               const isActivating = activatingOrderId === record.id;
                               const isOtherProcessing = (cancellingOrderId !== null && cancellingOrderId !== record.id) ||
-                                                        (reusingOrderId !== null && reusingOrderId !== record.id) ||
+                                                        // (reusingOrderId !== null && reusingOrderId !== record.id) ||
                                                         (activatingOrderId !== null && activatingOrderId !== record.id);
 
                               // Show spinner if this record is being cancelled, reused, or activated
-                              if (isCancelling || isReusing || isActivating) {
+                              if (isCancelling || /* isReusing || */ isActivating) {
                                 return (
                                   <div className="flex justify-center">
                                     <div className="w-5 h-5 border-2 border-slate-400/30 border-t-slate-200 rounded-full animate-spin"></div>

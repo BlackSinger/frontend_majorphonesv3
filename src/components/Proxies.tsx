@@ -121,16 +121,16 @@ const Proxies: React.FC = () => {
   useEffect(() => {
     const fetchProxyPrices = async () => {
       try {
-        const proxyDocRef = doc(db, 'fees', 'proxy');
+        const proxyDocRef = doc(db, 'fees', 'proxyCatalog');
         const proxyDocSnap = await getDoc(proxyDocRef);
 
         if (proxyDocSnap.exists()) {
           const data = proxyDocSnap.data();
           setProxyPrices({
-            hour: data.hour || 1,
-            day: data.day || 2,
-            week: data.week || 5,
-            month: data.month || 20
+            hour: data.hour || 5,
+            day: data.day || 12,
+            week: data.week || 35,
+            month: data.month || 120
           });
         }
       } catch (error) {
