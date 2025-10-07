@@ -1314,7 +1314,7 @@ const History: React.FC = () => {
             <div className="flex items-center space-x-4">
               <div>
                 <h1 className="text-left text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent">
-                  Purchase History
+                  History
                 </h1>
                 <p className="text-slate-300 text-md text-left">View and manage all your purchases</p>
               </div>

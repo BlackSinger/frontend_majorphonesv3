@@ -74,7 +74,13 @@ const AddFunds: React.FC = () => {
   const [isLoadingBtcWallet, setIsLoadingBtcWallet] = useState(false);
   const [btcWalletAddress, setBtcWalletAddress] = useState('');
   const [isBtcButtonDisabled, setIsBtcButtonDisabled] = useState(false);
-  
+  const [isLoadingTronWallet, setIsLoadingTronWallet] = useState(false);
+  const [tronWalletAddress, setTronWalletAddress] = useState('');
+  const [isTronButtonDisabled, setIsTronButtonDisabled] = useState(false);
+
+  // Estado general para saber si alguna wallet está cargando
+  const isAnyWalletLoading = isLoadingUsdtWallet || isLoadingUsdcWallet || isLoadingPolWallet || isLoadingTronWallet || isLoadingLtcWallet || isLoadingEthWallet || isLoadingBtcWallet;
+
   const amountSectionRef = useRef<HTMLDivElement>(null);
   const staticWalletsSectionRef = useRef<HTMLDivElement>(null);
   const submitButtonRef = useRef<HTMLDivElement>(null);
@@ -160,14 +166,14 @@ const AddFunds: React.FC = () => {
       color: 'from-purple-500 to-violet-500'
     },
     {
-      id: 'tron',
-      name: 'TRON',
-      network: 'TRX',
+      id: 'trx',
+      name: 'TRX',
+      network: 'TRON',
       icon: (
-        <img src={TronTrxLogo} alt="TRON" className="w-6 h-6" />
+        <img src={TronTrxLogo} alt="TRX" className="w-6 h-6" />
       ),
-      color: 'from-red-500 to-rose-500',
-      isAvailable: false
+      color: 'from-red-500 to-rose-500'
+      //isAvailable: false
     },
     {
       id: 'ltc',
@@ -585,6 +591,53 @@ const AddFunds: React.FC = () => {
     }
   };
 
+  // Function to fetch TRON wallet address from Firestore
+  const fetchTronWallet = async () => {
+    if (!currentUser) {
+      setStaticWalletErrorMessage('User not authenticated');
+      setShowStaticWalletErrorModal(true);
+      setIsTronButtonDisabled(true);
+      setSelectedWallet('');
+      setTronWalletAddress('');
+      return;
+    }
+
+    setIsLoadingTronWallet(true);
+
+    try {
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const tronAddress = userData.trx_tron;
+
+        if (tronAddress) {
+          setTronWalletAddress(tronAddress);
+          setSelectedWallet('trx');
+        } else {
+          setStaticWalletErrorMessage('TRX wallet address not found');
+          setShowStaticWalletErrorModal(true);
+          setSelectedWallet('');
+          setTronWalletAddress('');
+        }
+      } else {
+        setStaticWalletErrorMessage('User data not found');
+        setShowStaticWalletErrorModal(true);
+        setSelectedWallet('');
+        setTronWalletAddress('');
+      }
+    } catch (error) {
+      console.error('Error fetching TRX wallet:', error);
+      setStaticWalletErrorMessage('Error loading wallet address');
+      setShowStaticWalletErrorModal(true);
+      setSelectedWallet('');
+      setTronWalletAddress('');
+    } finally {
+      setIsLoadingTronWallet(false);
+    }
+  };
+
   // Function to create Cryptomus order
   const createCryptomusOrder = async (amount: number) => {
     if (!currentUser) {
@@ -900,7 +953,7 @@ const AddFunds: React.FC = () => {
                             ) : (
                               <button
                                 type="button"
-                                disabled={isCryptomusProcessing || isUnauthorized || isPayeerProcessing || isPayeerUnauthorized}
+                                disabled={isCryptomusProcessing || isUnauthorized || isPayeerProcessing || isPayeerUnauthorized || isAnyWalletLoading}
                                 onClick={() => {
                                   if (selectedMethod === method.id) {
                                     setSelectedMethod('');
@@ -909,7 +962,7 @@ const AddFunds: React.FC = () => {
                                   }
                                 }}
                                 className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 w-20 sm:w-20 w-full ${
-                                  isCryptomusProcessing || isUnauthorized || isPayeerProcessing || isPayeerUnauthorized
+                                  isCryptomusProcessing || isUnauthorized || isPayeerProcessing || isPayeerUnauthorized || isAnyWalletLoading
                                     ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed border border-slate-700/30'
                                     : selectedMethod === method.id
                                       ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
@@ -1082,7 +1135,7 @@ const AddFunds: React.FC = () => {
                                 ) : (
                                   <button
                                   type="button"
-                                  disabled={(wallet.id === 'usdt' && isUsdtButtonDisabled) || (wallet.id === 'usdc' && isUsdcButtonDisabled) || (wallet.id === 'pol' && isPolButtonDisabled)}
+                                  disabled={isAnyWalletLoading || (wallet.id === 'usdt' && isUsdtButtonDisabled) || (wallet.id === 'usdc' && isUsdcButtonDisabled) || (wallet.id === 'pol' && isPolButtonDisabled) || (wallet.id === 'trx' && isTronButtonDisabled) || (wallet.id === 'ltc' && isLtcButtonDisabled) || (wallet.id === 'eth' && isEthButtonDisabled) || (wallet.id === 'btc' && isBtcButtonDisabled)}
                                   onClick={() => {
                                     if (wallet.id === 'usdt') {
                                       if (selectedWallet === wallet.id) {
@@ -1104,6 +1157,13 @@ const AddFunds: React.FC = () => {
                                         setPolWalletAddress('');
                                       } else {
                                         fetchPolWallet();
+                                      }
+                                    } else if (wallet.id === 'trx') {
+                                      if (selectedWallet === wallet.id) {
+                                        setSelectedWallet('');
+                                        setTronWalletAddress('');
+                                      } else {
+                                        fetchTronWallet();
                                       }
                                     } else if (wallet.id === 'ltc') {
                                       if (selectedWallet === wallet.id) {
@@ -1136,14 +1196,14 @@ const AddFunds: React.FC = () => {
                                   }}
                                   style={{ width: '80px' }}
                                   className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 ${
-                                    (wallet.id === 'usdt' && isUsdtButtonDisabled) || (wallet.id === 'usdc' && isUsdcButtonDisabled) || (wallet.id === 'pol' && isPolButtonDisabled) || (wallet.id === 'ltc' && isLtcButtonDisabled) || (wallet.id === 'eth' && isEthButtonDisabled) || (wallet.id === 'btc' && isBtcButtonDisabled)
+                                    isAnyWalletLoading || (wallet.id === 'usdt' && isUsdtButtonDisabled) || (wallet.id === 'usdc' && isUsdcButtonDisabled) || (wallet.id === 'pol' && isPolButtonDisabled) || (wallet.id === 'trx' && isTronButtonDisabled) || (wallet.id === 'ltc' && isLtcButtonDisabled) || (wallet.id === 'eth' && isEthButtonDisabled) || (wallet.id === 'btc' && isBtcButtonDisabled)
                                       ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed border border-slate-700/30'
                                       : selectedWallet === wallet.id
                                         ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
                                         : 'bg-slate-600/50 hover:bg-slate-500/50 text-slate-300 hover:text-white border border-slate-500/30 hover:border-slate-400/50'
                                   }`}
                                 >
-                                  {(wallet.id === 'usdt' && isLoadingUsdtWallet) || (wallet.id === 'usdc' && isLoadingUsdcWallet) || (wallet.id === 'pol' && isLoadingPolWallet) || (wallet.id === 'ltc' && isLoadingLtcWallet) || (wallet.id === 'eth' && isLoadingEthWallet) || (wallet.id === 'btc' && isLoadingBtcWallet) ? (
+                                  {(wallet.id === 'usdt' && isLoadingUsdtWallet) || (wallet.id === 'usdc' && isLoadingUsdcWallet) || (wallet.id === 'pol' && isLoadingPolWallet) || (wallet.id === 'trx' && isLoadingTronWallet) || (wallet.id === 'ltc' && isLoadingLtcWallet) || (wallet.id === 'eth' && isLoadingEthWallet) || (wallet.id === 'btc' && isLoadingBtcWallet) ? (
                                     <div className="flex items-center justify-center">
                                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                     </div>
@@ -1187,13 +1247,15 @@ const AddFunds: React.FC = () => {
                                               ? usdcWalletAddress
                                               : wallet.id === 'pol' && polWalletAddress
                                                 ? polWalletAddress
-                                                : wallet.id === 'ltc' && ltcWalletAddress
-                                                  ? ltcWalletAddress
-                                                  : wallet.id === 'eth' && ethWalletAddress
-                                                    ? ethWalletAddress
-                                                    : wallet.id === 'btc' && btcWalletAddress
-                                                      ? btcWalletAddress
-                                                      : ''}
+                                                : wallet.id === 'trx' && tronWalletAddress
+                                                  ? tronWalletAddress
+                                                  : wallet.id === 'ltc' && ltcWalletAddress
+                                                    ? ltcWalletAddress
+                                                    : wallet.id === 'eth' && ethWalletAddress
+                                                      ? ethWalletAddress
+                                                      : wallet.id === 'btc' && btcWalletAddress
+                                                        ? btcWalletAddress
+                                                        : ''}
                                         </code>
                                         <button
                                         type="button"
@@ -1205,13 +1267,15 @@ const AddFunds: React.FC = () => {
                                                 ? usdcWalletAddress
                                                 : wallet.id === 'pol' && polWalletAddress
                                                   ? polWalletAddress
-                                                  : wallet.id === 'ltc' && ltcWalletAddress
-                                                    ? ltcWalletAddress
-                                                    : wallet.id === 'eth' && ethWalletAddress
-                                                      ? ethWalletAddress
-                                                      : wallet.id === 'btc' && btcWalletAddress
-                                                        ? btcWalletAddress
-                                                        : '';
+                                                  : wallet.id === 'trx' && tronWalletAddress
+                                                    ? tronWalletAddress
+                                                    : wallet.id === 'ltc' && ltcWalletAddress
+                                                      ? ltcWalletAddress
+                                                      : wallet.id === 'eth' && ethWalletAddress
+                                                        ? ethWalletAddress
+                                                        : wallet.id === 'btc' && btcWalletAddress
+                                                          ? btcWalletAddress
+                                                          : '';
                                             await navigator.clipboard.writeText(addressToCopy);
                                             setCopiedAddress(true);
                                             setTimeout(() => setCopiedAddress(false), 2000);
@@ -1225,13 +1289,15 @@ const AddFunds: React.FC = () => {
                                                 ? usdcWalletAddress
                                                 : wallet.id === 'pol' && polWalletAddress
                                                   ? polWalletAddress
-                                                  : wallet.id === 'ltc' && ltcWalletAddress
-                                                    ? ltcWalletAddress
-                                                    : wallet.id === 'eth' && ethWalletAddress
-                                                      ? ethWalletAddress
-                                                      : wallet.id === 'btc' && btcWalletAddress
-                                                        ? btcWalletAddress
-                                                        : '';
+                                                  : wallet.id === 'trx' && tronWalletAddress
+                                                    ? tronWalletAddress
+                                                    : wallet.id === 'ltc' && ltcWalletAddress
+                                                      ? ltcWalletAddress
+                                                      : wallet.id === 'eth' && ethWalletAddress
+                                                        ? ethWalletAddress
+                                                        : wallet.id === 'btc' && btcWalletAddress
+                                                          ? btcWalletAddress
+                                                          : '';
                                             textArea.value = addressToCopy;
                                             document.body.appendChild(textArea);
                                             textArea.select();

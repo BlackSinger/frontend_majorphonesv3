@@ -19,6 +19,7 @@ import Transactions from './components/Transactions';
 import Tickets from './components/Tickets';
 import Profile from './components/Profile';
 import AddFunds from './components/AddFunds';
+import API from './components/API';
 import './App.css';
 
 function App() {
@@ -49,6 +50,7 @@ function App() {
             <Route path="/tickets" element={<PrivateRoute><Tickets /></PrivateRoute>} />
             <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
             <Route path="/add-funds" element={<PrivateRoute><AddFunds /></PrivateRoute>} />
+            <Route path="/api" element={<PrivateRoute><API /></PrivateRoute>} />
           </Routes>
         </div>
       </Router>

@@ -1,5 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import DashboardLayout from './DashboardLayout';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { useAuth } from '../contexts/AuthContext';
 
 interface TransactionRecord {
   id: string;
@@ -11,13 +14,19 @@ interface TransactionRecord {
 }
 
 const Transactions: React.FC = () => {
+  const { currentUser } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('All');
+  const [staticWalletFilter, setStaticWalletFilter] = useState<string>('All');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isPaymentMethodDropdownOpen, setIsPaymentMethodDropdownOpen] = useState(false);
+  const [isStaticWalletDropdownOpen, setIsStaticWalletDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [transactionData, setTransactionData] = useState<TransactionRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const paymentMethodDropdownRef = useRef<HTMLDivElement>(null);
+  const staticWalletDropdownRef = useRef<HTMLDivElement>(null);
   
   const itemsPerPage = 10;
 
@@ -30,6 +39,9 @@ const Transactions: React.FC = () => {
       if (paymentMethodDropdownRef.current && !paymentMethodDropdownRef.current.contains(event.target as Node)) {
         setIsPaymentMethodDropdownOpen(false);
       }
+      if (staticWalletDropdownRef.current && !staticWalletDropdownRef.current.contains(event.target as Node)) {
+        setIsStaticWalletDropdownOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -38,129 +50,64 @@ const Transactions: React.FC = () => {
     };
   }, []);
 
-  // Mock transaction data
-  const transactionData: TransactionRecord[] = [
-    {
-      id: '1',
-      option: 'Cryptomus',
-      date: '2024-01-16 14:30',
-      status: 'Completed',
-      amount: 25.00,
-      transactionId: '3bbf097f-d4cb-4257-a3da-2dcc4a35cd05'
-    },
-    {
-      id: '2',
-      option: 'Amazon Pay',
-      date: '2024-01-16 10:15',
-      status: 'Pending',
-      amount: 50.00,
-      transactionId: '2775a296-2104-4b6e-84ba-cb8019c794bc'
-    },
-    {
-      id: '3',
-      option: 'Admin Update',
-      date: '2024-01-15 16:45',
-      status: 'Completed',
-      amount: 100.00,
-      transactionId: 'ddff38cf-885b-46ea-80e9-43786a639be9'
-    },
-    {
-      id: '4',
-      option: 'Payeer',
-      date: '2024-01-14 09:20',
-      status: 'Overpayment',
-      amount: 75.25,
-      transactionId: '12ac2d54-7dbd-4278-8b77-4df9dfe63f21'
-    },
-    {
-      id: '5',
-      option: 'Cryptomus',
-      date: '2024-01-13 11:30',
-      status: 'Completed',
-      amount: 15.50,
-      transactionId: '8df45a40-addb-4456-82dd-29dae51054f3	'
-    },
-    {
-      id: '6',
-      option: 'Amazon Pay',
-      date: '2024-01-12 13:45',
-      status: 'Cancelled',
-      amount: 200.00,
-      transactionId: '5313b2de-1762-4650-975c-15c026abec2a	'
-    },
-    {
-      id: '7',
-      option: 'Admin Update',
-      date: '2024-01-11 15:20',
-      status: 'Underpayment',
-      amount: 45.80,
-      transactionId: 'd9e55079-d080-484c-87a3-494472e00923'
-    },
-    {
-      id: '8',
-      option: 'Payeer',
-      date: '2024-01-10 08:15',
-      status: 'Completed',
-      amount: 35.00,
-      transactionId: 'b5d01a1a-4340-4f8a-b472-f2958a019f72'
-    },
-    {
-      id: '9',
-      option: 'Cryptomus',
-      date: '2024-01-09 17:30',
-      status: 'Completed',
-      amount: 80.00,
-      transactionId: 'a94a22e5-6779-48cf-a95c-adadd81ec180'
-    },
-    {
-      id: '10',
-      option: 'Amazon Pay',
-      date: '2024-01-08 12:10',
-      status: 'Pending',
-      amount: 30.50,
-      transactionId: '3cc7fa95-207f-4571-9c8c-b889e0f5ef0e'
-    },
-    {
-      id: '11',
-      option: 'Amazon Pay',
-      date: '2024-01-08 12:10',
-      status: 'Pending',
-      amount: 30.50,
-      transactionId: '3cc7fa95-207f-4571-9c8c-b889e0f5ef0e'
-    },
-    {
-      id: '12',
-      option: 'USDT Tether',
-      date: '2024-01-07 09:25',
-      status: 'Completed',
-      amount: 150.00,
-      transactionId: 'b7f9c3d2-8e41-4a92-b654-7c8d9e1f2a3b'
-    },
-    {
-      id: '13',
-      option: 'USDC',
-      date: '2024-01-06 16:30',
-      status: 'Pending',
-      amount: 85.75,
-      transactionId: 'f4a2b8c7-1d3e-4f5g-6h7i-8j9k0l1m2n3o'
-    },
-    {
-      id: '14',
-      option: 'Matic',
-      date: '2024-01-05 11:45',
-      status: 'Completed',
-      amount: 65.20,
-      transactionId: 'c9e5d8a1-2b4f-3c6e-7d9a-1e2f3c4d5e6f'
-    },
-    {
-      id: '15',
-      option: 'Tron',
-      date: '2024-01-04 14:15',
-      status: 'Overpayment',
-      amount: 95.40,
-      transactionId: 'a3f7b2c8-5d9e-4a1b-6c2d-3e4f5a6b7c8d'
-    }
-  ];
+  // Fetch transaction data from Firebase
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const rechargesRef = collection(db, 'recharges');
+        const q = query(
+          rechargesRef,
+          where('uid', '==', currentUser.uid),
+          orderBy('createdAt', 'desc')
+        );
+        
+        const querySnapshot = await getDocs(q);
+        const transactions: TransactionRecord[] = [];
+        
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          
+          // Format the date from Firestore timestamp
+          let formattedDate = '';
+          if (data.createdAt) {
+            const date = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+            formattedDate = date.toLocaleString('en-US', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true
+            }).replace(',', ', ');
+          }
+          
+          transactions.push({
+            id: doc.id,
+            option: data.paymentMethod || 'Unknown',
+            date: formattedDate,
+            status: data.status || 'Pending',
+            amount: data.amount || 0,
+            transactionId: doc.id
+          });
+        });
+        
+        setTransactionData(transactions);
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, [currentUser]);
 
   // Filter the data based on selected filters
   const filteredData = useMemo(() => {
@@ -171,11 +118,22 @@ const Transactions: React.FC = () => {
     }
 
     if (paymentMethodFilter !== 'All') {
-      filtered = filtered.filter(record => record.option === paymentMethodFilter);
+      if (paymentMethodFilter === 'Static Wallets') {
+        // Filter by static wallets
+        const staticWalletMethods = ['USDT Tether', 'USDC Polygon', 'Pol Polygon', 'TRX Tron', 'LTC', 'ETH', 'BTC'];
+        filtered = filtered.filter(record => staticWalletMethods.includes(record.option));
+
+        // Apply static wallet sub-filter if selected
+        if (staticWalletFilter !== 'All') {
+          filtered = filtered.filter(record => record.option === staticWalletFilter);
+        }
+      } else {
+        filtered = filtered.filter(record => record.option === paymentMethodFilter);
+      }
     }
 
     return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [statusFilter, paymentMethodFilter]);
+  }, [statusFilter, paymentMethodFilter, staticWalletFilter, transactionData]);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -186,7 +144,14 @@ const Transactions: React.FC = () => {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, paymentMethodFilter]);
+  }, [statusFilter, paymentMethodFilter, staticWalletFilter]);
+
+  // Reset static wallet filter when payment method changes
+  useEffect(() => {
+    if (paymentMethodFilter !== 'Static Wallets') {
+      setStaticWalletFilter('All');
+    }
+  }, [paymentMethodFilter]);
 
   // Get status color
   const getStatusColor = (status: string) => {
@@ -203,30 +168,6 @@ const Transactions: React.FC = () => {
         return 'text-orange-400 border-orange-500/30';
       default:
         return 'text-gray-400 border-gray-500/30';
-    }
-  };
-
-  // Get transaction option color
-  const getOptionColor = (option: string) => {
-    switch (option) {
-      case 'Cryptomus':
-        return 'bg-orange-500/10 text-orange-400';
-      case 'Amazon Pay':
-        return 'bg-blue-500/10 text-blue-400';
-      case 'Admin Update':
-        return 'bg-yellow-500/10 text-yellow-400';
-      case 'Payeer':
-        return 'bg-purple-500/10 text-purple-400';
-      case 'USDT Tether':
-        return 'bg-green-500/10 text-green-400';
-      case 'USDC':
-        return 'bg-cyan-500/10 text-cyan-400';
-      case 'Matic':
-        return 'bg-indigo-500/10 text-indigo-400';
-      case 'Tron':
-        return 'bg-red-500/10 text-red-400';
-      default:
-        return 'bg-gray-500/10 text-gray-400';
     }
   };
 
@@ -275,7 +216,7 @@ const Transactions: React.FC = () => {
                     {/* Custom Dropdown Options */}
                     {isPaymentMethodDropdownOpen && (
                       <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
-                        {['All', 'Cryptomus', 'Amazon Pay', 'Admin Update', 'Payeer', 'USDT Tether', 'USDC', 'Matic', 'Tron'].map((method) => (
+                        {['All', 'Admin Update', 'Amazon Pay', 'Cryptomus', 'Payeer', 'Static Wallets'].map((method) => (
                           <div
                             key={method}
                             onClick={() => {
@@ -291,6 +232,47 @@ const Transactions: React.FC = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Static Wallets Filter - Only show when Static Wallets is selected */}
+                {paymentMethodFilter === 'Static Wallets' && (
+                  <div className="flex-1">
+                    <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                      Static Wallets
+                    </label>
+                    <div className="relative group" ref={staticWalletDropdownRef}>
+                      <div
+                        onClick={() => setIsStaticWalletDropdownOpen(!isStaticWalletDropdownOpen)}
+                        className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                      >
+                        <span>{staticWalletFilter === 'All' ? 'All Wallets' : staticWalletFilter}</span>
+                      </div>
+
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isStaticWalletDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+
+                      {/* Custom Dropdown Options */}
+                      {isStaticWalletDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
+                          {['All', 'BTC', 'ETH', 'LTC', 'Pol Polygon', 'TRX Tron', 'USDT Tether', 'USDC Polygon'].map((wallet) => (
+                            <div
+                              key={wallet}
+                              onClick={() => {
+                                setStaticWalletFilter(wallet);
+                                setIsStaticWalletDropdownOpen(false);
+                              }}
+                              className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                            >
+                              <span className="text-white">{wallet === 'All' ? 'All Wallets' : wallet}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Status Filter */}
                 <div className="flex-1">
@@ -336,7 +318,15 @@ const Transactions: React.FC = () => {
 
             {/* Table */}
             <div className="overflow-x-auto overflow-y-visible">
-              {filteredData.length > 0 ? (
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p className="text-slate-400 mt-4">Loading transactions...</p>
+                </div>
+              ) : filteredData.length > 0 ? (
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-700/50">
@@ -349,8 +339,8 @@ const Transactions: React.FC = () => {
                   </thead>
                   <tbody>
                     {paginatedData.map((record, index) => (
-                      <tr 
-                        key={record.id} 
+                      <tr
+                        key={record.id}
                         className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${
                           index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
                         }`}
