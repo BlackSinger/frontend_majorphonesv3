@@ -4,6 +4,7 @@ import DashboardLayout from './DashboardLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { getAuth } from 'firebase/auth';
 import CryptomusLogo from '../CryptomusLogo.svg';
 import AmazonPayLogo from '../AmazonPayLogo.png';
 import BinancePayLogo from '../BinancePayLogo.svg';
@@ -640,18 +641,18 @@ const AddFunds: React.FC = () => {
 
   // Function to create Cryptomus order
   const createCryptomusOrder = async (amount: number) => {
+    // Get Firebase ID token
+    const currentUser = getAuth().currentUser;
     if (!currentUser) {
       throw new Error('User not authenticated');
     }
-
-    // Get Firebase ID token
     const idToken = await currentUser.getIdToken();
 
     // Call the CloudFunction
     const response = await fetch('https://createordercryptomus-ezeznlhr5a-uc.a.run.app', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${idToken}`,
+        'Authorization': `${idToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -685,18 +686,18 @@ const AddFunds: React.FC = () => {
 
   // Function to create Payeer order
   const createPayeerOrder = async (amount: number) => {
+    // Get Firebase ID token
+    const currentUser = getAuth().currentUser;
     if (!currentUser) {
       throw new Error('User not authenticated');
     }
-
-    // Get Firebase ID token
     const idToken = await currentUser.getIdToken();
 
     // Call the CloudFunction
     const response = await fetch('https://createorderpayeer-ezeznlhr5a-uc.a.run.app', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${idToken}`,
+        'Authorization': `${idToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({

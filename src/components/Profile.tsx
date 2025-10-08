@@ -184,7 +184,9 @@ const Profile: React.FC = () => {
 
       let errorMessage = 'Failed to verify your password, please try again';
 
-      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      if (error.code === 'auth/multi-factor-auth-required') {
+        errorMessage = 'Please disable 2FA to delete your account';
+      } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         errorMessage = 'Incorrect password, please try again';
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = 'Too many failed attempts, please try again later';
@@ -839,6 +841,22 @@ const Profile: React.FC = () => {
                 </h1>
                 <p className="text-left text-slate-300 text-md group-hover:text-slate-200 transition-colors duration-300">Manage your account settings and security preferences</p>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Information Section - Always on top */}
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4 mb-6">
+          <div className="flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-blue-300 text-sm font-semibold mb-3">Important information:</p>
+              <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
+                <li>• If you signed up through Google, you can't change your password</li>
+                <li>• Users that signed up through Google can't add a password to their Major Phones account</li>
+                <li>• If you signed up through Google, you can't add 2FA to your account</li>
+                <li>• If you lose access to your account and it has 2FA enabled, we can't recover it for you, the account and all its data (info, balance) will be lost</li>
+                <li>• If you have 2FA enabled, you can't request password reset link or delete your account</li>
+              </ul>
             </div>
           </div>
         </div>

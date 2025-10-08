@@ -410,7 +410,7 @@ const Dashboard: React.FC = () => {
       id: 1,
       title: "Get 1 free number",
       description: "Deposit $10 or more through Crypto or Payeer",
-      time: "2 hours ago",
+      time: "10/07/25",
       type: "product",
       urgent: true
     },
@@ -418,25 +418,57 @@ const Dashboard: React.FC = () => {
       id: 2,
       title: "Extended Middle Term Duration",
       description: "Get middle term numbers for more than just 1 day",
-      time: "5 hours ago",
-      type: "promo",
-      urgent: false
+      time: "10/07/25",
+      type: "product",
+      urgent: true
     },
     {
       id: 3,
-      title: "Reusable Option Now Available",
-      description: "Short term numbers can now be reused",
-      time: "1 day ago",
+      title: "Reusable Option Coming Soon",
+      description: "You will soon reuse short term numbers",
+      time: "10/07/25",
       type: "product",
-      urgent: false
+      urgent: true
     },
     {
       id: 4,
       title: "API Available",
       description: "Integrate with our service using our new API endpoints",
-      time: "2 days ago",
-      type: "system",
-      urgent: false
+      time: "10/07/25",
+      type: "products",
+      urgent: true
+    },
+    {
+      id: 5,
+      title: "Mobile Proxies",
+      description: "Stay safe using our new proxies",
+      time: "10/07/25",
+      type: "products",
+      urgent: true
+    },
+    {
+      id: 6,
+      title: "Virtual Debit Cards",
+      description: "VCC for all kinds of verification purposes",
+      time: "10/07/25",
+      type: "products",
+      urgent: true
+    },
+    {
+      id: 7,
+      title: "Send messages",
+      description: "You can now reply SMS with our Receive/Send option",
+      time: "10/07/25",
+      type: "products",
+      urgent: true
+    },
+    {
+      id: 8,
+      title: "Extended Number Duration",
+      description: "Try our long numberd and entire SIM cards",
+      time: "10/07/25",
+      type: "products",
+      urgent: true
     }
   ];
 

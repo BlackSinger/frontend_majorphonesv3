@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from './Sidebar';
@@ -17,30 +17,34 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
 
+  // Listen to user balance in real-time
   useEffect(() => {
-    const fetchUserBalance = async () => {
-      if (!currentUser) {
-        setBalance(null);
-        setIsLoadingBalance(false);
-        return;
-      }
+    if (!currentUser) {
+      setBalance(null);
+      setIsLoadingBalance(false);
+      return;
+    }
 
-      try {
-        setIsLoadingBalance(true);
-        setBalanceError(null);
+    setIsLoadingBalance(true);
+    setBalanceError(null);
 
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
+    const userDocRef = doc(db, 'users', currentUser.uid);
 
-        if (userDocSnap.exists()) {
-          const userData = userDocSnap.data();
+    // Set up real-time listener
+    const unsubscribe = onSnapshot(
+      userDocRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const userData = docSnap.data();
           const rawBalance = userData.balance || 0;
           setBalance(parseFloat(rawBalance) || 0);
         } else {
           setBalance(0);
         }
-      } catch (error: any) {
-        console.error('Error fetching user balance:', error);
+        setIsLoadingBalance(false);
+      },
+      (error: any) => {
+        console.error('Error listening to user balance:', error);
         let errorMessage = 'Failed to load balance';
 
         if (error.code === 'permission-denied') {
@@ -54,12 +58,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
         setBalanceError(errorMessage);
         setShowErrorModal(true);
         setBalance(null);
-      } finally {
         setIsLoadingBalance(false);
       }
-    };
+    );
 
-    fetchUserBalance();
+    // Cleanup listener on unmount
+    return () => unsubscribe();
   }, [currentUser]);
 
   const formatBalance = (amount: number | null) => {

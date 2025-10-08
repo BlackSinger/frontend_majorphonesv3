@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import DashboardLayout from './DashboardLayout';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -8,7 +8,7 @@ interface TransactionRecord {
   id: string;
   option: 'Cryptomus' | 'Amazon Pay' | 'Admin Update' | 'Payeer' | 'USDT Tether' | 'USDC' | 'Matic' | 'Tron';
   date: string;
-  status: 'Completed' | 'Pending' | 'Cancelled' | 'Overpayment' | 'Underpayment';
+  status: 'Created' | 'Pending' | 'Completed' | 'Cancelled' | 'Expired' | 'Overpayment' | 'Underpayment';
   amount: number;
   transactionId: string;
 }
@@ -50,29 +50,30 @@ const Transactions: React.FC = () => {
     };
   }, []);
 
-  // Fetch transaction data from Firebase
+  // Listen to transaction data from Firebase in real-time
   useEffect(() => {
-    const fetchTransactions = async () => {
-      if (!currentUser) {
-        setLoading(false);
-        return;
-      }
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
 
-      try {
-        setLoading(true);
-        const rechargesRef = collection(db, 'recharges');
-        const q = query(
-          rechargesRef,
-          where('uid', '==', currentUser.uid),
-          orderBy('createdAt', 'desc')
-        );
-        
-        const querySnapshot = await getDocs(q);
+    setLoading(true);
+    const rechargesRef = collection(db, 'recharges');
+    const q = query(
+      rechargesRef,
+      where('uid', '==', currentUser.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    // Set up real-time listener
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
         const transactions: TransactionRecord[] = [];
-        
+
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          
+
           // Format the date from Firestore timestamp
           let formattedDate = '';
           if (data.createdAt) {
@@ -87,7 +88,7 @@ const Transactions: React.FC = () => {
               hour12: true
             }).replace(',', ', ');
           }
-          
+
           transactions.push({
             id: doc.id,
             option: data.paymentMethod || 'Unknown',
@@ -97,16 +98,18 @@ const Transactions: React.FC = () => {
             transactionId: doc.id
           });
         });
-        
+
         setTransactionData(transactions);
-      } catch (error) {
-        console.error('Error fetching transactions:', error);
-      } finally {
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error listening to transactions:', error);
         setLoading(false);
       }
-    };
+    );
 
-    fetchTransactions();
+    // Cleanup listener on unmount
+    return () => unsubscribe();
   }, [currentUser]);
 
   // Filter the data based on selected filters
@@ -156,12 +159,16 @@ const Transactions: React.FC = () => {
   // Get status color
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Completed':
-        return 'text-green-400 border-green-500/30';
+      case 'Created':
+        return 'text-cyan-400 border-cyan-500/30';
       case 'Pending':
         return 'text-yellow-400 border-yellow-500/30';
+      case 'Completed':
+        return 'text-green-400 border-green-500/30';
       case 'Cancelled':
         return 'text-red-400 border-red-500/30';
+      case 'Expired':
+        return 'text-gray-400 border-gray-500/30';
       case 'Overpayment':
         return 'text-blue-400 border-blue-500/30';
       case 'Underpayment':
@@ -296,7 +303,7 @@ const Transactions: React.FC = () => {
                     {/* Custom Dropdown Options */}
                     {isStatusDropdownOpen && (
                       <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
-                        {['All', 'Completed', 'Pending', 'Cancelled', 'Overpayment', 'Underpayment'].map((status) => (
+                        {['All', 'Created', 'Pending', 'Completed', 'Cancelled', 'Expired', 'Overpayment', 'Underpayment'].map((status) => (
                           <div
                             key={status}
                             onClick={() => {
