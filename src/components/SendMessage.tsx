@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import { db, auth } from '../firebase/config';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, onSnapshot, doc, orderBy } from 'firebase/firestore';
 
 interface NumberOption {
   id: string;
@@ -30,6 +30,9 @@ interface Order {
   orderId?: string;
   serviceName?: string;
   messagesSent?: string[];
+  docId?: string;
+  createdAt?: Timestamp;
+  isExpired?: boolean;
 }
 
 const SendMessage: React.FC = () => {
@@ -50,46 +53,69 @@ const SendMessage: React.FC = () => {
   const [messageData, setMessageData] = useState({ message: '', orderId: '' });
   const [isSending, setIsSending] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [orderDocId, setOrderDocId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fetch available numbers from Firestore
+  // Real-time listener for available numbers from Firestore
   useEffect(() => {
-    const fetchAvailableNumbers = async () => {
-      try {
-        setLoading(true);
-        setFirestoreError(null);
+    const user = auth.currentUser;
+    if (!user) {
+      setFirestoreError('No user authenticated');
+      setLoading(false);
+      return;
+    }
 
-        const user = auth.currentUser;
-        if (!user) {
-          setFirestoreError('No user authenticated');
-          setLoading(false);
-          return;
-        }
+    setLoading(true);
+    setFirestoreError(null);
 
-        const ordersRef = collection(db, 'orders');
-        const now = Timestamp.now();
+    const ordersRef = collection(db, 'orders');
+    const now = Timestamp.now();
 
-        const q = query(
-          ordersRef,
-          where('uid', '==', user.uid),
-          where('maySend', '==', true)
-        );
+    const q = query(
+      ordersRef,
+      where('uid', '==', user.uid),
+      where('maySend', '==', true)
+    );
 
-        const querySnapshot = await getDocs(q);
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
         const numbers: Order[] = [];
+        const currentTime = Timestamp.now();
 
-        querySnapshot.forEach((doc) => {
-          const data = doc.data() as Order;
-          // Filter by expiry > current time
-          if (data.expiry.toMillis() > now.toMillis()) {
-            numbers.push(data);
+        querySnapshot.forEach((docSnapshot) => {
+          const data = docSnapshot.data() as Order;
+
+          // Only include if sms is not null/undefined
+          if (data.sms && data.sms.trim() !== '') {
+            const isExpired = data.expiry.toMillis() <= currentTime.toMillis();
+            numbers.push({
+              ...data,
+              docId: docSnapshot.id,
+              isExpired: isExpired
+            });
           }
+        });
+
+        // Sort: first non-expired (by createdAt desc), then expired (by createdAt desc)
+        numbers.sort((a, b) => {
+          // First priority: non-expired before expired
+          if (a.isExpired !== b.isExpired) {
+            return a.isExpired ? 1 : -1;
+          }
+
+          // Second priority: within same expiry status, sort by createdAt (most recent first)
+          const aTime = a.createdAt?.toMillis() || 0;
+          const bTime = b.createdAt?.toMillis() || 0;
+          return bTime - aTime;
         });
 
         setAvailableNumbers(numbers);
         setLoading(false);
-      } catch (error: any) {
-        console.error('Error fetching available numbers:', error);
+        console.log('Available numbers updated:', numbers);
+      },
+      (error: any) => {
+        console.error('Error listening to available numbers:', error);
 
         // Handle specific Firebase errors
         let errorMsg = 'An error occurred when loading the orders, please try again';
@@ -107,9 +133,11 @@ const SendMessage: React.FC = () => {
         setFirestoreError(errorMsg);
         setLoading(false);
       }
-    };
+    );
 
-    fetchAvailableNumbers();
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Close dropdown when clicking outside
@@ -125,6 +153,50 @@ const SendMessage: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Real-time listener for messagesSent updates
+  useEffect(() => {
+    if (!orderDocId || !hasSearched) {
+      return;
+    }
+
+    console.log('Setting up real-time listener for order:', orderDocId);
+
+    const unsubscribe = onSnapshot(
+      doc(db, 'orders', orderDocId),
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          const data = docSnapshot.data() as Order;
+          console.log('Order data updated:', data);
+
+          // Update messagesSent in real-time
+          if (data.messagesSent && data.messagesSent.length > 0) {
+            const updatedMessages: SentMessage[] = data.messagesSent.map((msg, index) => ({
+              id: `msg-${index}`,
+              text: msg,
+              timestamp: new Date()
+            }));
+            setSentMessages(updatedMessages);
+            console.log('Messages updated from Firestore:', updatedMessages);
+          } else {
+            setSentMessages([]);
+            console.log('No messages in messagesSent array');
+          }
+
+          // Update selectedNumberData if needed
+          setSelectedNumberData(prev => prev ? { ...prev, messagesSent: data.messagesSent } : null);
+        }
+      },
+      (error) => {
+        console.error('Error listening to order updates:', error);
+      }
+    );
+
+    return () => {
+      console.log('Cleaning up real-time listener');
+      unsubscribe();
+    };
+  }, [orderDocId, hasSearched]);
 
   const handleSendMessage = async () => {
     if (!messageInput.trim()) return;
@@ -164,15 +236,11 @@ const SendMessage: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Success - add message to chat
-        const newMessage: SentMessage = {
-          id: Date.now().toString(),
-          text: messageInput.trim(),
-          timestamp: new Date()
-        };
-        setSentMessages(prev => [...prev, newMessage]);
+        // Success - message will be updated via real-time listener
+        // No need to manually add to sentMessages, Firestore will handle it
         setMessageInput('');
         setIsSending(false);
+        console.log('Message sent successfully, waiting for Firestore update');
       } else {
         // Handle errors
         let errorMessage = 'Please contact our customer support';
@@ -220,7 +288,13 @@ const SendMessage: React.FC = () => {
       // Simulate API call - replace with actual API endpoint
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // Load previous messages from messagesSent array
+      // Set the document ID for the real-time listener
+      if (selectedNumberData?.docId) {
+        setOrderDocId(selectedNumberData.docId);
+        console.log('Order document ID set:', selectedNumberData.docId);
+      }
+
+      // Load previous messages from messagesSent array (initial load)
       if (selectedNumberData?.messagesSent && selectedNumberData.messagesSent.length > 0) {
         const previousMessages: SentMessage[] = selectedNumberData.messagesSent.map((msg, index) => ({
           id: `prev-${index}`,
@@ -228,8 +302,10 @@ const SendMessage: React.FC = () => {
           timestamp: new Date() // We don't have timestamps for old messages, so use current time
         }));
         setSentMessages(previousMessages);
+        console.log('Initial messages loaded:', previousMessages);
       } else {
         setSentMessages([]); // Clear messages if no previous messages
+        console.log('No initial messages found');
       }
 
       // Mock data for empty simcard numbers
@@ -367,6 +443,7 @@ const SendMessage: React.FC = () => {
                                         setSelectedNumber(numberStr);
                                         setSelectedNumberData(orderData);
                                         setMessageData({ ...messageData, orderId: orderData.orderId || '' });
+                                        setOrderDocId(orderData.docId || null);
                                         setIsCountryDropdownOpen(false);
                                       }}
                                       className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
@@ -504,22 +581,22 @@ const SendMessage: React.FC = () => {
                           {/* Input Area */}
                           <div className="flex space-x-3">
                             <textarea
-                              placeholder="Type your message"
+                              placeholder={selectedNumberData?.isExpired ? "This number has expired" : "Type your message"}
                               value={messageInput}
                               onChange={(e) => setMessageInput(e.target.value)}
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey && !isSending) {
+                                if (e.key === 'Enter' && !e.shiftKey && !isSending && !selectedNumberData?.isExpired) {
                                   e.preventDefault();
                                   handleSendMessage();
                                 }
                               }}
-                              disabled={isSending}
+                              disabled={isSending || selectedNumberData?.isExpired}
                               className="flex-1 px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 resize-none h-12 overflow-y-auto disabled:opacity-50 disabled:cursor-not-allowed"
                               rows={3}
                             />
                             <button
                               onClick={handleSendMessage}
-                              disabled={!messageInput.trim() || isSending}
+                              disabled={!messageInput.trim() || isSending || selectedNumberData?.isExpired}
                               className="px-4 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-emerald-500/25 h-12 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               {isSending ? (

@@ -1530,7 +1530,7 @@ const Tickets: React.FC = () => {
                     <div className="flex justify-end mb-3">
                       <div className="relative bg-emerald-600/80 rounded-lg px-4 py-2 max-w-[85%] sm:max-w-sm md:max-w-md">
                         {selectedTicket.message && (
-                          <p className="text-white text-sm break-words mb-2" style={{ textAlign: 'justify' }}>{selectedTicket.message}</p>
+                          <p className="text-white text-sm break-words" style={{ textAlign: 'justify' }}>{selectedTicket.message}</p>
                         )}
                         {/* Images from initial ticket */}
                         {selectedTicket.images && selectedTicket.images.length > 0 && (
@@ -1581,7 +1581,7 @@ const Tickets: React.FC = () => {
                               : 'bg-slate-700/50'
                           }`}>
                             {response.message && (
-                              <p className="text-white text-sm break-words mb-2" style={{ textAlign: 'justify' }}>{response.message}</p>
+                              <p className="text-white text-sm break-words" style={{ textAlign: 'justify' }}>{response.message}</p>
                             )}
                             {/* Images from Firestore response */}
                             {response.images && response.images.length > 0 && (

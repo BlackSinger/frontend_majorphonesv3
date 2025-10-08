@@ -69,6 +69,19 @@ export const formatCardNumber = (cardNumber: string): string => {
   return cleaned.match(/.{1,4}/g)?.join(' ') || cardNumber;
 };
 
+// Format expiration date from "0826" to "08/26"
+export const formatExpirationDate = (expirationDate: string): string => {
+  // If already formatted, return as is
+  if (expirationDate.includes('/')) {
+    return expirationDate;
+  }
+  // Format MMYY to MM/YY
+  if (expirationDate.length === 4) {
+    return `${expirationDate.substring(0, 2)}/${expirationDate.substring(2, 4)}`;
+  }
+  return expirationDate;
+};
+
 // Convert Firestore VCC document to VirtualCardRecord
 export const convertVCCDocumentToRecord = (doc: VCCOrderDocument): VirtualCardRecord => {
   // Convert createdAt to Date
@@ -94,7 +107,7 @@ export const convertVCCDocumentToRecord = (doc: VCCOrderDocument): VirtualCardRe
     }),
     price: priceNum,
     cardNumber: formatCardNumber(doc.cardNumber),
-    expirationDate: doc.expirationDate,
+    expirationDate: formatExpirationDate(doc.expirationDate),
     cvv: doc.cvv,
     funds: funds
   };

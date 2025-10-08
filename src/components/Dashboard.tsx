@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 import DashboardLayout from './DashboardLayout';
@@ -32,136 +32,220 @@ const Dashboard: React.FC = () => {
 
   const { currentUser } = useAuth();
 
-  // Fetch purchases data from Firestore
+  // Real-time listeners for Firestore data
   useEffect(() => {
-    const fetchPurchases = async () => {
-      if (!currentUser) {
-        setTotalPurchases(null);
-        setIsLoadingPurchases(false);
-        return;
-      }
+    if (!currentUser) {
+      setTotalPurchases(null);
+      setTotalSpent(null);
+      setTotalDeposited(null);
+      setUnreadTickets(null);
+      setIsLoadingPurchases(false);
+      setIsLoadingSpent(false);
+      setIsLoadingDeposited(false);
+      setIsLoadingTickets(false);
+      return;
+    }
 
-      try {
-        setIsLoadingPurchases(true);
-        setPurchasesError(null);
+    setIsLoadingPurchases(true);
+    setIsLoadingSpent(true);
+    setIsLoadingDeposited(true);
+    setIsLoadingTickets(true);
+    setPurchasesError(null);
+    setSpentError(null);
+    setDepositedError(null);
+    setTicketsError(null);
 
-        // Calculate date 30 days ago
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const thirtyDaysTimestamp = Timestamp.fromDate(thirtyDaysAgo);
+    // Calculate date 30 days ago
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysTimestamp = Timestamp.fromDate(thirtyDaysAgo);
 
-        let totalCount = 0;
-        let totalSpentAmount = 0;
+    const unsubscribers: (() => void)[] = [];
 
-        // Query orders collection
-        const ordersQuery = query(
-          collection(db, 'orders'),
-          where('uid', '==', currentUser.uid),
-          where('createdAt', '>=', thirtyDaysTimestamp)
-        );
-        const ordersSnapshot = await getDocs(ordersQuery);
+    try {
+      // Variables to track counts and amounts
+      let ordersCount = 0;
+      let ordersSpent = 0;
+      let proxyOrdersCount = 0;
+      let proxyOrdersSpent = 0;
+      let vccOrdersCount = 0;
+      let vccOrdersSpent = 0;
+      let depositedAmount = 0;
+      let unreadCount = 0;
 
-        ordersSnapshot.forEach((doc) => {
-          const data = doc.data();
-          const type = data.type;
-          const status = data.status;
+      const updateTotals = () => {
+        setTotalPurchases(ordersCount + proxyOrdersCount + vccOrdersCount);
+        setTotalSpent(ordersSpent + proxyOrdersSpent + vccOrdersSpent);
+      };
 
-          // Filter by status based on type
-          if (type === 'Short' && status === 'Completed') {
-            totalCount++;
-            totalSpentAmount += parseFloat(data.price) || 0;
-          } else if ((type === 'Middle' || type === 'Long' || type === 'Empty Simcard') && status !== 'Cancelled') {
-            totalCount++;
-            totalSpentAmount += parseFloat(data.price) || 0;
-          }
-        });
+      // Listener for orders collection
+      const ordersQuery = query(
+        collection(db, 'orders'),
+        where('uid', '==', currentUser.uid),
+        where('createdAt', '>=', thirtyDaysTimestamp)
+      );
 
-        // Query proxyOrders collection
-        const proxyOrdersQuery = query(
-          collection(db, 'proxyOrders'),
-          where('uid', '==', currentUser.uid),
-          where('createdAt', '>=', thirtyDaysTimestamp)
-        );
-        const proxyOrdersSnapshot = await getDocs(proxyOrdersQuery);
-        totalCount += proxyOrdersSnapshot.size;
+      const unsubscribeOrders = onSnapshot(
+        ordersQuery,
+        (snapshot) => {
+          ordersCount = 0;
+          ordersSpent = 0;
 
-        proxyOrdersSnapshot.forEach((doc) => {
-          const data = doc.data();
-          totalSpentAmount += parseFloat(data.price) || 0;
-        });
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            const type = data.type;
+            const status = data.status;
 
-        // Query vccOrders collection
-        const vccOrdersQuery = query(
-          collection(db, 'vccOrders'),
-          where('uid', '==', currentUser.uid),
-          where('createdAt', '>=', thirtyDaysTimestamp)
-        );
-        const vccOrdersSnapshot = await getDocs(vccOrdersQuery);
-        totalCount += vccOrdersSnapshot.size;
-
-        vccOrdersSnapshot.forEach((doc) => {
-          const data = doc.data();
-          totalSpentAmount += parseFloat(data.price) || 0;
-        });
-
-        // Query recharges collection
-        const rechargesQuery = query(
-          collection(db, 'recharges'),
-          where('uid', '==', currentUser.uid),
-          where('createdAt', '>=', thirtyDaysTimestamp),
-          where('status', '==', 'Completed')
-        );
-        const rechargesSnapshot = await getDocs(rechargesQuery);
-
-        let totalDepositedAmount = 0;
-        rechargesSnapshot.forEach((doc) => {
-          const data = doc.data();
-          totalDepositedAmount += parseFloat(data.amount) || 0;
-        });
-
-        // Query tickets collection
-        const ticketsQuery = query(
-          collection(db, 'tickets'),
-          where('uid', '==', currentUser.uid)
-        );
-        const ticketsSnapshot = await getDocs(ticketsQuery);
-
-        console.log('Total tickets found:', ticketsSnapshot.size);
-        let unreadTicketsCount = 0;
-        ticketsSnapshot.forEach((doc) => {
-          const data = doc.data();
-          console.log('Ticket data:', doc.id, data);
-          const responses = data.response || [];
-          console.log('Responses array:', responses);
-
-          // Check if responses array is not empty
-          if (responses.length > 0) {
-            // Get the last response object
-            const lastResponse = responses[responses.length - 1];
-            console.log('Last response:', lastResponse);
-            console.log('readUser value:', lastResponse.readUser);
-
-            // Check if readUser is false in the last response
-            if (lastResponse.readUser === false) {
-              console.log('Found unread ticket:', doc.id);
-              unreadTicketsCount++;
+            if (type === 'Short' && status === 'Completed') {
+              ordersCount++;
+              ordersSpent += parseFloat(data.price) || 0;
+            } else if ((type === 'Middle' || type === 'Long' || type === 'Empty Simcard') && status !== 'Cancelled') {
+              ordersCount++;
+              ordersSpent += parseFloat(data.price) || 0;
             }
-          } else {
-            console.log('No responses for ticket:', doc.id);
-          }
-        });
-        console.log('Total unread tickets count:', unreadTicketsCount);
+          });
 
-        setTotalPurchases(totalCount);
-        setTotalSpent(totalSpentAmount);
-        setTotalDeposited(totalDepositedAmount);
-        setUnreadTickets(unreadTicketsCount);
-      } catch (error: any) {
-        console.error('Error fetching purchases:', error);
-        let errorMessage = 'Failed to load purchases data';
+          updateTotals();
+          setIsLoadingPurchases(false);
+          setIsLoadingSpent(false);
+        },
+        (error) => {
+          console.error('Error listening to orders:', error);
+          handleError(error);
+        }
+      );
+      unsubscribers.push(unsubscribeOrders);
+
+      // Listener for proxyOrders collection
+      const proxyOrdersQuery = query(
+        collection(db, 'proxyOrders'),
+        where('uid', '==', currentUser.uid),
+        where('createdAt', '>=', thirtyDaysTimestamp)
+      );
+
+      const unsubscribeProxyOrders = onSnapshot(
+        proxyOrdersQuery,
+        (snapshot) => {
+          proxyOrdersCount = snapshot.size;
+          proxyOrdersSpent = 0;
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            proxyOrdersSpent += parseFloat(data.price) || 0;
+          });
+
+          updateTotals();
+        },
+        (error) => {
+          console.error('Error listening to proxyOrders:', error);
+          handleError(error);
+        }
+      );
+      unsubscribers.push(unsubscribeProxyOrders);
+
+      // Listener for vccOrders collection
+      const vccOrdersQuery = query(
+        collection(db, 'vccOrders'),
+        where('uid', '==', currentUser.uid),
+        where('createdAt', '>=', thirtyDaysTimestamp)
+      );
+
+      const unsubscribeVccOrders = onSnapshot(
+        vccOrdersQuery,
+        (snapshot) => {
+          vccOrdersCount = snapshot.size;
+          vccOrdersSpent = 0;
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            vccOrdersSpent += parseFloat(data.price) || 0;
+          });
+
+          updateTotals();
+        },
+        (error) => {
+          console.error('Error listening to vccOrders:', error);
+          handleError(error);
+        }
+      );
+      unsubscribers.push(unsubscribeVccOrders);
+
+      // Listener for recharges collection
+      const rechargesQuery = query(
+        collection(db, 'recharges'),
+        where('uid', '==', currentUser.uid),
+        where('createdAt', '>=', thirtyDaysTimestamp),
+        where('status', '==', 'Completed')
+      );
+
+      const unsubscribeRecharges = onSnapshot(
+        rechargesQuery,
+        (snapshot) => {
+          depositedAmount = 0;
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            depositedAmount += parseFloat(data.amount) || 0;
+          });
+
+          setTotalDeposited(depositedAmount);
+          setIsLoadingDeposited(false);
+        },
+        (error) => {
+          console.error('Error listening to recharges:', error);
+          handleError(error);
+        }
+      );
+      unsubscribers.push(unsubscribeRecharges);
+
+      // Listener for tickets collection
+      const ticketsQuery = query(
+        collection(db, 'tickets'),
+        where('uid', '==', currentUser.uid)
+      );
+
+      const unsubscribeTickets = onSnapshot(
+        ticketsQuery,
+        (snapshot) => {
+          console.log('Total tickets found:', snapshot.size);
+          unreadCount = 0;
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            console.log('Ticket data:', doc.id, data);
+            const responses = data.response || [];
+            console.log('Responses array:', responses);
+
+            if (responses.length > 0) {
+              const lastResponse = responses[responses.length - 1];
+              console.log('Last response:', lastResponse);
+              console.log('readUser value:', lastResponse.readUser);
+
+              if (lastResponse.readUser === false) {
+                console.log('Found unread ticket:', doc.id);
+                unreadCount++;
+              }
+            } else {
+              console.log('No responses for ticket:', doc.id);
+            }
+          });
+
+          console.log('Total unread tickets count:', unreadCount);
+          setUnreadTickets(unreadCount);
+          setIsLoadingTickets(false);
+        },
+        (error) => {
+          console.error('Error listening to tickets:', error);
+          handleError(error);
+        }
+      );
+      unsubscribers.push(unsubscribeTickets);
+
+      const handleError = (error: any) => {
+        let errorMessage = 'Failed to load data';
 
         if (error.code === 'permission-denied') {
-          errorMessage = 'Access denied to purchases information';
+          errorMessage = 'Access denied to information';
         } else if (error.code === 'unavailable') {
           errorMessage = 'Service temporarily unavailable, try again later';
         } else if (error.code === 'unauthenticated') {
@@ -169,26 +253,34 @@ const Dashboard: React.FC = () => {
         }
 
         setPurchasesError(errorMessage);
-        setShowPurchasesModal(true);
-        setTotalPurchases(null);
         setSpentError(errorMessage);
-        setShowSpentModal(true);
-        setTotalSpent(null);
         setDepositedError(errorMessage);
-        setShowDepositedModal(true);
-        setTotalDeposited(null);
         setTicketsError(errorMessage);
-        setShowTicketsModal(true);
-        setUnreadTickets(null);
-      } finally {
+        setShowPurchasesModal(true);
         setIsLoadingPurchases(false);
         setIsLoadingSpent(false);
         setIsLoadingDeposited(false);
         setIsLoadingTickets(false);
-      }
-    };
+      };
+    } catch (error: any) {
+      console.error('Error setting up listeners:', error);
+      let errorMessage = 'Failed to initialize data listeners';
 
-    fetchPurchases();
+      setPurchasesError(errorMessage);
+      setSpentError(errorMessage);
+      setDepositedError(errorMessage);
+      setTicketsError(errorMessage);
+      setShowPurchasesModal(true);
+      setIsLoadingPurchases(false);
+      setIsLoadingSpent(false);
+      setIsLoadingDeposited(false);
+      setIsLoadingTickets(false);
+    }
+
+    // Cleanup function to unsubscribe from all listeners
+    return () => {
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+    };
   }, [currentUser]);
 
   // Page load animation

@@ -17,16 +17,16 @@ const Transactions: React.FC = () => {
   const { currentUser } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('All');
-  const [staticWalletFilter, setStaticWalletFilter] = useState<string>('All');
+  // const [staticWalletFilter, setStaticWalletFilter] = useState<string>('All');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isPaymentMethodDropdownOpen, setIsPaymentMethodDropdownOpen] = useState(false);
-  const [isStaticWalletDropdownOpen, setIsStaticWalletDropdownOpen] = useState(false);
+  // const [isStaticWalletDropdownOpen, setIsStaticWalletDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [transactionData, setTransactionData] = useState<TransactionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const paymentMethodDropdownRef = useRef<HTMLDivElement>(null);
-  const staticWalletDropdownRef = useRef<HTMLDivElement>(null);
+  // const staticWalletDropdownRef = useRef<HTMLDivElement>(null);
   
   const itemsPerPage = 10;
 
@@ -39,9 +39,9 @@ const Transactions: React.FC = () => {
       if (paymentMethodDropdownRef.current && !paymentMethodDropdownRef.current.contains(event.target as Node)) {
         setIsPaymentMethodDropdownOpen(false);
       }
-      if (staticWalletDropdownRef.current && !staticWalletDropdownRef.current.contains(event.target as Node)) {
-        setIsStaticWalletDropdownOpen(false);
-      }
+      // if (staticWalletDropdownRef.current && !staticWalletDropdownRef.current.contains(event.target as Node)) {
+      //   setIsStaticWalletDropdownOpen(false);
+      // }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -89,9 +89,15 @@ const Transactions: React.FC = () => {
             }).replace(',', ', ');
           }
 
+          // Map paymentMethod to display name
+          let displayPaymentMethod = data.paymentMethod || 'Unknown';
+          if (data.paymentMethod === 'Static Wallet') {
+            displayPaymentMethod = 'Static Wallet';
+          }
+
           transactions.push({
             id: doc.id,
-            option: data.paymentMethod || 'Unknown',
+            option: displayPaymentMethod,
             date: formattedDate,
             status: data.status || 'Pending',
             amount: data.amount || 0,
@@ -122,21 +128,21 @@ const Transactions: React.FC = () => {
 
     if (paymentMethodFilter !== 'All') {
       if (paymentMethodFilter === 'Static Wallets') {
-        // Filter by static wallets
-        const staticWalletMethods = ['USDT Tether', 'USDC Polygon', 'Pol Polygon', 'TRX Tron', 'LTC', 'ETH', 'BTC'];
+        // Filter by static wallets - include both specific wallet names and generic "Static Wallet"
+        const staticWalletMethods = ['USDT Tether', 'USDC Polygon', 'Pol Polygon', 'TRX Tron', 'LTC', 'ETH', 'BTC', 'Static Wallet'];
         filtered = filtered.filter(record => staticWalletMethods.includes(record.option));
 
         // Apply static wallet sub-filter if selected
-        if (staticWalletFilter !== 'All') {
-          filtered = filtered.filter(record => record.option === staticWalletFilter);
-        }
+        // if (staticWalletFilter !== 'All') {
+        //   filtered = filtered.filter(record => record.option === staticWalletFilter);
+        // }
       } else {
         filtered = filtered.filter(record => record.option === paymentMethodFilter);
       }
     }
 
     return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [statusFilter, paymentMethodFilter, staticWalletFilter, transactionData]);
+  }, [statusFilter, paymentMethodFilter, transactionData]);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -147,14 +153,14 @@ const Transactions: React.FC = () => {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, paymentMethodFilter, staticWalletFilter]);
+  }, [statusFilter, paymentMethodFilter]);
 
   // Reset static wallet filter when payment method changes
-  useEffect(() => {
-    if (paymentMethodFilter !== 'Static Wallets') {
-      setStaticWalletFilter('All');
-    }
-  }, [paymentMethodFilter]);
+  // useEffect(() => {
+  //   if (paymentMethodFilter !== 'Static Wallets') {
+  //     setStaticWalletFilter('All');
+  //   }
+  // }, [paymentMethodFilter]);
 
   // Get status color
   const getStatusColor = (status: string) => {
@@ -200,9 +206,9 @@ const Transactions: React.FC = () => {
           <div className="p-6">
             {/* Filters */}
             <div className="mb-6">
-              <div className="flex flex-col lg:flex-row gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Payment Method Filter */}
-                <div className="flex-1">
+                <div>
                   <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
                     Payment Method
                   </label>
@@ -241,7 +247,7 @@ const Transactions: React.FC = () => {
                 </div>
 
                 {/* Static Wallets Filter - Only show when Static Wallets is selected */}
-                {paymentMethodFilter === 'Static Wallets' && (
+                {/* {paymentMethodFilter === 'Static Wallets' && (
                   <div className="flex-1">
                     <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
                       Static Wallets
@@ -260,29 +266,26 @@ const Transactions: React.FC = () => {
                         </svg>
                       </div>
 
-                      {/* Custom Dropdown Options */}
-                      {isStaticWalletDropdownOpen && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
-                          {['All', 'BTC', 'ETH', 'LTC', 'Pol Polygon', 'TRX Tron', 'USDT Tether', 'USDC Polygon'].map((wallet) => (
-                            <div
-                              key={wallet}
-                              onClick={() => {
-                                setStaticWalletFilter(wallet);
-                                setIsStaticWalletDropdownOpen(false);
-                              }}
-                              className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-                            >
-                              <span className="text-white">{wallet === 'All' ? 'All Wallets' : wallet}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
+                        {['All', 'BTC', 'ETH', 'LTC', 'Pol Polygon', 'TRX Tron', 'USDT Tether', 'USDC Polygon'].map((wallet) => (
+                          <div
+                            key={wallet}
+                            onClick={() => {
+                              setStaticWalletFilter(wallet);
+                              setIsStaticWalletDropdownOpen(false);
+                            }}
+                            className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                          >
+                            <span className="text-white">{wallet === 'All' ? 'All Wallets' : wallet}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                )}
+                )} */}
 
                 {/* Status Filter */}
-                <div className="flex-1">
+                <div>
                   <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
                     Transaction Status
                   </label>

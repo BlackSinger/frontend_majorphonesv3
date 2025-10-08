@@ -22,11 +22,11 @@ interface NumberOption {
   id: string;
   number: string;
   price: number;
-  extraSmsPrice?: number;
+  // extraSmsPrice?: number;
   country: string;
   countryCode: string;
   countryPrefix: string;
-  isReusable: boolean;
+  // isReusable: boolean;
   receiveSend?: boolean;
   opt: string;
 }
@@ -256,67 +256,67 @@ const ShortNumbers: React.FC = () => {
   };
 
   // Handle purchase for opt6 numbers (reusable)
-  const handleReuseUSAPurchase = async (uniqueOptionId: string) => {
-    const currentUser = getAuth().currentUser;
+  // const handleReuseUSAPurchase = async (uniqueOptionId: string) => {
+  //   const currentUser = getAuth().currentUser;
 
-    if (!currentUser) {
-      setErrorMessage('You are not authenticated or your token is invalid');
-      setShowErrorModal(true);
-      return;
-    }
+  //   if (!currentUser) {
+  //     setErrorMessage('You are not authenticated or your token is invalid');
+  //     setShowErrorModal(true);
+  //     return;
+  //   }
 
-    setPurchasingOptionId(uniqueOptionId);
+  //   setPurchasingOptionId(uniqueOptionId);
 
-    try {
-      // Get Firebase ID token using official method
-      const idToken = await currentUser.getIdToken();
+  //   try {
+  //     // Get Firebase ID token using official method
+  //     const idToken = await currentUser.getIdToken();
 
-      // Log token for debugging (remove in production)
-      console.log('Reuse USA - ID Token length:', idToken?.length);
-      console.log('Reuse USA - ID Token starts with:', idToken?.substring(0, 20));
+  //     // Log token for debugging (remove in production)
+  //     console.log('Reuse USA - ID Token length:', idToken?.length);
+  //     console.log('Reuse USA - ID Token starts with:', idToken?.substring(0, 20));
 
-      // Make API call to reuseusa cloud function
-      const response = await fetch('https://reuseusa-ezeznlhr5a-uc.a.run.app', {
-        method: 'POST',
-        headers: {
-          'authorization': `${idToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          serviceId: globalPurchaseData.serviceId
-        })
-      });
+  //     // Make API call to reuseusa cloud function
+  //     const response = await fetch('https://reuseusa-ezeznlhr5a-uc.a.run.app', {
+  //       method: 'POST',
+  //       headers: {
+  //         'authorization': `${idToken}`,
+  //         'Content-Type': 'application/json'
+  //       },
+  //       body: JSON.stringify({
+  //         serviceId: globalPurchaseData.serviceId
+  //       })
+  //     });
 
-      const data = await response.json();
+  //     const data = await response.json();
 
-      if (response.ok && data.success) {
-        // Success case - redirect to history
-        navigate('/history');
-      } else {
-        // Handle error responses for reuseusa
-        let errorMsg = 'An unknown error occurred';
+  //     if (response.ok && data.success) {
+  //       // Success case - redirect to history
+  //       navigate('/history');
+  //     } else {
+  //       // Handle error responses for reuseusa
+  //       let errorMsg = 'An unknown error occurred';
 
-        if (data.message === 'Unauthorized') {
-          errorMsg = 'You are not authenticated or your token is invalid';
-        } else if (data.message === 'Insufficient balance') {
-          errorMsg = 'You do not have enough balance to make the purchase';
-        } else if (data.message === 'Failed to get number') {
-          errorMsg = 'We ran out of SIM cards, try again later';
-        } else if (data.message === 'Internal Server Error') {
-          errorMsg = 'Please contact our customer support';
-        }
+  //       if (data.message === 'Unauthorized') {
+  //         errorMsg = 'You are not authenticated or your token is invalid';
+  //       } else if (data.message === 'Insufficient balance') {
+  //         errorMsg = 'You do not have enough balance to make the purchase';
+  //       } else if (data.message === 'Failed to get number') {
+  //         errorMsg = 'We ran out of SIM cards, try again later';
+  //       } else if (data.message === 'Internal Server Error') {
+  //         errorMsg = 'Please contact our customer support';
+  //       }
 
-        setErrorMessage(errorMsg);
-        setShowErrorModal(true);
-      }
-    } catch (error) {
-      console.error('Reuse USA purchase error:', error);
-      setErrorMessage('Please contact our customer support');
-      setShowErrorModal(true);
-    } finally {
-      setPurchasingOptionId(null);
-    }
-  };
+  //       setErrorMessage(errorMsg);
+  //       setShowErrorModal(true);
+  //     }
+  //   } catch (error) {
+  //     console.error('Reuse USA purchase error:', error);
+  //     setErrorMessage('Please contact our customer support');
+  //     setShowErrorModal(true);
+  //   } finally {
+  //     setPurchasingOptionId(null);
+  //   }
+  // };
 
   // Handle purchase for opt1, opt2, opt3 numbers (standard)
   const handleBuyShortUSAPurchase = async (uniqueOptionId: string) => {
@@ -706,9 +706,9 @@ const ShortNumbers: React.FC = () => {
         case 'opt3':
           globalPurchaseData.option = 3;
           break;
-        case 'opt6':
+        /*case 'opt6':
           globalPurchaseData.option = 6;
-          break;
+          break;*/
         default:
           globalPurchaseData.option = 0; // fallback
       }
@@ -739,13 +739,13 @@ const ShortNumbers: React.FC = () => {
     // Handle purchase based on selected country
     if (selectedCountry === 'United States') {
       // Use different cloud functions based on opt
-      if (option.opt === 'opt6') {
-        // Use reuseusa cloud function for opt6 (reusable numbers)
-        handleReuseUSAPurchase(uniqueOptionId);
-      } else {
+      // if (option.opt === 'opt6') {
+      //   // Use reuseusa cloud function for opt6 (reusable numbers)
+      //   handleReuseUSAPurchase(uniqueOptionId);
+      // } else {
         // Use buyshortusa cloud function for opt1, opt2, opt3
         handleBuyShortUSAPurchase(uniqueOptionId);
-      }
+      // }
     } else if (selectedCountry === 'United Kingdom') {
       // Use buyshortuk cloud function for opt2, opt5
       handleBuyShortUKPurchase(uniqueOptionId);
@@ -778,8 +778,9 @@ const ShortNumbers: React.FC = () => {
 
       // For United States, search in stnUSA collection
       if (selectedCountry === 'United States') {
-        // Search across opt1, opt2, opt3, opt6 documents and their services subcollections simultaneously
-        const searchPromises = ['opt1', 'opt2', 'opt3', 'opt6'].map(async (optDoc) => {
+        // Search across opt1, opt2, opt3 documents and their services subcollections simultaneously
+        // opt6 (reusable numbers) is commented out: const searchPromises = ['opt1', 'opt2', 'opt3', 'opt6'].map(async (optDoc) => {
+        const searchPromises = ['opt1', 'opt2', 'opt3'].map(async (optDoc) => {
           const servicesRef = collection(db, 'stnUSA', optDoc, 'services');
           const querySnapshot = await getDocs(servicesRef);
 
@@ -795,17 +796,17 @@ const ShortNumbers: React.FC = () => {
 
               // Map properties based on source document
               const isOpt3 = optDoc === 'opt3';
-              const isOpt6 = optDoc === 'opt6';
+              // const isOpt6 = optDoc === 'opt6';
 
               results.push({
                 id: data.id,
                 number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
                 price: data.price, // Only use Firestore price
-                extraSmsPrice: isOpt6 ? (data.price / 2) : undefined, // Only opt6 has extraSmsPrice for reuse (half of price)
+                // extraSmsPrice: isOpt6 ? (data.price / 2) : undefined, // Only opt6 has extraSmsPrice for reuse (half of price)
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
-                isReusable: isOpt6, // Only opt6 is reusable
+                // isReusable: isOpt6, // Only opt6 is reusable
                 receiveSend: isOpt3, // Only opt3 has receive/send capability
                 opt: optDoc
               });
@@ -847,7 +848,7 @@ const ShortNumbers: React.FC = () => {
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
-                isReusable: false, // Both options are not reusable
+                // isReusable: false, // Both options are not reusable
                 receiveSend: false, // Both options do not have receive/send
                 opt: optDoc
               });
@@ -889,7 +890,7 @@ const ShortNumbers: React.FC = () => {
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
-                isReusable: false, // Both options are not reusable
+                // isReusable: false, // Both options are not reusable
                 receiveSend: false, // Both options do not have receive/send
                 opt: optDoc
               });
@@ -931,7 +932,7 @@ const ShortNumbers: React.FC = () => {
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
-                isReusable: false, // Both options are not reusable
+                // isReusable: false, // Both options are not reusable
                 receiveSend: false, // Both options do not have receive/send
                 opt: optDoc
               });
@@ -973,7 +974,7 @@ const ShortNumbers: React.FC = () => {
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
-                isReusable: false, // Both options are not reusable
+                // isReusable: false, // Both options are not reusable
                 receiveSend: false, // Both options do not have receive/send
                 opt: optDoc
               });
@@ -1059,7 +1060,7 @@ const ShortNumbers: React.FC = () => {
             <div className="text-center">
               <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
               <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
-                <li>• They can only be reused if you select the Reusable option, reusable numbers last 12 hours</li>
+                {/* <li>• They can only be reused if you select the Reusable option, reusable numbers last 12 hours</li> */}
                 <li>• They can only receive/send SMS if you select the Receive/Send option, they can receive 1 code and send multiple SMS</li>
                 <li>• Receive/Send numbers last 5 minutes and you can only send SMS if the code has arrived</li>
                 <li>• They can't be refunded once a code arrives</li>
@@ -1294,20 +1295,20 @@ const ShortNumbers: React.FC = () => {
                                     ${formatPrice(option.price)}
                                   </span>
                                 </div>
-                                <div className="flex items-center justify-between text-md">
+                                {/* <div className="flex items-center justify-between text-md">
                                   <span className="text-slate-300 font-medium">Reusable:</span>
                                   <span className={`font-semibold ${option.isReusable ? 'text-emerald-400' : 'text-red-400'}`}>
                                     {option.isReusable ? 'Yes' : 'No'}
                                   </span>
-                                </div>
-                                {option.isReusable && option.extraSmsPrice && (
+                                </div> */}
+                                {/* {option.isReusable && option.extraSmsPrice && (
                                   <div className="flex items-center justify-between text-md">
                                     <span className="text-slate-300 font-medium">Each reuse:</span>
                                     <span className="text-emerald-400 font-semibold">
                                       ${formatPrice(option.extraSmsPrice)}
                                     </span>
                                   </div>
-                                )}
+                                )} */}
                                 <div className="flex items-center justify-between text-md">
                                   <span className="text-slate-300 font-medium">Receive/Send:</span>
                                   <span className={`font-semibold ${option.receiveSend ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -1349,21 +1350,21 @@ const ShortNumbers: React.FC = () => {
                               </span>
                             </div>
 
-                            <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                            {/* <div className="hidden md:flex md:items-center md:space-x-2 text-md">
                               <span className="text-slate-300 font-medium">Reusable:</span>
                               <span className={`font-semibold ${option.isReusable ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {option.isReusable ? 'Yes' : 'No'}
                               </span>
-                            </div>
+                            </div> */}
 
-                            {option.isReusable && option.extraSmsPrice && (
+                            {/* {option.isReusable && option.extraSmsPrice && (
                               <div className="hidden md:flex md:items-center md:space-x-2 text-md">
                                 <span className="text-slate-300 font-medium">Each reuse:</span>
                                 <span className="text-emerald-400 font-semibold">
                                   ${formatPrice(option.extraSmsPrice)}
                                 </span>
                               </div>
-                            )}
+                            )} */}
 
                             <div className="hidden md:flex md:items-center md:space-x-2 text-md">
                               <span className="text-slate-300 font-medium">Receive/Send:</span>

@@ -6,20 +6,17 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getAuth } from 'firebase/auth';
 
-interface CardOption {
+interface ProxyOption {
   id: string;
-  cardNumber: string;
-  expirationDate: string;
-  cvv: string;
-  cardFunds: number;
+  state: string;
+  duration: string;
   price: number;
-  hasBalance: boolean;
 }
 
 const Proxies: React.FC = () => {
   const navigate = useNavigate();
   const [hasBalance, setHasBalance] = useState(false);
-  const [searchResults, setSearchResults] = useState<CardOption[]>([]);
+  const [searchResults, setSearchResults] = useState<ProxyOption[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedState, setSelectedState] = useState('');
@@ -246,15 +243,12 @@ const Proxies: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Mock data for proxy
-      const mockResults: CardOption[] = [
+      const mockResults: ProxyOption[] = [
         {
           id: '1',
-          cardNumber: selectedState, // Keep full state name with abbreviation
-          expirationDate: selectedDuration,
-          cvv: '',
-          cardFunds: 0,
-          price: getProxyPrice(selectedDuration),
-          hasBalance: false
+          state: selectedState,
+          duration: selectedDuration,
+          price: getProxyPrice(selectedDuration)
         }
       ];
 
@@ -270,8 +264,7 @@ const Proxies: React.FC = () => {
 
   // Handle purchase click - call cloud function
   const handlePurchase = async () => {
-    const auth = getAuth();
-    const currentUser = auth.currentUser;
+    const currentUser = getAuth().currentUser;
 
     if (!currentUser) {
       setErrorMessage('You are not authenticated or your token is invalid');
@@ -589,12 +582,12 @@ const Proxies: React.FC = () => {
                                 <div className="flex items-center justify-between text-md">
                                   <span className="text-slate-300 font-medium">Duration:</span>
                                   <span className="text-emerald-400 font-semibold">
-                                    {option.expirationDate}
+                                    {option.duration}
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between text-md">
                                   <span className="text-slate-300 font-medium">State:</span>
-                                  <span className="text-emerald-400 font-semibold">{getStateName(option.cardNumber)}</span>
+                                  <span className="text-emerald-400 font-semibold">{getStateName(option.state)}</span>
                                 </div>
                               </div>
                               {/* Purchase Button - full width */}
@@ -624,13 +617,13 @@ const Proxies: React.FC = () => {
                             <div className="hidden md:flex md:items-center md:space-x-2 text-md">
                               <span className="text-slate-300 font-medium">Duration:</span>
                               <span className="text-emerald-400 font-semibold">
-                                {option.expirationDate}
+                                {option.duration}
                               </span>
                             </div>
 
                             <div className="hidden md:flex md:items-center md:space-x-2 text-md">
                               <span className="text-slate-300 font-medium">State:</span>
-                              <span className="text-emerald-400 font-semibold">{option.cardNumber}</span>
+                              <span className="text-emerald-400 font-semibold">{option.state}</span>
                             </div>
 
                             <button

@@ -37,8 +37,7 @@ const VirtualCard: React.FC = () => {
   };
 
   const handlePurchase = async () => {
-    const auth = getAuth();
-    const currentUser = auth.currentUser;
+    const currentUser = getAuth().currentUser;
 
     if (!currentUser) {
       setErrorMessage('You are not authenticated or your token is invalid');
@@ -121,7 +120,7 @@ const VirtualCard: React.FC = () => {
           expirationDate: '',
           cvv: '',
           cardFunds: hasBalance ? 3 : 0,
-          price: hasBalance ? 7 : 4.5,
+          price: hasBalance ? 7 : 4,
           hasBalance: hasBalance
         }
       ];
