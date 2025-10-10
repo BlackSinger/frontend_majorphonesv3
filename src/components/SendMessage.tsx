@@ -54,6 +54,7 @@ const SendMessage: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [orderDocId, setOrderDocId] = useState<string | null>(null);
+  const [isNumberSelectorDisabled, setIsNumberSelectorDisabled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Real-time listener for available numbers from Firestore
@@ -283,6 +284,7 @@ const SendMessage: React.FC = () => {
 
     setIsSearching(true);
     setHasSearched(false);
+    setIsNumberSelectorDisabled(true);
 
     try {
       // Simulate API call - replace with actual API endpoint
@@ -394,9 +396,9 @@ const SendMessage: React.FC = () => {
                         </label>
                         <div className="relative group" ref={dropdownRef}>
                           <div
-                            onClick={() => !loading && !firestoreError && availableNumbers.length > 0 && setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                            onClick={() => !loading && !firestoreError && availableNumbers.length > 0 && !isNumberSelectorDisabled && setIsCountryDropdownOpen(!isCountryDropdownOpen)}
                             className={`w-full pl-12 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner transition-all duration-300 flex items-center justify-between ${
-                              loading || firestoreError || availableNumbers.length === 0
+                              loading || firestoreError || availableNumbers.length === 0 || isNumberSelectorDisabled
                                 ? 'cursor-not-allowed opacity-50'
                                 : 'cursor-pointer hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50'
                             }`}
