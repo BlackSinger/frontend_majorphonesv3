@@ -32,7 +32,6 @@ const Dashboard: React.FC = () => {
 
   const { currentUser } = useAuth();
 
-  // Real-time listeners for Firestore data
   useEffect(() => {
     if (!currentUser) {
       setTotalPurchases(null);
@@ -55,7 +54,6 @@ const Dashboard: React.FC = () => {
     setDepositedError(null);
     setTicketsError(null);
 
-    // Calculate date 30 days ago
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const thirtyDaysTimestamp = Timestamp.fromDate(thirtyDaysAgo);
@@ -63,7 +61,6 @@ const Dashboard: React.FC = () => {
     const unsubscribers: (() => void)[] = [];
 
     try {
-      // Variables to track counts and amounts
       let ordersCount = 0;
       let ordersSpent = 0;
       let proxyOrdersCount = 0;
@@ -78,7 +75,6 @@ const Dashboard: React.FC = () => {
         setTotalSpent(ordersSpent + proxyOrdersSpent + vccOrdersSpent);
       };
 
-      // Listener for orders collection
       const ordersQuery = query(
         collection(db, 'orders'),
         where('uid', '==', currentUser.uid),
@@ -110,13 +106,11 @@ const Dashboard: React.FC = () => {
           setIsLoadingSpent(false);
         },
         (error) => {
-          console.error('Error listening to orders:', error);
           handleError(error);
         }
       );
       unsubscribers.push(unsubscribeOrders);
 
-      // Listener for proxyOrders collection
       const proxyOrdersQuery = query(
         collection(db, 'proxyOrders'),
         where('uid', '==', currentUser.uid),
@@ -137,13 +131,11 @@ const Dashboard: React.FC = () => {
           updateTotals();
         },
         (error) => {
-          console.error('Error listening to proxyOrders:', error);
           handleError(error);
         }
       );
       unsubscribers.push(unsubscribeProxyOrders);
 
-      // Listener for vccOrders collection
       const vccOrdersQuery = query(
         collection(db, 'vccOrders'),
         where('uid', '==', currentUser.uid),
@@ -164,13 +156,11 @@ const Dashboard: React.FC = () => {
           updateTotals();
         },
         (error) => {
-          console.error('Error listening to vccOrders:', error);
           handleError(error);
         }
       );
       unsubscribers.push(unsubscribeVccOrders);
 
-      // Listener for recharges collection
       const rechargesQuery = query(
         collection(db, 'recharges'),
         where('uid', '==', currentUser.uid),
@@ -192,13 +182,11 @@ const Dashboard: React.FC = () => {
           setIsLoadingDeposited(false);
         },
         (error) => {
-          console.error('Error listening to recharges:', error);
           handleError(error);
         }
       );
       unsubscribers.push(unsubscribeRecharges);
 
-      // Listener for tickets collection
       const ticketsQuery = query(
         collection(db, 'tickets'),
         where('uid', '==', currentUser.uid)
@@ -207,35 +195,26 @@ const Dashboard: React.FC = () => {
       const unsubscribeTickets = onSnapshot(
         ticketsQuery,
         (snapshot) => {
-          console.log('Total tickets found:', snapshot.size);
           unreadCount = 0;
 
           snapshot.forEach((doc) => {
             const data = doc.data();
-            console.log('Ticket data:', doc.id, data);
             const responses = data.response || [];
-            console.log('Responses array:', responses);
 
             if (responses.length > 0) {
               const lastResponse = responses[responses.length - 1];
-              console.log('Last response:', lastResponse);
-              console.log('readUser value:', lastResponse.readUser);
 
               if (lastResponse.readUser === false) {
-                console.log('Found unread ticket:', doc.id);
                 unreadCount++;
               }
             } else {
-              console.log('No responses for ticket:', doc.id);
             }
           });
 
-          console.log('Total unread tickets count:', unreadCount);
           setUnreadTickets(unreadCount);
           setIsLoadingTickets(false);
         },
         (error) => {
-          console.error('Error listening to tickets:', error);
           handleError(error);
         }
       );
@@ -263,7 +242,6 @@ const Dashboard: React.FC = () => {
         setIsLoadingTickets(false);
       };
     } catch (error: any) {
-      console.error('Error setting up listeners:', error);
       let errorMessage = 'Failed to initialize data listeners';
 
       setPurchasesError(errorMessage);
@@ -277,13 +255,11 @@ const Dashboard: React.FC = () => {
       setIsLoadingTickets(false);
     }
 
-    // Cleanup function to unsubscribe from all listeners
     return () => {
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
   }, [currentUser]);
 
-  // Page load animation
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoaded(true);
@@ -291,16 +267,13 @@ const Dashboard: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Animated counter effect
   useEffect(() => {
     if (isLoaded && totalPurchases !== null && totalSpent !== null && totalDeposited !== null && unreadTickets !== null) {
-      // Reset animated counters when values change
       setAnimatedPurchases(0);
       setAnimatedSpent(0);
       setAnimatedDeposit(0);
       setAnimatedTickets(0);
 
-      // Animate purchases counter
       const purchasesTimer = setInterval(() => {
         setAnimatedPurchases(prev => {
           if (prev < totalPurchases) {
@@ -311,7 +284,6 @@ const Dashboard: React.FC = () => {
         });
       }, 150);
 
-      // Animate spending counter
       const spentTimer = setInterval(() => {
         setAnimatedSpent(prev => {
           if (prev < totalSpent) {
@@ -323,7 +295,6 @@ const Dashboard: React.FC = () => {
         });
       }, 100);
 
-      // Animate deposit counter
       const depositTimer = setInterval(() => {
         setAnimatedDeposit(prev => {
           if (prev < totalDeposited) {
@@ -335,7 +306,6 @@ const Dashboard: React.FC = () => {
         });
       }, 100);
 
-      // Animate tickets counter
       const ticketsTimer = setInterval(() => {
         setAnimatedTickets(prev => {
           if (prev < unreadTickets) {
@@ -355,8 +325,6 @@ const Dashboard: React.FC = () => {
     }
   }, [isLoaded, totalPurchases, totalSpent, totalDeposited, unreadTickets]);
 
-
-  // Update time every minute
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -400,11 +368,9 @@ const Dashboard: React.FC = () => {
   const formatSpentAmount = (amount: number | null) => {
     if (amount === null) return '-';
 
-    // Check if the number is an integer
     if (Number.isInteger(amount)) {
       return `$${amount.toLocaleString('en-US')}`;
     } else {
-      // Show up to 2 decimal places, removing trailing zeros
       return `$${amount.toFixed(2).replace(/\.00$/, '')}`;
     }
   };
@@ -412,11 +378,9 @@ const Dashboard: React.FC = () => {
   const formatDepositedAmount = (amount: number | null) => {
     if (amount === null) return '-';
 
-    // Check if the number is an integer
     if (Number.isInteger(amount)) {
       return `$${amount.toLocaleString('en-US')}`;
     } else {
-      // Show up to 2 decimal places, removing trailing zeros
       return `$${amount.toFixed(2).replace(/\.00$/, '')}`;
     }
   };

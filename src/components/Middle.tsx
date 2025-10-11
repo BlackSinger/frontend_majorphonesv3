@@ -7,12 +7,10 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase/config';
 import { getAuth } from 'firebase/auth';
 
-// Global object to store service name
 const globalSearchData = {
   name: ''
 };
 
-// Global object to store purchase data
 const globalPurchaseData = {
   serviceId: '',
   duration: 0
@@ -45,27 +43,22 @@ const Middle: React.FC = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
 
-  // Services state
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [selectedService, setSelectedService] = useState<ServiceOption | null>(null);
   const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
   const [filteredServices, setFilteredServices] = useState<ServiceOption[]>([]);
 
-  // Error handling state
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [hasError, setHasError] = useState(false);
 
-  // Purchase state - track which option is being purchased
   const [purchasingOptionId, setPurchasingOptionId] = useState<string | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const serviceDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Helper function to safely format price
   const formatPrice = (price: any): string => {
-    // Convert to number and take only first 2 decimals
     const numPrice = parseFloat(Number(price).toFixed(2));
     return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
   };
@@ -90,12 +83,10 @@ const Middle: React.FC = () => {
     }
   ];
 
-  // Load services from Firebase
   const loadServices = async () => {
     try {
       setIsLoadingServices(true);
       setHasError(false);
-      // Clear previous services and search state
       setServices([]);
       setFilteredServices([]);
       setSelectedService(null);
@@ -110,23 +101,20 @@ const Middle: React.FC = () => {
         const data = doc.data();
         servicesList.push({
           id: doc.id,
-          name: data.name || doc.id // Use name field or document ID as fallback
+          name: data.name || doc.id
         });
       });
 
-      // Sort services alphabetically
       servicesList.sort((a, b) => a.name.localeCompare(b.name));
 
       setServices(servicesList);
       setFilteredServices(servicesList);
       setHasError(false);
     } catch (error) {
-      console.error('Error loading services:', error);
       setServices([]);
       setFilteredServices([]);
       setHasError(true);
 
-      // Determine error message based on error type
       let userErrorMessage = 'An error occurred while loading services, please contact support';
 
       if (error instanceof Error) {
@@ -148,18 +136,15 @@ const Middle: React.FC = () => {
     }
   };
 
-  // Load services on component mount
   useEffect(() => {
     loadServices();
   }, []);
 
-  // Handle error modal close
   const handleErrorModalClose = () => {
     setShowErrorModal(false);
     setErrorMessage('');
   };
 
-  // Handle service search filtering
   const handleServiceSearch = (value: string) => {
     setSearchTerm(value);
 
@@ -169,12 +154,10 @@ const Middle: React.FC = () => {
       return;
     }
 
-    // Filter services based on search term
     const filtered = services.filter(service =>
       service.name.toLowerCase().includes(value.toLowerCase())
     );
 
-    // If no matches found, show "Service not listed" option
     if (filtered.length === 0) {
       setFilteredServices([{ id: 'allservices', name: 'Service not listed' }]);
     } else {
@@ -184,14 +167,12 @@ const Middle: React.FC = () => {
     setIsServiceDropdownOpen(true);
   };
 
-  // Handle service selection
   const handleServiceSelect = (service: ServiceOption) => {
     setSelectedService(service);
     setSearchTerm(service.name);
     setIsServiceDropdownOpen(false);
   };
 
-  // Handle service input focus
   const handleServiceInputFocus = () => {
     if (!isLoadingServices && !isSearching && services.length > 0) {
       setFilteredServices(services);
@@ -199,7 +180,6 @@ const Middle: React.FC = () => {
     }
   };
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -225,12 +205,10 @@ const Middle: React.FC = () => {
       return;
     }
 
-    // Create unique identifier for this option
     const uniqueOptionId = `${option.duration}days-${option.id}`;
     setPurchasingOptionId(uniqueOptionId);
 
     try {
-      // Get the service data from Firebase to fill globalPurchaseData
       const servicesRef = collection(db, 'middleUSA', 'opt4', 'services');
       const querySnapshot = await getDocs(servicesRef);
 
@@ -238,15 +216,10 @@ const Middle: React.FC = () => {
       querySnapshot.forEach((doc) => {
         const data = doc.data();
 
-        // Check if this is the correct service
         if (data.name && data.name.toLowerCase() === globalSearchData.name.toLowerCase()) {
-          // Fill the global purchase data object
           globalPurchaseData.serviceId = doc.id;
           globalPurchaseData.duration = option.duration;
           serviceFound = true;
-
-          // Print the global purchase data object
-          console.log(globalPurchaseData);
         }
       });
 
@@ -257,10 +230,7 @@ const Middle: React.FC = () => {
         return;
       }
 
-      // Get Firebase ID token
       const idToken = await currentUser.getIdToken();
-      console.log(JSON.stringify(globalPurchaseData));
-      // Make API call to buymiddleusa cloud function
       const response = await fetch('https://buymiddleusa-ezeznlhr5a-uc.a.run.app', {
         method: 'POST',
         headers: {
@@ -273,10 +243,8 @@ const Middle: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Success case - redirect to history
         navigate('/history');
       } else {
-        // Handle error responses
         let errorMsg = 'An unknown error occurred';
 
         if (data.message === 'Unauthorized') {
@@ -297,7 +265,6 @@ const Middle: React.FC = () => {
         setShowErrorModal(true);
       }
     } catch (error) {
-      console.error('Buy Middle USA purchase error:', error);
       setErrorMessage('Please contact our customer support');
       setShowErrorModal(true);
     } finally {
@@ -308,11 +275,7 @@ const Middle: React.FC = () => {
   const handleSearch = async () => {
     if (!selectedService) return;
 
-    // Store service name in global object
     globalSearchData.name = selectedService.name;
-
-    // Print to console for verification
-    console.log('Selected service name:', globalSearchData.name);
 
     setIsSearching(true);
     setHasSearched(false);
@@ -320,7 +283,6 @@ const Middle: React.FC = () => {
     try {
       let allNumbers: NumberOption[] = [];
 
-      // Search in middleUSA/opt4/services collection
       const servicesRef = collection(db, 'middleUSA', 'opt4', 'services');
       const querySnapshot = await getDocs(servicesRef);
 
@@ -328,12 +290,9 @@ const Middle: React.FC = () => {
         const data = doc.data();
         let shouldInclude = false;
 
-        // Check if this is the "Service not listed" case
         if (globalSearchData.name.toLowerCase() === 'service not listed') {
-          // For "Service not listed", look for document ID "allservices"
           shouldInclude = doc.id === 'allservices';
         } else {
-          // For other services, check if service name matches EXACTLY (case insensitive)
           shouldInclude = data.name && data.name.toLowerCase() === globalSearchData.name.toLowerCase();
         }
 
@@ -342,12 +301,11 @@ const Middle: React.FC = () => {
           const countryCode = selectedCountryData?.code || 'US';
           const countryPrefix = selectedCountryData?.prefix || '+1';
 
-          // For "allservices" document, only create 7 and 14 days options (no 1 day)
           if (doc.id === 'allservices') {
             if (data.priceSevenDays) {
               allNumbers.push({
                 id: `7days-${doc.id}`,
-                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                number: `${countryPrefix}-XXXXXX`,
                 priceOneDay: 0,
                 priceSevenDays: Number(data.priceSevenDays),
                 priceFourteenDays: Number(data.priceFourteenDays || 0),
@@ -361,7 +319,7 @@ const Middle: React.FC = () => {
             if (data.priceFourteenDays) {
               allNumbers.push({
                 id: `14days-${doc.id}`,
-                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                number: `${countryPrefix}-XXXXXX`,
                 priceOneDay: 0,
                 priceSevenDays: Number(data.priceSevenDays || 0),
                 priceFourteenDays: Number(data.priceFourteenDays),
@@ -372,11 +330,10 @@ const Middle: React.FC = () => {
               });
             }
           } else {
-            // For other services, create all three options as before
             if (data.priceOneDay) {
               allNumbers.push({
                 id: `1day-${doc.id}`,
-                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                number: `${countryPrefix}-XXXXXX`,
                 priceOneDay: Number(data.priceOneDay),
                 priceSevenDays: Number(data.priceSevenDays || 0),
                 priceFourteenDays: Number(data.priceFourteenDays || 0),
@@ -390,7 +347,7 @@ const Middle: React.FC = () => {
             if (data.priceSevenDays) {
               allNumbers.push({
                 id: `7days-${doc.id}`,
-                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                number: `${countryPrefix}-XXXXXX`,
                 priceOneDay: Number(data.priceOneDay || 0),
                 priceSevenDays: Number(data.priceSevenDays),
                 priceFourteenDays: Number(data.priceFourteenDays || 0),
@@ -404,7 +361,7 @@ const Middle: React.FC = () => {
             if (data.priceFourteenDays) {
               allNumbers.push({
                 id: `14days-${doc.id}`,
-                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+                number: `${countryPrefix}-XXXXXX`,
                 priceOneDay: Number(data.priceOneDay || 0),
                 priceSevenDays: Number(data.priceSevenDays || 0),
                 priceFourteenDays: Number(data.priceFourteenDays),
@@ -418,7 +375,6 @@ const Middle: React.FC = () => {
         }
       });
 
-      // Only show results if we have them, otherwise stay in search view
       if (allNumbers.length > 0) {
         setSearchResults(allNumbers);
         setHasSearched(true);
@@ -427,13 +383,10 @@ const Middle: React.FC = () => {
         setHasSearched(false);
       }
     } catch (error) {
-      console.error('Error searching numbers:', error);
 
-      // Reset search state to allow retry
       setSearchResults([]);
       setHasSearched(false);
 
-      // Determine error message based on error type
       let userErrorMessage = 'An error occurred while searching for numbers, please try again';
 
       if (error instanceof Error) {
@@ -733,7 +686,6 @@ const Middle: React.FC = () => {
                             <button
                               onClick={() => handlePurchase(option)}
                               disabled={purchasingOptionId !== null}
-                              //onClick={() => navigate('/history')}
                               className="w-full px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                             >
                               {purchasingOptionId === `${option.duration}days-${option.id}` ? (
@@ -775,7 +727,6 @@ const Middle: React.FC = () => {
                           <button
                             onClick={() => handlePurchase(option)}
                             disabled={purchasingOptionId !== null}
-                            //onClick={() => navigate('/history')}
                             className="hidden md:block px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[120px]"
                           >
                             {purchasingOptionId === `${option.duration}days-${option.id}` ? (

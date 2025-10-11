@@ -21,12 +21,10 @@ const VirtualCard: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Global object to store card selection
   const [cardSelection, setCardSelection] = useState({
     balance: false
   });
 
-  // Purchase states
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isPurchaseDisabled, setIsPurchaseDisabled] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -91,7 +89,6 @@ const VirtualCard: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Purchase VCC error:', error);
       setErrorMessage('Please contact our customer support');
       setShowErrorModal(true);
       setIsPurchasing(false);
@@ -103,16 +100,13 @@ const VirtualCard: React.FC = () => {
     setIsSearching(true);
     setHasSearched(false);
 
-    // Update card selection object with the balance choice
     setCardSelection({
       balance: hasBalance
     });
 
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // Mock data for virtual card
       const mockResults: CardOption[] = [
         {
           id: '1',
@@ -127,7 +121,6 @@ const VirtualCard: React.FC = () => {
 
       setSearchResults(mockResults);
     } catch (error) {
-      console.error('Error searching cards:', error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -160,7 +153,7 @@ const VirtualCard: React.FC = () => {
               <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                 <li>• They are randomly assigned as VISA or MasterCard, you can't choose the type of card</li>
                 <li>• They can be chosen with pre-loaded funds ($3) or with no funds ($0)</li>
-                <li>• If you want a card with more funds, contact us on <a href="https://t.me/MajorPhones" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-semibold">Telegram</a>, <a href="mailto:support@majorphones.com" className="text-blue-400 hover:text-blue-300 underline font-semibold">email</a> or open a <Link to="/tickets" className="text-blue-400 hover:text-blue-300 underline font-semibold">ticket</Link></li>
+                <li>• If you want a card with more funds, contact us on <a href="mailto:support@majorphones.com" className="text-blue-400 hover:text-blue-300 underline font-semibold">email</a> or open a <Link to="/tickets" className="text-blue-400 hover:text-blue-300 underline font-semibold">ticket</Link></li>
                 <li>• They can be used with any name and in multiple sites, but may not work in some</li>
                 <li>• They can't be refunded once purchased</li>
                 <li>• Expiration date varies depending on the card assigned, it can't be chosen</li>

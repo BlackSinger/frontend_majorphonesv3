@@ -893,7 +893,7 @@ const AddFunds: React.FC = () => {
             <div className="text-center">
               <p className="text-blue-300 text-sm font-semibold mb-3">Important information before depositing:</p>
               <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
-                <li>• If you deposit $10 or more with crypto or Payeer, you get 1 free number</li>
+                <li>• If you deposit $10 or more with crypto or Payeer, you are eligible for a free number</li>
                 <li>• You can't withdrawal your balance from your Major Phones account</li>
                 <li>• We have a refund policy which allows us to accept/deny refund requests</li>
                 <li>• Refunds are made only in Amazon Pay, Binance Pay or LTC, fees are covered by the user</li>

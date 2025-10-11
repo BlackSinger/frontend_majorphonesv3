@@ -10,15 +10,14 @@ export interface VirtualCardRecord {
 
 export interface VCCOrderDocument {
   orderId: string;
-  createdAt: any; // Firestore Timestamp
-  price: any; // Could be number or string
+  createdAt: any;
+  price: any;
   cardNumber: string;
   expirationDate: string;
   cvv: string;
   uid: string;
 }
 
-// Handle copy card number
 export const handleCopyCardNumber = async (
   cardNumber: string,
   cardId: string,
@@ -31,11 +30,9 @@ export const handleCopyCardNumber = async (
       setCopiedCardNumbers(prev => ({ ...prev, [cardId]: false }));
     }, 2000);
   } catch (err) {
-    console.error('Failed to copy card number:', err);
   }
 };
 
-// Filter virtual cards by search term and funds
 export const filterVirtualCards = (
   cards: VirtualCardRecord[],
   searchTerm: string,
@@ -51,47 +48,34 @@ export const filterVirtualCards = (
   });
 };
 
-// Format price (show integers without decimals, decimals with one decimal place if needed)
 export const formatPrice = (price: number): string => {
-  // If it's an integer, return as is (e.g., "4")
   if (price % 1 === 0) {
     return price.toString();
   }
-  // If it has decimals, format with minimal decimals (e.g., "7.5" not "7.50")
   return price.toFixed(1).replace(/\.0$/, '');
 };
 
-// Format card number with spaces every 4 characters
 export const formatCardNumber = (cardNumber: string): string => {
-  // Remove all spaces first
   const cleaned = cardNumber.replace(/\s/g, '');
-  // Add space every 4 characters
   return cleaned.match(/.{1,4}/g)?.join(' ') || cardNumber;
 };
 
-// Format expiration date from "0826" to "08/26"
 export const formatExpirationDate = (expirationDate: string): string => {
-  // If already formatted, return as is
   if (expirationDate.includes('/')) {
     return expirationDate;
   }
-  // Format MMYY to MM/YY
   if (expirationDate.length === 4) {
     return `${expirationDate.substring(0, 2)}/${expirationDate.substring(2, 4)}`;
   }
   return expirationDate;
 };
 
-// Convert Firestore VCC document to VirtualCardRecord
 export const convertVCCDocumentToRecord = (doc: VCCOrderDocument): VirtualCardRecord => {
-  // Convert createdAt to Date
   const createdAt = doc.createdAt?.toDate ? doc.createdAt.toDate() : new Date(doc.createdAt);
 
-  // Convert price to number
   let priceNum = typeof doc.price === 'number' ? doc.price : parseFloat(doc.price);
   if (isNaN(priceNum)) priceNum = 0;
 
-  // Determine funds based on price
   const funds = priceNum === 4.5 ? 0 : priceNum === 7 ? 3 : 0;
 
   return {

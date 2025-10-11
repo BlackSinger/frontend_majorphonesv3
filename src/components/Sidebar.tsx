@@ -28,7 +28,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPath = '/dashboard' }) => {
       await signOut(auth);
       navigate('/signin');
     } catch (error: any) {
-      console.error('Error signing out:', error);
 
       let errorMessage = 'An error occurred while signing out';
 

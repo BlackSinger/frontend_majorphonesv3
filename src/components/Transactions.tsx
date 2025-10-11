@@ -30,7 +30,6 @@ const Transactions: React.FC = () => {
   
   const itemsPerPage = 10;
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
@@ -50,7 +49,6 @@ const Transactions: React.FC = () => {
     };
   }, []);
 
-  // Listen to transaction data from Firebase in real-time
   useEffect(() => {
     if (!currentUser) {
       setLoading(false);
@@ -65,7 +63,6 @@ const Transactions: React.FC = () => {
       orderBy('createdAt', 'desc')
     );
 
-    // Set up real-time listener
     const unsubscribe = onSnapshot(
       q,
       (querySnapshot) => {
@@ -74,7 +71,6 @@ const Transactions: React.FC = () => {
         querySnapshot.forEach((doc) => {
           const data = doc.data();
 
-          // Format the date from Firestore timestamp
           let formattedDate = '';
           if (data.createdAt) {
             const date = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
@@ -89,7 +85,6 @@ const Transactions: React.FC = () => {
             }).replace(',', ', ');
           }
 
-          // Map paymentMethod to display name
           let displayPaymentMethod = data.paymentMethod || 'Unknown';
           if (data.paymentMethod === 'Static Wallet') {
             displayPaymentMethod = 'Static Wallet';
@@ -109,16 +104,13 @@ const Transactions: React.FC = () => {
         setLoading(false);
       },
       (error) => {
-        console.error('Error listening to transactions:', error);
         setLoading(false);
       }
     );
 
-    // Cleanup listener on unmount
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Filter the data based on selected filters
   const filteredData = useMemo(() => {
     let filtered = transactionData;
 
@@ -128,7 +120,6 @@ const Transactions: React.FC = () => {
 
     if (paymentMethodFilter !== 'All') {
       if (paymentMethodFilter === 'Static Wallets') {
-        // Filter by static wallets - include both specific wallet names and generic "Static Wallet"
         const staticWalletMethods = ['USDT Tether', 'USDC Polygon', 'Pol Polygon', 'TRX Tron', 'LTC', 'ETH', 'BTC', 'Static Wallet'];
         filtered = filtered.filter(record => staticWalletMethods.includes(record.option));
 
@@ -144,13 +135,11 @@ const Transactions: React.FC = () => {
     return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [statusFilter, paymentMethodFilter, transactionData]);
 
-  // Calculate pagination
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
-  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter, paymentMethodFilter]);
@@ -162,7 +151,6 @@ const Transactions: React.FC = () => {
   //   }
   // }, [paymentMethodFilter]);
 
-  // Get status color
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Created':

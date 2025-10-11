@@ -6,7 +6,6 @@ import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestor
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 
-// Import Short logic functions
 import {
   getShortDisplayStatus,
   getShortStatusColor,
@@ -16,7 +15,6 @@ import {
   // handleReuseNumber
 } from './ShortLogic';
 
-// Import Middle logic functions
 import {
   getMiddleDisplayStatus,
   getMiddleStatusColor,
@@ -27,7 +25,6 @@ import {
   handleActivateMiddle
 } from './MiddleLogic';
 
-// Import Long logic functions
 import {
   getLongDisplayStatus,
   getLongStatusColor,
@@ -38,7 +35,6 @@ import {
   handleActivateLong
 } from './LongLogic';
 
-// Import Empty SIM logic functions
 import {
   getEmptySimDisplayStatus,
   getEmptySimStatusColor,
@@ -49,7 +45,6 @@ import {
   handleActivateEmptySim
 } from './EmptySimLogic';
 
-// Import Virtual Card logic and types
 import {
   type VirtualCardRecord,
   type VCCOrderDocument,
@@ -59,7 +54,6 @@ import {
   formatPrice
 } from './VirtualCardLogic';
 
-// Import Proxy logic and types
 import {
   type ProxyRecord,
   type ProxyOrderDocument,
@@ -90,23 +84,19 @@ interface HistoryRecord {
   country: string;
   reuse?: boolean;
   maySend?: boolean;
-  asleep?: boolean; // Indica si el número está dormido (sleeping) en Firestore
-  createdAt?: Date; // Timestamp de creación para calcular el contador
-  // updatedAt?: Date; // Timestamp de última actualización (usado en reuse)
-  expiry?: Date; // Timestamp de expiración para validar Send
-  awakeIn?: Date; // Timestamp cuando el número despertará (para números sleeping)
-  codeAwakeAt?: Date; // Timestamp cuando el contador de 5 minutos en Code debe iniciar (cuando el número está awake)
-  orderId?: string; // Order ID para operaciones con Cloud Functions
+  asleep?: boolean;
+  createdAt?: Date;
+  // updatedAt?: Date; // Timestamp of last update (used in reuse)
+  expiry?: Date;
+  awakeIn?: Date;
+  codeAwakeAt?: Date;
+  orderId?: string;
 }
 
-// VirtualCardRecord and ProxyRecord interfaces are now imported from their respective logic files
-
-// Countdown Timer Component - DO NOT re-render if status changes
 const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: string; onTimeout?: () => void; /* updatedAt?: Date */ }> = React.memo(({ createdAt, recordId, status, onTimeout, /* updatedAt */ }) => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
 
   useEffect(() => {
-    // If status is not Pending, don't show timer
     if (status !== 'Pending') {
       setTimeLeft(0);
       return;
@@ -114,48 +104,41 @@ const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: stri
 
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
-      // Use updatedAt if available (for reused numbers), otherwise use createdAt
+      // Usage of updatedAt if available (for reused numbers), otherwise use createdAt
       // const startTime = updatedAt ? updatedAt.getTime() : createdAt.getTime();
       const startTime = createdAt.getTime();
-      const fiveMinutes = 5 * 60 * 1000; // 5:00 in milliseconds
+      const fiveMinutes = 5 * 60 * 1000;
       const expiryTime = startTime + fiveMinutes;
       const remaining = expiryTime - now;
 
-      return Math.max(0, Math.floor(remaining / 1000)); // Return seconds remaining
+      return Math.max(0, Math.floor(remaining / 1000));
     };
 
-    // Initial calculation
     setTimeLeft(calculateTimeLeft());
 
-    // Update every second
     const interval = setInterval(() => {
       const remaining = calculateTimeLeft();
       setTimeLeft(remaining);
 
-      // Stop the interval when time runs out
       if (status !== "Pending"){
             clearInterval(interval);
             setTimeLeft(0);
       }
       if (remaining <= 0) {
         clearInterval(interval);
-        // Notify parent component that time has expired
         if (onTimeout) {
           onTimeout();
         }
       }
     }, 1000);
 
-    // Cleanup on unmount
     return () => clearInterval(interval);
   }, [createdAt, /* updatedAt, */ status, onTimeout]);
 
-  // If status changed to non-Pending, don't render
   if (status !== 'Pending') {
     return <span className="font-mono text-slate-400">-</span>;
   }
 
-  // If time has expired, show dash instead of timer
   if (timeLeft === 0) {
     return <span className="font-mono text-slate-400">-</span>;
   }
@@ -170,7 +153,6 @@ const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: stri
   );
 });
 
-// Middle Countdown Timer Component - Shows 3 minute countdown for Middle Active numbers
 const MiddleCountdownTimer: React.FC<{ record: HistoryRecord; onTimeout?: () => void }> = React.memo(({ record, onTimeout }) => {
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
@@ -179,25 +161,20 @@ const MiddleCountdownTimer: React.FC<{ record: HistoryRecord; onTimeout?: () => 
       const countdown = getMiddleCountdownTime(record);
       setTimeLeft(countdown);
 
-      // If countdown expired, call onTimeout
       if (countdown === null && onTimeout) {
         onTimeout();
       }
     };
 
-    // Initial calculation
     updateCountdown();
 
-    // Update every second
     const interval = setInterval(() => {
       updateCountdown();
     }, 1000);
 
-    // Cleanup on unmount
     return () => clearInterval(interval);
   }, [record, onTimeout]);
 
-  // If no countdown, show dash
   if (timeLeft === null) {
     return <span className="font-mono text-slate-400">-</span>;
   }
@@ -209,7 +186,6 @@ const MiddleCountdownTimer: React.FC<{ record: HistoryRecord; onTimeout?: () => 
   );
 });
 
-// Long Countdown Timer Component - Shows 3 minute countdown for Long Active numbers
 const LongCountdownTimer: React.FC<{ record: HistoryRecord; onTimeout?: () => void }> = React.memo(({ record, onTimeout }) => {
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
@@ -218,25 +194,20 @@ const LongCountdownTimer: React.FC<{ record: HistoryRecord; onTimeout?: () => vo
       const countdown = getLongCountdownTime(record);
       setTimeLeft(countdown);
 
-      // If countdown expired, call onTimeout
       if (countdown === null && onTimeout) {
         onTimeout();
       }
     };
 
-    // Initial calculation
     updateCountdown();
 
-    // Update every second
     const interval = setInterval(() => {
       updateCountdown();
     }, 1000);
 
-    // Cleanup on unmount
     return () => clearInterval(interval);
   }, [record, onTimeout]);
 
-  // If no countdown, show dash
   if (timeLeft === null) {
     return <span className="font-mono text-slate-400">-</span>;
   }
@@ -248,7 +219,6 @@ const LongCountdownTimer: React.FC<{ record: HistoryRecord; onTimeout?: () => vo
   );
 });
 
-// Empty SIM Countdown Timer Component - Shows 3 minute countdown for Empty SIM Active numbers
 const EmptySimCountdownTimer: React.FC<{ record: HistoryRecord; onTimeout?: () => void }> = React.memo(({ record, onTimeout }) => {
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
@@ -257,25 +227,20 @@ const EmptySimCountdownTimer: React.FC<{ record: HistoryRecord; onTimeout?: () =
       const countdown = getEmptySimCountdownTime(record);
       setTimeLeft(countdown);
 
-      // If countdown expired, call onTimeout
       if (countdown === null && onTimeout) {
         onTimeout();
       }
     };
 
-    // Initial calculation
     updateCountdown();
 
-    // Update every second
     const interval = setInterval(() => {
       updateCountdown();
     }, 1000);
 
-    // Cleanup on unmount
     return () => clearInterval(interval);
   }, [record, onTimeout]);
 
-  // If no countdown, show dash
   if (timeLeft === null) {
     return <span className="font-mono text-slate-400">-</span>;
   }
@@ -287,7 +252,6 @@ const EmptySimCountdownTimer: React.FC<{ record: HistoryRecord; onTimeout?: () =
   );
 });
 
-// Wake Up Timer Component - Shows countdown until number wakes up
 const WakeUpTimer: React.FC<{ awakeIn: Date; recordId: string; onWakeUp?: () => void }> = React.memo(({ awakeIn, recordId, onWakeUp }) => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
 
@@ -297,18 +261,15 @@ const WakeUpTimer: React.FC<{ awakeIn: Date; recordId: string; onWakeUp?: () => 
       const wakeTime = awakeIn.getTime();
       const remaining = wakeTime - now;
 
-      return Math.max(0, Math.floor(remaining / 1000)); // Return seconds remaining
+      return Math.max(0, Math.floor(remaining / 1000));
     };
 
-    // Initial calculation
     setTimeLeft(calculateTimeLeft());
 
-    // Update every second
     const interval = setInterval(() => {
       const remaining = calculateTimeLeft();
       setTimeLeft(remaining);
 
-      // When time is up, notify parent
       if (remaining <= 0) {
         clearInterval(interval);
         if (onWakeUp) {
@@ -317,16 +278,13 @@ const WakeUpTimer: React.FC<{ awakeIn: Date; recordId: string; onWakeUp?: () => 
       }
     }, 1000);
 
-    // Cleanup on unmount
     return () => clearInterval(interval);
   }, [awakeIn, onWakeUp]);
 
-  // If time has expired, show dash
   if (timeLeft === 0) {
     return <span className="font-mono text-slate-400">-</span>;
   }
 
-  // Format as HH:MM:SS
   const hours = Math.floor(timeLeft / 3600);
   const minutes = Math.floor((timeLeft % 3600) / 60);
   const seconds = timeLeft % 60;
@@ -338,7 +296,6 @@ const WakeUpTimer: React.FC<{ awakeIn: Date; recordId: string; onWakeUp?: () => 
   );
 });
 
-// Code Awake Timer Component - Shows 5 minute countdown in Code column after number wakes up
 const CodeAwakeTimer: React.FC<{ codeAwakeAt: Date; recordId: string; onTimeout?: () => void }> = React.memo(({ codeAwakeAt, recordId, onTimeout }) => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
 
@@ -346,41 +303,34 @@ const CodeAwakeTimer: React.FC<{ codeAwakeAt: Date; recordId: string; onTimeout?
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
       const startTime = codeAwakeAt.getTime();
-      const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+      const fiveMinutes = 5 * 60 * 1000;
       const expiryTime = startTime + fiveMinutes;
       const remaining = expiryTime - now;
 
-      return Math.max(0, Math.floor(remaining / 1000)); // Return seconds remaining
+      return Math.max(0, Math.floor(remaining / 1000));
     };
 
-    // Initial calculation
     setTimeLeft(calculateTimeLeft());
 
-    // Update every second
     const interval = setInterval(() => {
       const remaining = calculateTimeLeft();
       setTimeLeft(remaining);
 
-      // Stop the interval when time runs out
       if (remaining <= 0) {
         clearInterval(interval);
-        // Notify parent component that time has expired
         if (onTimeout) {
           onTimeout();
         }
       }
     }, 1000);
 
-    // Cleanup on unmount
     return () => clearInterval(interval);
   }, [codeAwakeAt, onTimeout]);
 
-  // If time has expired, show dash
   if (timeLeft === 0) {
     return <span className="font-mono text-slate-400">-</span>;
   }
 
-  // Format time as MM:SS
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
 
@@ -417,12 +367,10 @@ const History: React.FC = () => {
   const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
   const [copiedCardNumbers, setCopiedCardNumbers] = useState<{[key: string]: boolean}>({});
 
-  // Virtual card filters
   const [cardNumberSearch, setCardNumberSearch] = useState<string>('');
   const [fundsFilter, setFundsFilter] = useState<string>('All');
   const [isFundsDropdownOpen, setIsFundsDropdownOpen] = useState(false);
 
-  // Proxy-specific state
   const [selectedProxyState, setSelectedProxyState] = useState('All States');
   const [selectedProxyDuration, setSelectedProxyDuration] = useState('All Durations');
   const [isProxyStateDropdownOpen, setIsProxyStateDropdownOpen] = useState(false);
@@ -443,43 +391,34 @@ const History: React.FC = () => {
   const fundsDropdownRef = useRef<HTMLDivElement>(null);
   const actionMenuRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
 
-  // Firestore states
   const [firestoreData, setFirestoreData] = useState<HistoryRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [showErrorModal, setShowErrorModal] = useState(false);
 
-  // Virtual Card Firestore states
   const [vccData, setVccData] = useState<VirtualCardRecord[]>([]);
   const [isLoadingVCC, setIsLoadingVCC] = useState(true);
 
-  // Proxy Firestore states
   const [proxyFirestoreData, setProxyFirestoreData] = useState<ProxyRecord[]>([]);
   const [isLoadingProxies, setIsLoadingProxies] = useState(true);
 
-  // Force re-render every minute to update action buttons availability
   const [, setForceUpdate] = useState(0);
 
-  // Cancelling state - track which order is being cancelled
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
 
-  // Reusing state - track which order is being reused
+  // Reusing state: track which order is being reused
   // const [reusingOrderId, setReusingOrderId] = useState<string | null>(null);
 
-  // Activating state - track which order is being activated
   const [activatingOrderId, setActivatingOrderId] = useState<string | null>(null);
 
-  // Use ref to store uid to prevent listener recreation
   const userIdRef = useRef<string | undefined>(currentUser?.uid);
 
-  // Update ref when uid changes
   useEffect(() => {
     userIdRef.current = currentUser?.uid;
   }, [currentUser?.uid]);
 
   const itemsPerPage = 10;
 
-  // Function to get display status (visual only, doesn't modify Firestore)
   const getDisplayStatus = (record: HistoryRecord): string => {
     if (record.serviceType === 'Short') {
       return getShortDisplayStatus(record);
@@ -493,36 +432,30 @@ const History: React.FC = () => {
     return record.status;
   };
 
-  // Function to format price (show integers without decimals)
   const formatPrice = (price: number): string => {
     return price % 1 === 0 ? price.toString() : price.toFixed(2);
   };
 
-  // Function to determine what to show in Code column
   const getCodeDisplay = (record: HistoryRecord) => {
     const { serviceType, status, code, createdAt, codeAwakeAt } = record;
     const smsValue = code || '';
     const hasSms = smsValue && smsValue.trim() !== '';
 
-    if (serviceType === 'Short') {
-      // Check if codeAwakeAt exists - show CodeAwakeTimer
+    if (serviceType === 'Short') { 
       if (codeAwakeAt) {
         const now = new Date().getTime();
         const startTime = codeAwakeAt.getTime();
         const fiveMinutes = 5 * 60 * 1000;
         const expiryTime = startTime + fiveMinutes;
 
-        // Only show timer if within the 5-minute window
         if (now < expiryTime) {
           return { type: 'codeAwakeTimer', value: null, codeAwakeAt };
         }
       }
 
-      // IMPORTANT: Always check status first, never show countdown if not Pending
       if (status === 'Completed') {
         return { type: 'text', value: smsValue };
       } else if (status === 'Pending') {
-        // Return countdown timer ONLY for Short Pending numbers
         return { type: 'countdown', value: null, createdAt };
       } else if (status === 'Cancelled' || status === 'Timed out') {
         return { type: 'text', value: '-' };
@@ -530,17 +463,13 @@ const History: React.FC = () => {
         return { type: 'text', value: smsValue };
       }
     } else if (serviceType === 'Middle') {
-      // Check for Middle countdown first (Active without SMS)
       const countdownTime = getMiddleCountdownTime(record);
       if (countdownTime !== null) {
-        // Show countdown timer (5:00 -> 0:00)
         return { type: 'middleCountdown', value: countdownTime };
       }
 
-      // No countdown - show regular status-based values
       switch (status) {
         case 'Active':
-          // If we reach here, countdown expired (showing Inactive ficticio) or has SMS
           return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
         case 'Inactive':
           return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
@@ -552,17 +481,13 @@ const History: React.FC = () => {
           return { type: 'text', value: smsValue };
       }
     } else if (serviceType === 'Long') {
-      // Check for Long countdown first (Active without SMS)
       const countdownTime = getLongCountdownTime(record);
       if (countdownTime !== null) {
-        // Show countdown timer (5:00 -> 0:00)
         return { type: 'longCountdown', value: countdownTime };
       }
 
-      // No countdown - show regular status-based values
       switch (status) {
         case 'Active':
-          // If we reach here, countdown expired (showing Inactive ficticio) or has SMS
           return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
         case 'Inactive':
           return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
@@ -574,17 +499,13 @@ const History: React.FC = () => {
           return { type: 'text', value: smsValue };
       }
     } else if (serviceType === 'Empty simcard') {
-      // Check for EmptySimCard countdown first (Active without SMS)
       const countdownTime = getEmptySimCountdownTime(record);
       if (countdownTime !== null) {
-        // Show countdown timer (5:00 -> 0:00)
         return { type: 'emptySimCountdown', value: countdownTime };
       }
 
-      // No countdown - show regular status-based values
       switch (status) {
         case 'Active':
-          // If we reach here, countdown expired (showing Inactive ficticio) or has SMS
           return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
         case 'Inactive':
           return hasSms ? { type: 'text', value: smsValue } : { type: 'text', value: '-' };
@@ -597,11 +518,9 @@ const History: React.FC = () => {
       }
     }
 
-    // Fallback
     return { type: 'text', value: smsValue };
   };
 
-  // Function to calculate duration based on type and properties
   const calculateDuration = (type: string, createdAt: Date, expiry: Date, reuse?: boolean, maySend?: boolean): string => {
     if (type === 'Short') {
       return calculateShortDuration(createdAt, expiry, reuse, maySend);
@@ -626,7 +545,7 @@ const History: React.FC = () => {
   const getNumberTypeOptions = (serviceType: string) => {
     switch (serviceType) {
       case 'Short Numbers':
-        return ['All types', 'Single use', /* 'Reusable', */ 'Receive/Respond'];
+        return ['All types', 'Single use', /* 'Reusable', */ 'Receive/Send'];
       case 'Middle Numbers':
         return ['All types', '1 day', '7 days', '14 days'];
       case 'Long Numbers':
@@ -636,10 +555,8 @@ const History: React.FC = () => {
     }
   };
 
-  // Filter states based on search term for proxies
   const filteredStates = filterProxyStates(proxyStateSearchTerm);
 
-  // Wrapper functions for proxy handlers to make them compatible with React events
   const handleProxyStateInputChangeWrapper = (e: React.ChangeEvent<HTMLInputElement>) => {
     handleProxyStateInputChange(e.target.value, setProxyStateSearchTerm);
   };
@@ -664,7 +581,6 @@ const History: React.FC = () => {
     handleCopyProxyField(fieldValue, fieldKey, setCopiedProxyFields);
   };
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (serviceTypeDropdownRef.current && !serviceTypeDropdownRef.current.contains(event.target as Node)) {
@@ -684,7 +600,6 @@ const History: React.FC = () => {
         setIsProxyDurationDropdownOpen(false);
       }
 
-      // Close action menus when clicking outside
       Object.keys(openActionMenus).forEach(recordId => {
         const ref = actionMenuRefs.current[recordId];
         if (ref && !ref.contains(event.target as Node)) {
@@ -699,7 +614,6 @@ const History: React.FC = () => {
     };
   }, [openActionMenus, selectedProxyState]);
 
-  // Get available statuses based on service type
   const getAvailableStatuses = (serviceType: string) => {
     switch (serviceType) {
       case 'Short Numbers':
@@ -715,7 +629,6 @@ const History: React.FC = () => {
     }
   };
 
-  // Helper function to map UI service type to Firestore service type
   const mapServiceTypeToFirestore = (uiServiceType: string) => {
     switch (uiServiceType) {
       case 'Short Numbers': return 'Short';
@@ -726,21 +639,17 @@ const History: React.FC = () => {
     }
   };
 
-  // Helper function to determine number type for Short numbers
   const getShortNumberType = (record: HistoryRecord) => {
     const { reuse, maySend } = record;
     // if (reuse === true && maySend === false) return 'Reusable';
     if (reuse === false && maySend === false) return 'Single use';
-    if (reuse === false && maySend === true) return 'Receive/Respond';
+    if (reuse === false && maySend === true) return 'Receive/Send';
     return 'Unknown';
   };
 
-  // Filter the data based on selected filters
   const filteredData = useMemo(() => {
-    // Use only Firestore data
     let filtered = firestoreData;
 
-    // Filter by Service Type
     if (serviceTypeFilter !== 'All') {
       const firestoreServiceType = mapServiceTypeToFirestore(serviceTypeFilter);
       if (firestoreServiceType) {
@@ -748,24 +657,19 @@ const History: React.FC = () => {
       }
     }
 
-    // Filter by Status
     if (statusFilter !== 'All') {
       filtered = filtered.filter(record => record.status === statusFilter);
     }
 
-    // Apply Number Type filter
     if (numberTypeFilter !== 'All types') {
       if (serviceTypeFilter === 'Short Numbers') {
-        // For Short Numbers, filter by reuse/maySend combination
         filtered = filtered.filter(record => {
           const shortType = getShortNumberType(record);
           return shortType === numberTypeFilter;
         });
       } else if (serviceTypeFilter === 'Middle Numbers') {
-        // For Middle Numbers, filter by duration
         filtered = filtered.filter(record => record.duration === numberTypeFilter);
       } else if (serviceTypeFilter === 'Long Numbers') {
-        // For Long Numbers, filter by duration
         filtered = filtered.filter(record => record.duration === numberTypeFilter);
       }
     }
@@ -773,56 +677,47 @@ const History: React.FC = () => {
     return filtered;
   }, [serviceTypeFilter, statusFilter, numberTypeFilter, firestoreData]);
 
-  // Filter proxy data based on selected filters
   const filteredProxyData = useMemo(() => {
     return filterProxies(proxyFirestoreData, selectedProxyState, selectedProxyDuration);
   }, [proxyFirestoreData, selectedProxyState, selectedProxyDuration]);
 
-  // Filter virtual card data based on selected filters
   const filteredVirtualCardData = useMemo(() => {
     return filterVirtualCards(vccData, cardNumberSearch, fundsFilter);
   }, [vccData, cardNumberSearch, fundsFilter]);
 
-  // Calculate pagination for numbers table
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
-  // Calculate pagination for virtual cards table
   const totalVirtualCardPages = Math.ceil(filteredVirtualCardData.length / itemsPerPage);
   const virtualCardStartIndex = (currentVirtualCardPage - 1) * itemsPerPage;
   const virtualCardEndIndex = virtualCardStartIndex + itemsPerPage;
   const paginatedVirtualCardData = filteredVirtualCardData.slice(virtualCardStartIndex, virtualCardEndIndex);
 
-  // Calculate pagination for proxies table
   const totalProxyPages = Math.ceil(filteredProxyData.length / itemsPerPage);
   const proxyStartIndex = (currentProxyPage - 1) * itemsPerPage;
   const proxyEndIndex = proxyStartIndex + itemsPerPage;
   const paginatedProxyData = filteredProxyData.slice(proxyStartIndex, proxyEndIndex);
 
-  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [serviceTypeFilter, statusFilter, numberTypeFilter]);
 
-  // Reset to first page when proxy filters change
   useEffect(() => {
     setCurrentProxyPage(1);
   }, [selectedProxyState, selectedProxyDuration]);
 
-  // Force re-render every 10 seconds to update action buttons (but not affecting the listener)
   useEffect(() => {
     if (activeTab !== 'numbers') return;
 
     const interval = setInterval(() => {
       setForceUpdate(prev => prev + 1);
-    }, 10000); // Update every 10 seconds
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [activeTab]);
 
-  // Real-time listener for user orders
   useEffect(() => {
     if (activeTab !== 'numbers') {
       setIsLoading(false);
@@ -837,8 +732,7 @@ const History: React.FC = () => {
     }
 
     setIsLoading(true);
-    let isSubscribed = true; // Flag to prevent state updates after unmount
-
+    let isSubscribed = true;
     const ordersRef = collection(db, 'orders');
     const q = query(
       ordersRef,
@@ -846,8 +740,6 @@ const History: React.FC = () => {
       orderBy('createdAt', 'desc')
     );
 
-    // --- Helper para crear el objeto 'HistoryRecord' ---
-    // (Esta función auxiliar se mueve fuera del listener para mayor claridad)
     const createHistoryRecord = (docData: any, docId: string): HistoryRecord => {
       const createdAt = docData.createdAt?.toDate ? docData.createdAt.toDate() : new Date(docData.createdAt);
       const expiry = docData.expiry?.toDate ? docData.expiry.toDate() : new Date(docData.expiry);
@@ -860,28 +752,13 @@ const History: React.FC = () => {
         docData.maySend
       );
       
-      console.log(docData)
       const allowedStatuses = ['Pending', 'Cancelled', 'Completed', 'Inactive', 'Active', 'Expired', 'Timed out'] as const;
 
-      // Normalizar el status recibido
       let statusValue = typeof docData.status === 'string' ? docData.status : String(docData.status || 'Pending');
 
-      // Manejar variantes comunes de "Timed out" que pueden venir del backend
       const statusLower = statusValue.toLowerCase();
       if (statusLower === 'timed out' || statusLower === 'timedout' || statusLower === 'timeout' || statusLower === 'timed-out') {
         statusValue = 'Timed out';
-      }
-
-      // Log para debug - identificar status inválidos
-      if (!allowedStatuses.includes(statusValue as any)) {
-        console.warn(`⚠️ Invalid status detected for order ${docData.orderId}:`, {
-          statusOriginal: docData.status,
-          statusNormalizado: statusValue,
-          tipo: docData.type,
-          maySend: docData.maySend,
-          reuse: docData.reuse,
-          statusesPermitidos: allowedStatuses
-        });
       }
 
       const validatedStatus = allowedStatuses.includes(statusValue as any) ? statusValue as typeof allowedStatuses[number] : 'Pending';
@@ -917,15 +794,13 @@ const History: React.FC = () => {
       };
     };
 
-    // Setup real-time listener
     const unsubscribe = onSnapshot(
       q,
       (querySnapshot) => {
         if (!isSubscribed) return;
 
-        // Actualiza el estado de forma funcional y atómica para todos los cambios.
         setFirestoreData(currentData => {
-            let nextData = [...currentData]; // Crea una copia mutable del estado actual
+            let nextData = [...currentData];
 
             querySnapshot.docChanges().forEach(change => {
                 const changedRecord = createHistoryRecord(change.doc.data(), change.doc.id);
@@ -935,33 +810,26 @@ const History: React.FC = () => {
                 switch (change.type) {
                     case 'added':
                         if (existingIndex > -1) {
-                            // Si ya existe (puede pasar con la caché de Firestore), lo actualizamos.
                             nextData[existingIndex] = changedRecord;
                         } else {
-                            // Si es nuevo, lo agregamos. La clasificación final lo ordenará.
                             nextData.push(changedRecord);
                         }
                         break;
                     case 'modified':
                         if (existingIndex > -1) {
-                            // Reemplazamos el registro existente con la versión modificada.
                             nextData[existingIndex] = changedRecord;
                         } else {
-                            // Si no se encuentra, podría ser un registro que llega tarde. Lo agregamos.
                             nextData.push(changedRecord);
                         }
                         break;
                     case 'removed':
                         if (existingIndex > -1) {
-                            // Eliminamos el registro.
                             nextData.splice(existingIndex, 1);
                         }
                         break;
                 }
             });
 
-            // Re-ordena el array para asegurar que se respete el 'orderBy' de la consulta.
-            // Esto es crucial para que los nuevos elementos aparezcan al principio.
             nextData.sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
 
             return nextData;
@@ -973,9 +841,7 @@ const History: React.FC = () => {
       },
       (error: any) => {
           if (!isSubscribed) return;
-          console.error('Error in real-time listener:', error);
 
-          // Handle specific Firebase errors
           let errorMsg = 'An error occurred when loading the orders, please try again';
 
           if (error?.code === 'permission-denied') {
@@ -994,21 +860,18 @@ const History: React.FC = () => {
         }
       );
 
-    // Cleanup listener on unmount or when dependencies change
     return () => {
       isSubscribed = false;
       unsubscribe();
     };
-  }, [activeTab]); // ONLY activeTab - uid is stable via ref
+  }, [activeTab]);
 
-  // Fetch VCC Orders from Firestore
   useEffect(() => {
     if (activeTab !== 'virtualCards') {
       return;
     }
 
     if (!currentUser) {
-      console.error('No authenticated user');
       setIsLoadingVCC(false);
       return;
     }
@@ -1039,9 +902,7 @@ const History: React.FC = () => {
       },
       (error: any) => {
         if (!isSubscribed) return;
-        console.error('Error fetching VCC orders:', error);
 
-        // Handle specific Firebase errors
         let errorMsg = 'An error occurred when loading the cards, please try again';
 
         if (error?.code === 'permission-denied') {
@@ -1066,14 +927,12 @@ const History: React.FC = () => {
     };
   }, [activeTab]);
 
-  // Fetch Proxy Orders from Firestore
   useEffect(() => {
     if (activeTab !== 'proxies') {
       return;
     }
 
     if (!currentUser) {
-      console.error('No authenticated user');
       setIsLoadingProxies(false);
       return;
     }
@@ -1104,9 +963,7 @@ const History: React.FC = () => {
       },
       (error: any) => {
         if (!isSubscribed) return;
-        console.error('Error fetching proxy orders:', error);
 
-        // Handle specific Firebase errors
         let errorMsg = 'An error occurred when loading the proxies, please try again';
 
         if (error?.code === 'permission-denied') {
@@ -1131,8 +988,6 @@ const History: React.FC = () => {
     };
   }, [activeTab]);
 
-  // Get status color based on type and status
-  // Updated to delegate to service-specific functions
   const getStatusColor = (status: string, serviceType: string) => {
     if (serviceType === 'Short' || serviceType === 'Short Numbers') {
       return getShortStatusColor(status);
@@ -1146,7 +1001,6 @@ const History: React.FC = () => {
     return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
   };
 
-  // Get service type color
   const getServiceTypeColor = (serviceType: string) => {
     switch (serviceType) {
       case 'Short Numbers':
@@ -1162,7 +1016,6 @@ const History: React.FC = () => {
     }
   };
 
-  // Get country initials
   const getCountryInitials = (countryName: string) => {
     switch (countryName) {
       case 'United States':
@@ -1180,7 +1033,6 @@ const History: React.FC = () => {
     }
   };
 
-  // Get service type display name
   const getServiceTypeDisplayName = (serviceType: string) => {
     switch (serviceType) {
       case 'Short':
@@ -1196,14 +1048,12 @@ const History: React.FC = () => {
     }
   };
 
-  // Handle UUID modal
   const handleUuidClick = (uuid: string) => {
     setSelectedUuid(uuid);
     setShowUuidModal(true);
     setIsCopied(false);
   };
 
-  // Handle Info modal
   const handleInfoClick = (record: HistoryRecord) => {
     setSelectedRecord(record);
     setShowInfoModal(true);
@@ -1217,12 +1067,10 @@ const History: React.FC = () => {
         setIsInfoIdCopied(true);
         setTimeout(() => setIsInfoIdCopied(false), 2000);
       } catch (err) {
-        console.error('Failed to copy Order ID:', err);
       }
     }
   };
 
-  // Function now imported from VirtualCardLogic as handleCopyCardNumberVC
 
   const handleCopyUuid = async () => {
     try {
@@ -1230,11 +1078,9 @@ const History: React.FC = () => {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy UUID:', err);
     }
   };
 
-  // Get available actions based on service type, status, reuse and maySend
   const getAvailableActions = (record: HistoryRecord) => {
     const { serviceType } = record;
 
@@ -1251,7 +1097,6 @@ const History: React.FC = () => {
     return [];
   };
 
-  // Handle action menu toggle
   const handleActionMenuToggle = (recordId: string) => {
     setOpenActionMenus(prev => ({
       ...prev,
@@ -1259,13 +1104,9 @@ const History: React.FC = () => {
     }));
   };
 
-  // Handle action click
   const handleActionClick = async (action: string, record: HistoryRecord) => {
-    console.log(`Action "${action}" clicked for record:`, record.id);
-    // Close the menu after clicking an action
     setOpenActionMenus(prev => ({ ...prev, [record.id]: false }));
 
-    // Handle Cancel action
     if (action === 'Cancel') {
       if (record.serviceType === 'Short') {
         await handleCancelShort(record.orderId || '', setErrorMessage, setShowErrorModal, setCancellingOrderId);
@@ -1285,13 +1126,11 @@ const History: React.FC = () => {
     //   return;
     // }
 
-    // Handle Send action
     if (action === 'Send') {
       navigate('/sendmessage');
       return;
     }
 
-    // Handle Activate action - use service-specific activate functions
     if (action === 'Activate') {
       if (record.serviceType === 'Middle') {
         await handleActivateMiddle(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setActivatingOrderId);
@@ -1303,7 +1142,6 @@ const History: React.FC = () => {
       return;
     }
 
-    // TODO: Implement other functionalities
   };
 
   return (
@@ -1403,8 +1241,8 @@ const History: React.FC = () => {
                                 key={option}
                                 onClick={() => {
                                   setServiceTypeFilter(option);
-                                  setStatusFilter('All'); // Reset status filter when service type changes
-                                  setNumberTypeFilter('All types'); // Reset number type filter
+                                  setStatusFilter('All');
+                                  setNumberTypeFilter('All types');
                                   setIsServiceTypeDropdownOpen(false);
                                 }}
                                 className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
@@ -1585,9 +1423,7 @@ const History: React.FC = () => {
                         </td>
                         <td className="py-4 px-6">
                           {(() => {
-                            // ALWAYS check status directly from record - never trust cached data
                             if (record.serviceType === 'Short') {
-                              // If number is sleeping (awakeIn exists and is in the future), show "Activating..."
                               if (record.awakeIn) {
                                 const now = new Date().getTime();
                                 const wakeTime = record.awakeIn.getTime();
@@ -1596,30 +1432,17 @@ const History: React.FC = () => {
                                 }
                               }
 
-                              // Check if codeAwakeAt exists - show CodeAwakeTimer
                               if (record.codeAwakeAt) {
                                 const now = new Date().getTime();
                                 const startTime = record.codeAwakeAt.getTime();
                                 const fiveMinutes = 5 * 60 * 1000;
                                 const expiryTime = startTime + fiveMinutes;
 
-                                console.log('CodeAwakeTimer check:', {
-                                  recordId: record.id,
-                                  now,
-                                  startTime,
-                                  expiryTime,
-                                  timeLeft: expiryTime - now,
-                                  shouldShow: now < expiryTime
-                                });
-
-                                // Only show timer if within the 5-minute window
                                 if (now < expiryTime) {
                                   return <CodeAwakeTimer
                                     codeAwakeAt={record.codeAwakeAt}
                                     recordId={record.id}
                                     onTimeout={() => {
-                                      console.log('CodeAwakeTimer timeout for:', record.id);
-                                      // Remove codeAwakeAt when timer expires
                                       setFirestoreData(currentData =>
                                         currentData.map(r =>
                                           r.id === record.id
@@ -1640,14 +1463,12 @@ const History: React.FC = () => {
                                   createdAt={record.createdAt}
                                   recordId={record.id}
                                   status={record.status}
-                                  // updatedAt={record.updatedAt}
                                   onTimeout={() => setForceUpdate(prev => prev + 1)}
                                 />;
                               } else {
                                 return <span className="font-mono text-slate-400">-</span>;
                               }
                             } else if (record.serviceType === 'Middle') {
-                              // Middle: Show countdown timer when Active (always, even with SMS)
                               if (record.status === 'Active') {
                                 return <MiddleCountdownTimer
                                   record={record}
@@ -1655,7 +1476,6 @@ const History: React.FC = () => {
                                 />;
                               }
 
-                              // Not Active - show SMS or dash
                               const hasSms = record.code && record.code.trim() !== '';
                               if (hasSms) {
                                 return <span className="font-mono text-blue-500 font-semibold">{record.code}</span>;
@@ -1663,7 +1483,6 @@ const History: React.FC = () => {
                                 return <span className="font-mono text-slate-400">-</span>;
                               }
                             } else if (record.serviceType === 'Long') {
-                              // Long: Show countdown timer when Active (always, even with SMS)
                               if (record.status === 'Active') {
                                 return <LongCountdownTimer
                                   record={record}
@@ -1671,7 +1490,6 @@ const History: React.FC = () => {
                                 />;
                               }
 
-                              // Not Active - show SMS or dash
                               const hasSms = record.code && record.code.trim() !== '';
                               if (hasSms) {
                                 return <span className="font-mono text-blue-500 font-semibold">{record.code}</span>;
@@ -1679,7 +1497,6 @@ const History: React.FC = () => {
                                 return <span className="font-mono text-slate-400">-</span>;
                               }
                             } else if (record.serviceType === 'Empty simcard') {
-                              // Empty SIM: Show countdown timer when Active (always, even with SMS)
                               if (record.status === 'Active') {
                                 return <EmptySimCountdownTimer
                                   record={record}
@@ -1687,7 +1504,6 @@ const History: React.FC = () => {
                                 />;
                               }
 
-                              // Not Active - show SMS or dash
                               const hasSms = record.code && record.code.trim() !== '';
                               if (hasSms) {
                                 return <span className="font-mono text-blue-500 font-semibold">{record.code}</span>;
@@ -1702,18 +1518,15 @@ const History: React.FC = () => {
                         <td className="py-4 px-6">
                           <div className="flex items-center justify-center">
                             {(() => {
-                              // Check if number is sleeping (awakeIn exists and is in the future)
                               if (record.awakeIn) {
                                 const now = new Date().getTime();
                                 const wakeTime = record.awakeIn.getTime();
                                 if (now < wakeTime) {
-                                  // Show wake up timer instead of action buttons
                                   return (
                                     <WakeUpTimer 
                                       awakeIn={record.awakeIn} 
                                       recordId={record.id}
                                       onWakeUp={() => {
-                                        // Remove awakeIn when timer expires and force re-render
                                         setFirestoreData(currentData => 
                                           currentData.map(r => 
                                             r.id === record.id 
@@ -1737,7 +1550,6 @@ const History: React.FC = () => {
                                                         // (reusingOrderId !== null && reusingOrderId !== record.id) ||
                                                         (activatingOrderId !== null && activatingOrderId !== record.id);
 
-                              // Show spinner if this record is being cancelled, reused, or activated
                               if (isCancelling || /* isReusing || */ isActivating) {
                                 return (
                                   <div className="flex justify-center">
@@ -2437,6 +2249,12 @@ const History: React.FC = () => {
                     <span className="text-slate-300">Duration: </span>
                     <span className="text-emerald-400">{selectedRecord.duration}</span>
                   </div>
+                  {selectedRecord.reuse === false && selectedRecord.maySend === true && (
+                    <div>
+                      <span className="text-slate-300">Each sending: </span>
+                      <span className="text-emerald-400">$0.50</span>
+                    </div>
+                  )}
                   <div>
                     <span className="text-slate-300">Expiration Date: </span>
                     <span className="text-emerald-400">{selectedRecord.expirationDate}</span>

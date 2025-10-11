@@ -57,7 +57,6 @@ const SendMessage: React.FC = () => {
   const [isNumberSelectorDisabled, setIsNumberSelectorDisabled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Real-time listener for available numbers from Firestore
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) {
@@ -87,7 +86,6 @@ const SendMessage: React.FC = () => {
         querySnapshot.forEach((docSnapshot) => {
           const data = docSnapshot.data() as Order;
 
-          // Only include if sms is not null/undefined
           if (data.sms && data.sms.trim() !== '') {
             const isExpired = data.expiry.toMillis() <= currentTime.toMillis();
             numbers.push({
@@ -98,14 +96,11 @@ const SendMessage: React.FC = () => {
           }
         });
 
-        // Sort: first non-expired (by createdAt desc), then expired (by createdAt desc)
         numbers.sort((a, b) => {
-          // First priority: non-expired before expired
           if (a.isExpired !== b.isExpired) {
             return a.isExpired ? 1 : -1;
           }
 
-          // Second priority: within same expiry status, sort by createdAt (most recent first)
           const aTime = a.createdAt?.toMillis() || 0;
           const bTime = b.createdAt?.toMillis() || 0;
           return bTime - aTime;
@@ -113,12 +108,9 @@ const SendMessage: React.FC = () => {
 
         setAvailableNumbers(numbers);
         setLoading(false);
-        console.log('Available numbers updated:', numbers);
       },
       (error: any) => {
-        console.error('Error listening to available numbers:', error);
 
-        // Handle specific Firebase errors
         let errorMsg = 'An error occurred when loading the orders, please try again';
 
         if (error?.code === 'permission-denied') {
@@ -141,7 +133,6 @@ const SendMessage: React.FC = () => {
     };
   }, []);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -155,22 +146,17 @@ const SendMessage: React.FC = () => {
     };
   }, []);
 
-  // Real-time listener for messagesSent updates
   useEffect(() => {
     if (!orderDocId || !hasSearched) {
       return;
     }
-
-    console.log('Setting up real-time listener for order:', orderDocId);
 
     const unsubscribe = onSnapshot(
       doc(db, 'orders', orderDocId),
       (docSnapshot) => {
         if (docSnapshot.exists()) {
           const data = docSnapshot.data() as Order;
-          console.log('Order data updated:', data);
 
-          // Update messagesSent in real-time
           if (data.messagesSent && data.messagesSent.length > 0) {
             const updatedMessages: SentMessage[] = data.messagesSent.map((msg, index) => ({
               id: `msg-${index}`,
@@ -178,23 +164,18 @@ const SendMessage: React.FC = () => {
               timestamp: new Date()
             }));
             setSentMessages(updatedMessages);
-            console.log('Messages updated from Firestore:', updatedMessages);
           } else {
             setSentMessages([]);
-            console.log('No messages in messagesSent array');
           }
 
-          // Update selectedNumberData if needed
           setSelectedNumberData(prev => prev ? { ...prev, messagesSent: data.messagesSent } : null);
         }
       },
       (error) => {
-        console.error('Error listening to order updates:', error);
       }
     );
 
     return () => {
-      console.log('Cleaning up real-time listener');
       unsubscribe();
     };
   }, [orderDocId, hasSearched]);
@@ -202,15 +183,12 @@ const SendMessage: React.FC = () => {
   const handleSendMessage = async () => {
     if (!messageInput.trim()) return;
 
-    // Update messageData with the message
     const updatedMessageData = {
       message: messageInput.trim(),
       orderId: messageData.orderId
     };
     setMessageData(updatedMessageData);
 
-    // Log to console
-    console.log('Message Data:', updatedMessageData);
 
     setIsSending(true);
     setApiError(null);
@@ -237,40 +215,31 @@ const SendMessage: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Success - message will be updated via real-time listener
-        // No need to manually add to sentMessages, Firestore will handle it
         setMessageInput('');
         setIsSending(false);
-        console.log('Message sent successfully, waiting for Firestore update');
       } else {
-        // Handle errors
         let errorMessage = 'Please contact our customer support';
 
         if (data.message === 'Unauthorized') {
           errorMessage = 'You are not authenticated or your token is invalid';
-          setMessageInput(''); // Clear textarea
+          setMessageInput('');
         } else if (data.message === 'Missing parameters in request body') {
           errorMessage = 'Please refresh and try again';
-          // Keep textarea content
         } else if (data.message === 'Insufficient balance') {
           errorMessage = 'You do not have enough balance to send an SMS to this number';
-          // Keep textarea content
         } else if (data.message === 'Order not found') {
           errorMessage = 'Please contact our customer support';
-          // Keep textarea content
         } else if (data.message === 'Cannot reply to SMS for this order') {
           errorMessage = 'You cannot send an SMS to this number';
-          setMessageInput(''); // Clear textarea
+          setMessageInput('');
         } else if (data.message === 'Internal Server Error') {
           errorMessage = 'Please contact our customer support';
-          // Keep textarea content
         }
 
         setApiError(errorMessage);
         setIsSending(false);
       }
     } catch (error) {
-      console.error('Error sending message:', error);
       setApiError('Please contact our customer support');
       setIsSending(false);
     }
@@ -287,30 +256,23 @@ const SendMessage: React.FC = () => {
     setIsNumberSelectorDisabled(true);
 
     try {
-      // Simulate API call - replace with actual API endpoint
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // Set the document ID for the real-time listener
       if (selectedNumberData?.docId) {
         setOrderDocId(selectedNumberData.docId);
-        console.log('Order document ID set:', selectedNumberData.docId);
       }
 
-      // Load previous messages from messagesSent array (initial load)
       if (selectedNumberData?.messagesSent && selectedNumberData.messagesSent.length > 0) {
         const previousMessages: SentMessage[] = selectedNumberData.messagesSent.map((msg, index) => ({
           id: `prev-${index}`,
           text: msg,
-          timestamp: new Date() // We don't have timestamps for old messages, so use current time
+          timestamp: new Date()
         }));
         setSentMessages(previousMessages);
-        console.log('Initial messages loaded:', previousMessages);
       } else {
-        setSentMessages([]); // Clear messages if no previous messages
-        console.log('No initial messages found');
+        setSentMessages([]);
       }
 
-      // Mock data for empty simcard numbers
       const mockResults: NumberOption[] = [
         {
           id: '1',
@@ -326,7 +288,6 @@ const SendMessage: React.FC = () => {
 
       setSearchResults(mockResults);
     } catch (error) {
-      console.error('Error searching numbers:', error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -357,7 +318,7 @@ const SendMessage: React.FC = () => {
             <div className="text-center">
               <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
               <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
-                <li>• They can send SMS only to the number selected</li>
+                <li>• They can send SMS only to the number selected and each sending costs $0.5</li>
                 <li>• They can send SMS only if a code has arrived</li>
                 <li>• They can send multiple SMS in 5 minutes</li>
                 <li>• Their duration can't be extended</li>

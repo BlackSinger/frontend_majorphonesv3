@@ -23,30 +23,27 @@ interface HistoryRecord {
   orderId?: string;
 }
 
-// Function to check if a Short number has timed out (for display purposes only)
 export const hasTimedOut = (record: HistoryRecord): boolean => {
   if (record.serviceType !== 'Short' || record.status !== 'Pending' || !record.createdAt) {
     return false;
   }
   const now = new Date().getTime();
-  // Use updatedAt if available (for reused numbers), otherwise use createdAt
+  // Usage updatedAt if available (for reused numbers), otherwise use createdAt
   // const startTime = record.updatedAt ? record.updatedAt.getTime() : record.createdAt.getTime();
   const startTime = record.createdAt.getTime();
-  const fiveMinutes = 5 * 60 * 1000; // 5:00 in milliseconds
+  const fiveMinutes = 5 * 60 * 1000;
   const expiryTime = startTime + fiveMinutes;
   return now >= expiryTime;
 };
 
-// Function to check if 2:45 minutes have passed (for Cancel button availability)
 export const hasTwoFortyFiveMinutesPassed = (createdAt?: Date): boolean => {
-  if (!createdAt) return true; // If no createdAt, allow actions
+  if (!createdAt) return true;
   const now = new Date().getTime();
   const created = createdAt.getTime();
-  const twoMinutesFortyFive = 2 * 60 * 1000 + 45 * 1000; // 2:45 in milliseconds
+  const twoMinutesFortyFive = 2 * 60 * 1000 + 45 * 1000;
   return (now - created) >= twoMinutesFortyFive;
 };
 
-// Get display status for Short numbers
 export const getShortDisplayStatus = (record: HistoryRecord): string => {
   if (hasTimedOut(record)) {
     return 'Timed out';
@@ -54,7 +51,6 @@ export const getShortDisplayStatus = (record: HistoryRecord): string => {
   return record.status;
 };
 
-// Get status color for Short numbers
 export const getShortStatusColor = (status: string) => {
   switch (status) {
     case 'Completed':
@@ -72,7 +68,6 @@ export const getShortStatusColor = (status: string) => {
   }
 };
 
-// Calculate duration for Short numbers
 export const calculateShortDuration = (createdAt: Date, expiry: Date, reuse?: boolean, maySend?: boolean): string => {
   const durationMs = expiry.getTime() - createdAt.getTime();
 
@@ -91,13 +86,11 @@ export const calculateShortDuration = (createdAt: Date, expiry: Date, reuse?: bo
   return '';
 };
 
-// Get available actions for Short numbers
 export const getShortAvailableActions = (record: HistoryRecord): string[] => {
   const { status, reuse, maySend, code, createdAt, expiry } = record;
   const hasSms = code && code.trim() !== '';
   const displayStatus = getShortDisplayStatus(record);
 
-  // If visually showing "Timed out", no actions available
   if (displayStatus === 'Timed out') {
     return [];
   }
@@ -118,44 +111,34 @@ export const getShortAvailableActions = (record: HistoryRecord): string[] => {
   //   }
   // } else
   if (reuse === false && maySend === false) {
-    // Single use type
     if (status === 'Pending') {
-      // Only allow Cancel if 2:45 minutes have passed AND no SMS received
       if (!hasSms && hasTwoFortyFiveMinutesPassed(createdAt)) {
         return ['Cancel'];
       }
-      return []; // Disabled if less than 2:45 minutes or SMS received
+      return [];
     }
-    // For other statuses (Completed, Cancelled, Timed out) - no actions
     return [];
   } else if (reuse === false && maySend === true) {
-    // Receive/Respond type
     if (status === 'Pending') {
-      // Only allow Cancel if 2:45 minutes have passed AND no SMS received
       if (!hasSms && hasTwoFortyFiveMinutesPassed(createdAt)) {
         return ['Cancel'];
       }
-      return []; // Disabled if less than 2:45 minutes or SMS received
+      return [];
     } else if (status === 'Completed') {
-      // Check if expiry is still valid (greater than current time) and has SMS
       if (hasSms && expiry) {
         const now = new Date();
         if (expiry.getTime() > now.getTime()) {
-          // Within 5-minute window, show Send button
           return ['Send'];
         }
       }
-      // If no SMS, expired, or no expiry - no actions
       return [];
     }
-    // No actions for other statuses
     return [];
   }
 
   return [];
 };
 
-// Handle cancel short number
 export const handleCancelShort = async (
   orderId: string,
   setErrorMessage: (msg: string) => void,
@@ -170,14 +153,11 @@ export const handleCancelShort = async (
     return;
   }
 
-  // Set cancelling state
   setCancellingOrderId(orderId);
 
   try {
-    // Get Firebase ID token
     const idToken = await currentUser.getIdToken();
 
-    // Make API call to cancel short number cloud function
     const response = await fetch('https://cancelshortnumber-ezeznlhr5a-uc.a.run.app', {
       method: 'POST',
       headers: {
@@ -190,11 +170,8 @@ export const handleCancelShort = async (
     const data = await response.json();
 
     if (response.ok && data.success) {
-      // Success - the listener will automatically update the table
-      // No need to do anything, just clear the cancelling state
       setCancellingOrderId(null);
     } else {
-      // Handle error responses
       let errorMsg = 'An unknown error occurred';
 
       if (data.message === 'Unauthorized') {
@@ -214,7 +191,6 @@ export const handleCancelShort = async (
       setCancellingOrderId(null);
     }
   } catch (error) {
-    console.error('Cancel order error:', error);
     setErrorMessage('Please contact our customer support');
     setShowErrorModal(true);
     setCancellingOrderId(null);
@@ -280,7 +256,6 @@ export const handleCancelShort = async (
 //       setReusingOrderId(null);
 //     }
 //   } catch (error) {
-//     console.error('Reuse number error:', error);
 //     setErrorMessage('Please contact our customer support');
 //     setShowErrorModal(true);
 //     setReusingOrderId(null);

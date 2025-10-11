@@ -28,13 +28,11 @@ const Proxies: React.FC = () => {
   const durationDropdownRef = useRef<HTMLDivElement>(null);
   const stateInputRef = useRef<HTMLInputElement>(null);
 
-  // Global object to store proxy selection
   const [proxySelection, setProxySelection] = useState({
     duration: 0,
     state: ''
   });
 
-  // Proxy prices from Firestore
   const [proxyPrices, setProxyPrices] = useState({
     hour: 1,
     day: 2,
@@ -42,64 +40,13 @@ const Proxies: React.FC = () => {
     month: 20
   });
 
-  // Purchase states
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isPurchaseDisabled, setIsPurchaseDisabled] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const usaStates = [
-    { code: 'NA', name: 'Any State' },
-    { code: 'AL', name: 'Alabama (AL)' },
-    { code: 'AK', name: 'Alaska (AK)' },
-    { code: 'AZ', name: 'Arizona (AZ)' },
-    { code: 'AR', name: 'Arkansas (AR)' },
-    { code: 'CA', name: 'California (CA)' },
-    { code: 'CO', name: 'Colorado (CO)' },
-    { code: 'CT', name: 'Connecticut (CT)' },
-    { code: 'DE', name: 'Delaware (DE)' },
-    { code: 'FL', name: 'Florida (FL)' },
-    { code: 'GA', name: 'Georgia (GA)' },
-    { code: 'HI', name: 'Hawaii (HI)' },
-    { code: 'ID', name: 'Idaho (ID)' },
-    { code: 'IL', name: 'Illinois (IL)' },
-    { code: 'IN', name: 'Indiana (IN)' },
-    { code: 'IA', name: 'Iowa (IA)' },
-    { code: 'KS', name: 'Kansas (KS)' },
-    { code: 'KY', name: 'Kentucky (KY)' },
-    { code: 'LA', name: 'Louisiana (LA)' },
-    { code: 'ME', name: 'Maine (ME)' },
-    { code: 'MD', name: 'Maryland (MD)' },
-    { code: 'MA', name: 'Massachusetts (MA)' },
-    { code: 'MI', name: 'Michigan (MI)' },
-    { code: 'MN', name: 'Minnesota (MN)' },
-    { code: 'MS', name: 'Mississippi (MS)' },
-    { code: 'MO', name: 'Missouri (MO)' },
-    { code: 'MT', name: 'Montana (MT)' },
-    { code: 'NE', name: 'Nebraska (NE)' },
-    { code: 'NV', name: 'Nevada (NV)' },
-    { code: 'NH', name: 'New Hampshire (NH)' },
-    { code: 'NJ', name: 'New Jersey (NJ)' },
-    { code: 'NM', name: 'New Mexico (NM)' },
-    { code: 'NY', name: 'New York (NY)' },
-    { code: 'NC', name: 'North Carolina (NC)' },
-    { code: 'ND', name: 'North Dakota (ND)' },
-    { code: 'OH', name: 'Ohio (OH)' },
-    { code: 'OK', name: 'Oklahoma (OK)' },
-    { code: 'OR', name: 'Oregon (OR)' },
-    { code: 'PA', name: 'Pennsylvania (PA)' },
-    { code: 'RI', name: 'Rhode Island (RI)' },
-    { code: 'SC', name: 'South Carolina (SC)' },
-    { code: 'SD', name: 'South Dakota (SD)' },
-    { code: 'TN', name: 'Tennessee (TN)' },
-    { code: 'TX', name: 'Texas (TX)' },
-    { code: 'UT', name: 'Utah (UT)' },
-    { code: 'VT', name: 'Vermont (VT)' },
-    { code: 'VA', name: 'Virginia (VA)' },
-    { code: 'WA', name: 'Washington (WA)' },
-    { code: 'WV', name: 'West Virginia (WV)' },
-    { code: 'WI', name: 'Wisconsin (WI)' },
-    { code: 'WY', name: 'Wyoming (WY)' }
+    { code: 'NA', name: 'Random State' }
   ];
 
   const durations = [
@@ -109,12 +56,10 @@ const Proxies: React.FC = () => {
     { value: '30days', name: '30 days' }
   ];
 
-  // Filter states based on search term
   const filteredStates = usaStates.filter(state =>
     state.name.toLowerCase().includes(stateSearchTerm.toLowerCase())
   );
 
-  // Fetch proxy prices from Firestore on component mount
   useEffect(() => {
     const fetchProxyPrices = async () => {
       try {
@@ -131,20 +76,16 @@ const Proxies: React.FC = () => {
           });
         }
       } catch (error) {
-        console.error('Error fetching proxy prices:', error);
-        // Keep default prices if error
       }
     };
 
     fetchProxyPrices();
   }, []);
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (stateDropdownRef.current && !stateDropdownRef.current.contains(event.target as Node)) {
         setIsStateDropdownOpen(false);
-        // Solo limpiar el search term si no hay un estado seleccionado
         if (!selectedState) {
           setStateSearchTerm('');
         } else {
@@ -172,7 +113,6 @@ const Proxies: React.FC = () => {
     const value = e.target.value;
     setStateSearchTerm(value);
 
-    // Si el input está vacío, limpiar también selectedState
     if (value === '') {
       setSelectedState('');
     }
@@ -189,7 +129,6 @@ const Proxies: React.FC = () => {
     }
   };
 
-  // Get proxy price based on duration from Firestore prices
   const getProxyPrice = (duration: string): number => {
     const priceMap: { [key: string]: number } = {
       '1 hour': proxyPrices.hour,
@@ -201,14 +140,12 @@ const Proxies: React.FC = () => {
   };
 
   const getStateName = (fullStateName: string) => {
-    // Extract state name without abbreviation
     if (fullStateName.includes('(')) {
       return fullStateName.split(' (')[0];
     }
     return fullStateName;
   };
 
-  // Convert duration string to number
   const getDurationNumber = (duration: string): number => {
     const durationMap: { [key: string]: number } = {
       '1 hour': 0,
@@ -219,7 +156,6 @@ const Proxies: React.FC = () => {
     return durationMap[duration] || 0;
   };
 
-  // Get state code from state name
   const getStateCode = (stateName: string): string => {
     const state = usaStates.find(s => s.name === stateName);
     return state ? state.code : 'NA';
@@ -229,7 +165,6 @@ const Proxies: React.FC = () => {
     setIsSearching(true);
     setHasSearched(false);
 
-    // Update proxy selection object
     const stateCode = getStateCode(selectedState);
     const durationNum = getDurationNumber(selectedDuration);
 
@@ -239,10 +174,8 @@ const Proxies: React.FC = () => {
     });
 
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // Mock data for proxy
       const mockResults: ProxyOption[] = [
         {
           id: '1',
@@ -254,7 +187,6 @@ const Proxies: React.FC = () => {
 
       setSearchResults(mockResults);
     } catch (error) {
-      console.error('Error searching proxies:', error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -262,7 +194,6 @@ const Proxies: React.FC = () => {
     }
   };
 
-  // Handle purchase click - call cloud function
   const handlePurchase = async () => {
     const currentUser = getAuth().currentUser;
 
@@ -276,10 +207,8 @@ const Proxies: React.FC = () => {
     setIsPurchaseDisabled(true);
 
     try {
-      // Get Firebase ID token
       const idToken = await currentUser.getIdToken();
 
-      // Make API call to purchase proxy cloud function
       const response = await fetch('https://buymobileproxyusa-ezeznlhr5a-uc.a.run.app', {
         method: 'POST',
         headers: {
@@ -292,10 +221,8 @@ const Proxies: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Success - redirect to History with Proxies tab
         navigate('/history?tab=proxies');
       } else {
-        // Handle error responses
         let errorMsg = 'An unknown error occurred';
         let shouldKeepDisabled = false;
 
@@ -329,13 +256,11 @@ const Proxies: React.FC = () => {
         setShowErrorModal(true);
         setIsPurchasing(false);
 
-        // Keep disabled only for Unauthorized and Amazon Pay errors
         if (!shouldKeepDisabled) {
           setIsPurchaseDisabled(false);
         }
       }
     } catch (error) {
-      console.error('Purchase proxy error:', error);
       setErrorMessage('Please contact our customer support');
       setShowErrorModal(true);
       setIsPurchasing(false);
@@ -369,7 +294,7 @@ const Proxies: React.FC = () => {
                 <li>• They can't be refunded once purchased</li>
                 <li>• They are real mobile IPs from AT&T and Verizon carriers</li>
                 <li>• They are HTTPS/SOCKS5</li>
-                <li>• They require user and password for authentication</li>     
+                <li>• You can't select location, it is assigned randomly</li>     
               </ul>
             </div>
           </div>

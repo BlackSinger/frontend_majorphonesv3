@@ -14,7 +14,6 @@ const API: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [showErrorModal, setShowErrorModal] = useState(false);
 
-  // Fetch API key from user document
   useEffect(() => {
     const fetchAPIKey = async () => {
       if (!currentUser) {
@@ -35,9 +34,8 @@ const API: React.FC = () => {
           setShowErrorModal(true);
         }
       } catch (error: any) {
-        console.error('Error fetching API key:', error);
 
-        let errorMsg = 'Failed to load API key. Please try again later.';
+        let errorMsg = 'Failed to load API key, please try again later';
 
         if (error.code === 'permission-denied') {
           errorMsg = 'Access denied, you cannot check the API key';
@@ -61,7 +59,6 @@ const API: React.FC = () => {
     fetchAPIKey();
   }, [currentUser]);
 
-  // Copy API key to clipboard
   const handleCopyKey = () => {
     if (apiKey) {
       navigator.clipboard.writeText(apiKey);
@@ -70,7 +67,6 @@ const API: React.FC = () => {
     }
   };
 
-  // Mask API key
   const maskKey = (key: string) => {
     if (key.length <= 8) return key;
     return `${key.substring(0, 8)}${'•'.repeat(24)}${key.substring(key.length - 4)}`;

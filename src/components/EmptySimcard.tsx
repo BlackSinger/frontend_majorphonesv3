@@ -23,18 +23,14 @@ const EmptySimcard: React.FC = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
 
-  // Error handling state
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Purchase state - track which option is being purchased
   const [purchasingOptionId, setPurchasingOptionId] = useState<string | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Helper function to safely format price
   const formatPrice = (price: any): string => {
-    // Convert to number and take only first 2 decimals
     const numPrice = parseFloat(Number(price).toFixed(2));
     return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
   };
@@ -59,7 +55,6 @@ const EmptySimcard: React.FC = () => {
     }
   ];
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -73,7 +68,6 @@ const EmptySimcard: React.FC = () => {
     };
   }, []);
 
-  // Handle error modal close
   const handleErrorModalClose = () => {
     setShowErrorModal(false);
     setErrorMessage('');
@@ -88,15 +82,12 @@ const EmptySimcard: React.FC = () => {
       return;
     }
 
-    // Create unique identifier for this option
     const uniqueOptionId = option.id;
     setPurchasingOptionId(uniqueOptionId);
 
     try {
-      // Get Firebase ID token
       const idToken = await currentUser.getIdToken();
 
-      // Make API call to buyemptysimcardusa cloud function (no body needed)
       const response = await fetch('https://buyemptysimcardusa-ezeznlhr5a-uc.a.run.app', {
         method: 'POST',
         headers: {
@@ -108,10 +99,8 @@ const EmptySimcard: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Success case - redirect to history
         navigate('/history');
       } else {
-        // Handle error responses
         let errorMsg = 'An unknown error occurred';
 
         if (data.message === 'Unauthorized') {
@@ -132,7 +121,6 @@ const EmptySimcard: React.FC = () => {
         setShowErrorModal(true);
       }
     } catch (error) {
-      console.error('Buy Empty SIM Card USA purchase error:', error);
       setErrorMessage('Please contact our customer support');
       setShowErrorModal(true);
     } finally {
@@ -145,7 +133,6 @@ const EmptySimcard: React.FC = () => {
     setHasSearched(false);
 
     try {
-      // Get price from fees/emptySimcardCatalog document
       const docRef = doc(db, 'fees', 'emptySimcardCatalog');
       const docSnap = await getDoc(docRef);
 
@@ -164,11 +151,10 @@ const EmptySimcard: React.FC = () => {
       const countryCode = selectedCountryData?.code || 'US';
       const countryPrefix = selectedCountryData?.prefix || '+1';
 
-      // Create single number option with price from Firebase
       const result: NumberOption[] = [
         {
           id: 'empty-simcard-1',
-          number: `${countryPrefix}-XXXXXX`, // Placeholder number
+          number: `${countryPrefix}-XXXXXX`,
           price: Number(thirtyDaysPrice),
           country: selectedCountry,
           countryCode: countryCode,
@@ -180,13 +166,10 @@ const EmptySimcard: React.FC = () => {
       setSearchResults(result);
       setHasSearched(true);
     } catch (error) {
-      console.error('Error searching numbers:', error);
 
-      // Reset search state to allow retry
       setSearchResults([]);
       setHasSearched(false);
 
-      // Determine error message based on error type
       let userErrorMessage = 'An error occurred while searching for numbers, please try again';
 
       if (error instanceof Error) {

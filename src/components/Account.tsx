@@ -13,7 +13,6 @@ const Account: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [hasVerificationParams, setHasVerificationParams] = useState(false);
 
-  // Password reset states
   const [isPasswordReset, setIsPasswordReset] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -22,7 +21,6 @@ const Account: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
 
-  // Set title immediately
   useEffect(() => {
     document.title = 'Major Phones LLC';
   }, []);
@@ -38,11 +36,9 @@ const Account: React.FC = () => {
 
         try {
           await applyActionCode(auth, oobCode);
-          console.log('Email verified successfully');
           setVerificationSuccess(true);
           setIsVerifying(false);
         } catch (error: any) {
-          console.error('Error verifying email:', error);
           setErrorMessage('The link may be invalid or expired, contact our customer support');
           setIsVerifying(false);
         }
@@ -51,21 +47,16 @@ const Account: React.FC = () => {
         setIsPasswordReset(true);
 
         try {
-          // Verify the password reset code first
           await verifyPasswordResetCode(auth, oobCode);
-          console.log('Password reset code verified successfully');
         } catch (error: any) {
-          console.error('Error verifying password reset code:', error);
           setErrorMessage('The password reset link may be invalid or expired, contact our customer support');
           setIsPasswordReset(false);
         }
       } else if (mode || oobCode) {
-        // Has some verification params but invalid
         setHasVerificationParams(true);
         setErrorMessage('Invalid verification link');
         setIsVerifying(false);
       }
-      // If no verification params at all, hasVerificationParams stays false
     };
 
     handleParams();
@@ -79,7 +70,6 @@ const Account: React.FC = () => {
 
       return () => clearTimeout(timer);
     } else if (verificationSuccess && countdown === 0) {
-      // Sign out the user before redirecting to signin
       signOut(auth).then(() => {
         navigate('/signin');
       });
@@ -93,7 +83,6 @@ const Account: React.FC = () => {
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Custom validation
     if (!newPassword.trim()) {
       setModalMessage('Please enter your new password.');
       setShowModal(true);
@@ -112,13 +101,11 @@ const Account: React.FC = () => {
       const oobCode = searchParams.get('oobCode');
       if (oobCode) {
         await confirmPasswordReset(auth, oobCode, newPassword);
-        console.log('Password reset successfully');
         setResetSuccess(true);
         setModalMessage('Your password has been changed successfully');
         setShowModal(true);
       }
     } catch (error: any) {
-      console.error('Error resetting password:', error);
       let errorMessage = 'An error occurred while resetting your password';
 
       switch (error.code) {

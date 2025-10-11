@@ -23,7 +23,6 @@ const Profile: React.FC = () => {
   const [show2FAErrorModal, setShow2FAErrorModal] = useState(false);
   const [twoFAError, setTwoFAError] = useState<string | null>(null);
   
-  // Estados para el modal de configuración de 2FA
   const [show2FASetupModal, setShow2FASetupModal] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [isEnrolling, setIsEnrolling] = useState(false);
@@ -32,27 +31,23 @@ const Profile: React.FC = () => {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [setupError, setSetupError] = useState<string | null>(null);
   
-  // Estados para re-autenticación
   const [showReauthModal, setShowReauthModal] = useState(false);
   const [reauthPassword, setReauthPassword] = useState('');
   const [isReauthenticating, setIsReauthenticating] = useState(false);
   const [reauthError, setReauthError] = useState<string | null>(null);
   
-  // Estados para desafío MFA al desactivar
   const [showMFAChallengeModal, setShowMFAChallengeModal] = useState(false);
   const [mfaChallengeCode, setMfaChallengeCode] = useState('');
   const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
   const [isSolvingMFA, setIsSolvingMFA] = useState(false);
   const [mfaChallengeError, setMfaChallengeError] = useState<string | null>(null);
 
-  // Estados para eliminación de cuenta
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [deleteAccountPassword, setDeleteAccountPassword] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
   const [isGoogleUser, setIsGoogleUser] = useState(false);
 
-  // Estados para verificación de identidad antes de cambiar contraseña
   const [showPasswordChangeReauthModal, setShowPasswordChangeReauthModal] = useState(false);
   const [passwordChangeReauthPassword, setPasswordChangeReauthPassword] = useState('');
   const [isPasswordChangeReauthenticating, setIsPasswordChangeReauthenticating] = useState(false);
@@ -60,7 +55,6 @@ const Profile: React.FC = () => {
 
   const { currentUser, logout } = useAuth();
 
-  // Fetch user email from Firestore
   useEffect(() => {
     const fetchUserEmail = async () => {
       if (!currentUser) {
@@ -79,13 +73,11 @@ const Profile: React.FC = () => {
         if (userDocSnap.exists()) {
           const userData = userDocSnap.data();
           setUserEmail(userData.email || 'No email found');
-          // Load 2FA status from user's enrolled factors
           setIs2FAEnabled(userData.mfaEnabled || false);
         } else {
           setUserEmail('No email found');
         }
       } catch (error: any) {
-        console.error('Error fetching user email:', error);
         let errorMessage = 'Failed to load email';
 
         if (error.code === 'permission-denied') {
@@ -107,7 +99,6 @@ const Profile: React.FC = () => {
     fetchUserEmail();
   }, [currentUser]);
 
-  // Page load animation
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoaded(true);
@@ -115,16 +106,12 @@ const Profile: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Debug: Monitor mfaResolver changes
   useEffect(() => {
-    console.log('mfaResolver state changed:', mfaResolver);
     if (mfaResolver) {
-      console.log('mfaResolver hints:', mfaResolver.hints);
     }
   }, [mfaResolver]);
 
   const handlePasswordChangeRequest = () => {
-    // Mostrar modal de verificación de identidad
     setShowPasswordChangeReauthModal(true);
   };
 
@@ -142,12 +129,10 @@ const Profile: React.FC = () => {
 
       await reauthenticateWithCredential(currentUser, credential);
 
-      // Si la re-autenticación fue exitosa, cerrar modal y enviar correo de cambio de contraseña
       setShowPasswordChangeReauthModal(false);
       setPasswordChangeReauthPassword('');
       setPasswordChangeReauthError(null);
 
-      // Enviar correo de cambio de contraseña
       try {
         setIsLoadingPasswordReset(true);
         await sendPasswordResetEmail(auth, userEmail!);
@@ -155,15 +140,12 @@ const Profile: React.FC = () => {
         setShowPasswordConfirmation(true);
         setIsLoadingPasswordReset(false);
 
-        // Close session after 8 seconds
         setTimeout(async () => {
           await logout();
         }, 8000);
       } catch (error: any) {
-        console.error('Error sending password reset email:', error);
         setIsLoadingPasswordReset(false);
 
-        // Handle different error types
         let errorMessage = 'Failed to send password reset email, please try again';
 
         if (error.code === 'auth/user-not-found') {
@@ -180,7 +162,6 @@ const Profile: React.FC = () => {
         setShowPasswordResetErrorModal(true);
       }
     } catch (error: any) {
-      console.error('Re-authentication error:', error);
 
       let errorMessage = 'Failed to verify your password, please try again';
 
@@ -211,26 +192,20 @@ const Profile: React.FC = () => {
 
     const newState = !is2FAEnabled;
 
-    // Si está activando 2FA, primero re-autenticar y luego mostrar modal de configuración
     if (newState === true) {
       setShowReauthModal(true);
       return;
     }
 
-    // Si está desactivando 2FA, necesitamos re-autenticar primero
     if (newState === false && is2FAEnabled) {
-      // Mostrar modal de re-autenticación para desactivar 2FA
       setShowReauthModal(true);
       return;
     }
 
-    // Este código no debería ejecutarse, pero lo dejamos como fallback
     setIsLoading2FA(true);
-    console.log('Toggling 2FA to:', newState);
 
     try {
       const idToken = await currentUser.getIdToken();
-      console.log('ID Token obtained');
 
       const response = await fetch('https://us-central1-majorphonesv3.cloudfunctions.net/mfaEnabled', {
         method: 'POST',
@@ -243,9 +218,7 @@ const Profile: React.FC = () => {
         })
       });
 
-      console.log('Response status:', response.status);
       const data = await response.json();
-      console.log('Cloud Function response:', data);
 
       if (response.ok && data.success) {
         setIs2FAEnabled(newState);
@@ -258,7 +231,6 @@ const Profile: React.FC = () => {
         throw new Error(data.error || 'Failed to update 2FA settings');
       }
     } catch (error: any) {
-      console.error('Error toggling 2FA:', error);
       
       let errorMessage = 'Failed to update Two-Factor Authentication. Please try again.';
       
@@ -286,7 +258,6 @@ const Profile: React.FC = () => {
   };
 
   const handleReauthenticate = async () => {
-    // Limpiar error previo
     setReauthError(null);
     
     if (!reauthPassword.trim() || !currentUser || !userEmail) {
@@ -297,48 +268,35 @@ const Profile: React.FC = () => {
     setIsReauthenticating(true);
 
     try {
-      // Re-autenticar al usuario
       const credential = EmailAuthProvider.credential(userEmail, reauthPassword);
       await reauthenticateWithCredential(currentUser, credential);
 
-      // Re-autenticación exitosa
       setShowReauthModal(false);
       setReauthPassword('');
       setReauthError(null);
 
-      // Si el 2FA ya está activado, significa que el usuario quiere desactivarlo
       if (is2FAEnabled) {
         await handleDisable2FA();
       } else {
-        // Si el 2FA está desactivado, significa que el usuario quiere activarlo
         setShow2FASetupModal(true);
         setSetupStep('totp');
         setVerificationCode('');
       }
     } catch (error: any) {
-      console.error('Error re-authenticating:', error);
       
-      // Si el error es por MFA requerido, manejar el desafío
       if (error.code === 'auth/multi-factor-auth-required') {
-        console.log('MFA challenge required for re-authentication');
         
         try {
-          // Usar getMultiFactorResolver para obtener el resolver del error
           const resolver = getMultiFactorResolver(auth, error);
-          console.log('MFA Resolver obtained:', resolver);
-          console.log('MFA hints:', resolver.hints);
           
-          // Establecer todos los estados necesarios
           setMfaResolver(resolver);
           setShowReauthModal(false);
           setReauthPassword('');
           setReauthError(null);
           setShowMFAChallengeModal(true);
           
-          // No establecer isReauthenticating a false aquí, el finally lo hará
           return;
         } catch (resolverError: any) {
-          console.error('Error getting MFA resolver:', resolverError);
           setReauthError('Unable to get MFA resolver. Please try again or contact support.');
           return;
         }
@@ -367,16 +325,10 @@ const Profile: React.FC = () => {
   };
 
   const handleMFAChallenge = async () => {
-    console.log('=== handleMFAChallenge CALLED ===');
-    console.log('mfaChallengeCode:', mfaChallengeCode);
-    console.log('mfaResolver:', mfaResolver);
-    console.log('isSolvingMFA:', isSolvingMFA);
     
-    // Limpiar error previo
     setMfaChallengeError(null);
     
     if (!mfaChallengeCode.trim()) {
-      console.log('Validation failed - missing code');
       setMfaChallengeError('Please enter the verification code from your authenticator app');
       return;
     }
@@ -387,7 +339,6 @@ const Profile: React.FC = () => {
     }
 
     if (!mfaResolver) {
-      console.log('Validation failed - missing resolver');
       setMfaChallengeError('Session expired. Please try again.');
       setTimeout(() => {
         setShowMFAChallengeModal(false);
@@ -397,41 +348,26 @@ const Profile: React.FC = () => {
       return;
     }
 
-    console.log('Validation passed - setting isSolvingMFA to true');
     setIsSolvingMFA(true);
 
     try {
-      console.log('MFA Challenge: Starting verification...');
-      console.log('MFA Resolver hints:', mfaResolver.hints);
       
-      // Obtener el hint del factor TOTP
       const selectedHint = mfaResolver.hints[0];
-      console.log('Selected hint:', selectedHint);
       
-      // Crear la aserción para resolver el desafío
       const multiFactorAssertion = TotpMultiFactorGenerator.assertionForSignIn(
         selectedHint.uid,
         mfaChallengeCode.trim()
       );
-      console.log('MFA assertion created');
 
-      // Resolver el desafío MFA - esto completa la re-autenticación
       const userCredential = await mfaResolver.resolveSignIn(multiFactorAssertion);
-      console.log('MFA challenge resolved successfully', userCredential);
 
-      // Re-autenticación exitosa con MFA
       setShowMFAChallengeModal(false);
       setMfaChallengeCode('');
       setMfaChallengeError(null);
       setMfaResolver(null);
 
-      // Proceder a desactivar el 2FA
-      console.log('Proceeding to disable 2FA...');
       await handleDisable2FA();
     } catch (error: any) {
-      console.error('Error resolving MFA challenge:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
       
       let errorMessage = 'Failed to verify code, please try again';
 
@@ -443,11 +379,9 @@ const Profile: React.FC = () => {
         errorMessage = error.message;
       }
 
-      // Mostrar error en el modal MFA en lugar de abrir otra modal
-      // Usar setTimeout para evitar conflictos de renderizado
       setTimeout(() => {
         setMfaChallengeError(errorMessage);
-        setMfaChallengeCode(''); // Limpiar el código para que el usuario ingrese uno nuevo
+        setMfaChallengeCode('');
       }, 0);
     } finally {
       setIsSolvingMFA(false);
@@ -462,48 +396,30 @@ const Profile: React.FC = () => {
   };
 
   const handleDisable2FA = async () => {
-    // Usar auth.currentUser directamente para obtener el usuario más actualizado
     const user = auth.currentUser;
     if (!user) {
-      console.error('No current user found');
       setTwoFAError('User session not found. Please try again.');
       setShow2FAErrorModal(true);
       return;
     }
 
     setIsLoading2FA(true);
-    console.log('Disabling 2FA...');
-    console.log('Current user UID:', user.uid);
 
     try {
-      // Primero desenrollar todos los factores MFA del usuario
       const enrolledFactors = multiFactor(user).enrolledFactors;
-      console.log('Enrolled factors:', enrolledFactors.length);
       
       if (enrolledFactors.length > 0) {
-        console.log('Unenrolling MFA factors...', enrolledFactors.length);
         
-        // Desenrollar cada factor
         for (const factor of enrolledFactors) {
           try {
-            console.log('Attempting to unenroll factor:', factor.uid);
             await multiFactor(user).unenroll(factor);
-            console.log('Successfully unenrolled factor:', factor.uid);
           } catch (unenrollError: any) {
-            console.error('Error unenrolling factor:', unenrollError);
-            console.error('Error code:', unenrollError.code);
-            console.error('Error message:', unenrollError.message);
-            // Continuar con el siguiente factor
           }
         }
       } else {
-        console.log('No enrolled factors found');
       }
 
-      // Luego actualizar Firestore
-      console.log('Getting ID token...');
-      const idToken = await user.getIdToken(true); // Force refresh token
-      console.log('ID token obtained');
+      const idToken = await user.getIdToken(true);
       
       const response = await fetch('https://us-central1-majorphonesv3.cloudfunctions.net/mfaEnabled', {
         method: 'POST',
@@ -516,12 +432,9 @@ const Profile: React.FC = () => {
         })
       });
 
-      console.log('Response status:', response.status);
       const data = await response.json();
-      console.log('Cloud Function response:', data);
 
       if (response.ok && data.success) {
-        console.log('2FA disabled successfully');
         setIs2FAEnabled(false);
         setShow2FAConfirmation(true);
 
@@ -532,9 +445,6 @@ const Profile: React.FC = () => {
         throw new Error(data.error || 'Failed to disable 2FA');
       }
     } catch (error: any) {
-      console.error('Error disabling 2FA:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
       
       let errorMessage = 'Failed to disable Two-Factor Authentication. Please try again.';
       
@@ -546,15 +456,12 @@ const Profile: React.FC = () => {
       setShow2FAErrorModal(true);
     } finally {
       setIsLoading2FA(false);
-      console.log('handleDisable2FA completed');
     }
   };
 
-  // Funciones para eliminación de cuenta
   const handleDeleteAccountClick = () => {
     const user = auth.currentUser;
     if (user) {
-      // Detectar si el usuario usa Google
       const hasGoogleProvider = user.providerData.some(
         provider => provider.providerId === 'google.com'
       );
@@ -586,10 +493,7 @@ const Profile: React.FC = () => {
     setDeleteAccountError(null);
 
     try {
-      console.log('Re-authenticating user for account deletion...');
-      console.log('User providers:', user.providerData);
       
-      // Verificar qué proveedor de autenticación usa el usuario
       const hasPasswordProvider = user.providerData.some(
         provider => provider.providerId === 'password'
       );
@@ -598,12 +502,9 @@ const Profile: React.FC = () => {
       );
 
       if (hasGoogleProvider && !hasPasswordProvider) {
-        // Usuario de Google - re-autenticar con popup
-        console.log('Google user detected, re-authenticating with popup...');
         const provider = new GoogleAuthProvider();
         await reauthenticateWithPopup(user, provider);
       } else if (hasPasswordProvider) {
-        // Usuario con contraseña - re-autenticar con credenciales
         if (!deleteAccountPassword.trim()) {
           setDeleteAccountError('Please enter your password');
           return;
@@ -614,7 +515,6 @@ const Profile: React.FC = () => {
           return;
         }
 
-        console.log('Password user detected, re-authenticating with credentials...');
         const credential = EmailAuthProvider.credential(user.email, deleteAccountPassword);
         await reauthenticateWithCredential(user, credential);
       } else {
@@ -622,19 +522,13 @@ const Profile: React.FC = () => {
         return;
       }
       
-      console.log('Re-authentication successful, deleting account...');
 
-      // Eliminar el usuario de Firebase Authentication
       await deleteUser(user);
       
-      console.log('Account deleted successfully');
 
-      // Cerrar sesión
       await logout();
       
     } catch (error: any) {
-      console.error('Error deleting account:', error);
-      console.error('Error code:', error.code);
 
       let errorMessage = 'Failed to delete account, please try again';
 
@@ -654,7 +548,6 @@ const Profile: React.FC = () => {
         errorMessage = error.message;
       }
 
-      // Usar setTimeout para evitar conflictos de renderizado
       setTimeout(() => {
         setDeleteAccountError(errorMessage);
       }, 0);
@@ -669,20 +562,16 @@ const Profile: React.FC = () => {
     setIsEnrolling(true);
 
     try {
-      // Get multi-factor session
       const multiFactorSession = await multiFactor(currentUser).getSession();
       
-      // Generate TOTP secret using Firebase API
       const totpSecretObj = await TotpMultiFactorGenerator.generateSecret(multiFactorSession);
       
       setTotpSecret(totpSecretObj);
       
-      // Generate QR code URL for authenticator apps
       const accountName = userEmail || currentUser.email || 'User';
       const issuer = 'Major Phones';
       const totpUri = totpSecretObj.generateQrCodeUrl(accountName, issuer);
       
-      // Convert the otpauth:// URI to a QR code data URL
       const qrCodeDataUrl = await QRCode.toDataURL(totpUri, {
         width: 200,
         margin: 2,
@@ -694,7 +583,6 @@ const Profile: React.FC = () => {
       
       setQrCodeUrl(qrCodeDataUrl);
     } catch (error: any) {
-      console.error('Error generating TOTP:', error);
       let errorMessage = 'Failed to generate authentication code. Please try again.';
 
       setTwoFAError(errorMessage);
@@ -714,16 +602,13 @@ const Profile: React.FC = () => {
     setIsEnrolling(true);
 
     try {
-      // Create TOTP assertion with the secret and verification code
       const multiFactorAssertion = TotpMultiFactorGenerator.assertionForEnrollment(
         totpSecret,
         verificationCode
       );
 
-      // Enroll the TOTP factor
       await multiFactor(currentUser).enroll(multiFactorAssertion, 'Authenticator App');
 
-      // Call cloud function to update Firestore
       const idToken = await currentUser.getIdToken();
       const response = await fetch('https://us-central1-majorphonesv3.cloudfunctions.net/mfaEnabled', {
         method: 'POST',
@@ -750,7 +635,6 @@ const Profile: React.FC = () => {
         throw new Error(data.error || 'Failed to enable 2FA');
       }
     } catch (error: any) {
-      console.error('Error verifying TOTP:', error);
       let errorMessage = 'Failed to verify code, please try again';
 
       if (error.code === 'auth/invalid-verification-code') {
@@ -759,11 +643,9 @@ const Profile: React.FC = () => {
         errorMessage = 'Setup session expired, please refresh and try again';
       }
 
-      // Mostrar error dentro de la modal en lugar de abrir otra modal
-      // Usar setTimeout para evitar conflictos de renderizado
       setTimeout(() => {
         setSetupError(errorMessage);
-        setVerificationCode(''); // Limpiar el código para que el usuario ingrese uno nuevo
+        setVerificationCode('');
       }, 0);
     } finally {
       setIsEnrolling(false);
@@ -1159,7 +1041,7 @@ const Profile: React.FC = () => {
                     value={reauthPassword}
                     onChange={(e) => {
                       setReauthPassword(e.target.value);
-                      setReauthError(null); // Limpiar error cuando el usuario empieza a escribir
+                      setReauthError(null);
                     }}
                     onKeyPress={(e) => e.key === 'Enter' && !isReauthenticating && handleReauthenticate()}
                     placeholder="Enter your password"
@@ -1321,7 +1203,7 @@ const Profile: React.FC = () => {
                     value={mfaChallengeCode}
                     onChange={(e) => {
                       setMfaChallengeCode(e.target.value.replace(/\D/g, ''));
-                      setMfaChallengeError(null); // Limpiar error cuando el usuario empieza a escribir
+                      setMfaChallengeError(null);
                     }}
                     onKeyPress={(e) => e.key === 'Enter' && mfaChallengeCode.length === 6 && !isSolvingMFA && handleMFAChallenge()}
                     placeholder="000000"
@@ -1471,7 +1353,7 @@ const Profile: React.FC = () => {
                       value={verificationCode}
                       onChange={(e) => {
                         setVerificationCode(e.target.value.replace(/\D/g, ''));
-                        setSetupError(null); // Limpiar error cuando el usuario empieza a escribir
+                        setSetupError(null);
                       }}
                       placeholder="000000"
                       className="w-full px-2 py-2 bg-white/10 border border-white/20 rounded-xl text-white text-center text-lg tracking-widest placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all duration-300 font-mono"

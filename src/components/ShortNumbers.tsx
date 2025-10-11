@@ -7,12 +7,10 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase/config';
 import { getAuth } from 'firebase/auth';
 
-// Global object to store service name
 const globalSearchData = {
   serviceName: ''
 };
 
-// Global object to store purchase data
 const globalPurchaseData = {
   serviceId: '',
   option: 0
@@ -40,9 +38,7 @@ const ShortNumbers: React.FC = () => {
   const navigate = useNavigate();
   const [user] = useAuthState(auth);
 
-  // Helper function to safely format price
   const formatPrice = (price: any): string => {
-    // Convert to number and take only first 2 decimals
     const numPrice = parseFloat(Number(price).toFixed(2));
     return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
   };
@@ -53,25 +49,21 @@ const ShortNumbers: React.FC = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
 
-  // Services state
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [selectedService, setSelectedService] = useState<ServiceOption | null>(null);
   const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
   const [filteredServices, setFilteredServices] = useState<ServiceOption[]>([]);
 
-  // Error handling state
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [hasError, setHasError] = useState(false);
 
-  // Purchase state - track which option is being purchased
   const [purchasingOptionId, setPurchasingOptionId] = useState<string | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const serviceDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Function to map country to Firestore collection name
   const getCollectionNameForCountry = (countryName: string): string => {
     switch (countryName) {
       case 'United States':
@@ -85,7 +77,7 @@ const ShortNumbers: React.FC = () => {
       case 'France':
         return 'stnTargetsFrance';
       default:
-        return 'stnTargetsUSA'; // Default fallback
+        return 'stnTargetsUSA';
     }
   };
 
@@ -160,12 +152,10 @@ const ShortNumbers: React.FC = () => {
     }
   ];
 
-  // Load services from Firebase
   const loadServices = async (collectionName: string) => {
     try {
       setIsLoadingServices(true);
       setHasError(false);
-      // Clear previous services and search state
       setServices([]);
       setFilteredServices([]);
       setSelectedService(null);
@@ -180,23 +170,20 @@ const ShortNumbers: React.FC = () => {
           const data = doc.data();
           servicesList.push({
             id: doc.id,
-            name: data.name || doc.id // Use name field or document ID as fallback
+            name: data.name || doc.id
           });
         });
 
-        // Sort services alphabetically
         servicesList.sort((a, b) => a.name.localeCompare(b.name));
 
         setServices(servicesList);
         setFilteredServices(servicesList);
         setHasError(false);
       } catch (error) {
-        console.error('Error loading services:', error);
         setServices([]);
         setFilteredServices([]);
         setHasError(true);
 
-        // Determine error message based on error type
         let userErrorMessage = 'An error occurred while loading services, please contact support';
 
         if (error instanceof Error) {
@@ -218,13 +205,11 @@ const ShortNumbers: React.FC = () => {
       }
     };
 
-  // Load services on component mount
   useEffect(() => {
     const collectionName = getCollectionNameForCountry(selectedCountry);
     loadServices(collectionName);
   }, []);
 
-  // Load services when country changes
   useEffect(() => {
     if (selectedCountry) {
       const collectionName = getCollectionNameForCountry(selectedCountry);
@@ -232,7 +217,6 @@ const ShortNumbers: React.FC = () => {
     }
   }, [selectedCountry]);
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -249,7 +233,6 @@ const ShortNumbers: React.FC = () => {
     };
   }, []);
 
-  // Handle error modal close
   const handleErrorModalClose = () => {
     setShowErrorModal(false);
     setErrorMessage('');
@@ -270,10 +253,6 @@ const ShortNumbers: React.FC = () => {
   //   try {
   //     // Get Firebase ID token using official method
   //     const idToken = await currentUser.getIdToken();
-
-  //     // Log token for debugging (remove in production)
-  //     console.log('Reuse USA - ID Token length:', idToken?.length);
-  //     console.log('Reuse USA - ID Token starts with:', idToken?.substring(0, 20));
 
   //     // Make API call to reuseusa cloud function
   //     const response = await fetch('https://reuseusa-ezeznlhr5a-uc.a.run.app', {
@@ -310,7 +289,6 @@ const ShortNumbers: React.FC = () => {
   //       setShowErrorModal(true);
   //     }
   //   } catch (error) {
-  //     console.error('Reuse USA purchase error:', error);
   //     setErrorMessage('Please contact our customer support');
   //     setShowErrorModal(true);
   //   } finally {
@@ -318,7 +296,6 @@ const ShortNumbers: React.FC = () => {
   //   }
   // };
 
-  // Handle purchase for opt1, opt2, opt3 numbers (standard)
   const handleBuyShortUSAPurchase = async (uniqueOptionId: string) => {
     const currentUser = getAuth().currentUser;
 
@@ -331,14 +308,8 @@ const ShortNumbers: React.FC = () => {
     setPurchasingOptionId(uniqueOptionId);
 
     try {
-      // Get Firebase ID token using official method
       const idToken = await currentUser.getIdToken();
 
-      // Log token for debugging (remove in production)
-      console.log('Buy Short USA - ID Token length:', idToken?.length);
-      console.log('Buy Short USA - ID Token starts with:', idToken?.substring(0, 20));
-
-      // Make API call to buyshortusa cloud function
       const response = await fetch('https://buyshortusa-ezeznlhr5a-uc.a.run.app', {
         method: 'POST',
         headers: {
@@ -354,10 +325,8 @@ const ShortNumbers: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Success case - redirect to history
         navigate('/history');
       } else {
-        // Handle error responses for buyshortusa
         let errorMsg = 'An unknown error occurred';
 
         if (data.message === 'Unauthorized') {
@@ -376,7 +345,6 @@ const ShortNumbers: React.FC = () => {
         setShowErrorModal(true);
       }
     } catch (error) {
-      console.error('Buy Short USA purchase error:', error);
       setErrorMessage('Please contact our customer support');
       setShowErrorModal(true);
     } finally {
@@ -384,7 +352,6 @@ const ShortNumbers: React.FC = () => {
     }
   };
 
-  // Handle purchase for UK numbers (opt2, opt5)
   const handleBuyShortUKPurchase = async (uniqueOptionId: string) => {
     const currentUser = getAuth().currentUser;
 
@@ -397,14 +364,8 @@ const ShortNumbers: React.FC = () => {
     setPurchasingOptionId(uniqueOptionId);
 
     try {
-      // Get Firebase ID token using official method
       const idToken = await currentUser.getIdToken();
 
-      // Log token for debugging (remove in production)
-      console.log('Buy Short UK - ID Token length:', idToken?.length);
-      console.log('Buy Short UK - ID Token starts with:', idToken?.substring(0, 20));
-
-      // Make API call to buyshortuk cloud function
       const response = await fetch('https://buyshortuk-ezeznlhr5a-uc.a.run.app', {
         method: 'POST',
         headers: {
@@ -420,10 +381,8 @@ const ShortNumbers: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Success case - redirect to history
         navigate('/history');
       } else {
-        // Handle error responses for buyshortuk
         let errorMsg = 'An unknown error occurred';
 
         if (data.message === 'Unauthorized') {
@@ -442,7 +401,6 @@ const ShortNumbers: React.FC = () => {
         setShowErrorModal(true);
       }
     } catch (error) {
-      console.error('Buy Short UK purchase error:', error);
       setErrorMessage('Please contact our customer support');
       setShowErrorModal(true);
     } finally {
@@ -450,7 +408,6 @@ const ShortNumbers: React.FC = () => {
     }
   };
 
-  // Handle purchase for India numbers (opt2, opt5)
   const handleBuyShortIndiaPurchase = async (uniqueOptionId: string) => {
     const currentUser = getAuth().currentUser;
 
@@ -463,14 +420,8 @@ const ShortNumbers: React.FC = () => {
     setPurchasingOptionId(uniqueOptionId);
 
     try {
-      // Get Firebase ID token using official method
       const idToken = await currentUser.getIdToken();
 
-      // Log token for debugging (remove in production)
-      console.log('Buy Short India - ID Token length:', idToken?.length);
-      console.log('Buy Short India - ID Token starts with:', idToken?.substring(0, 20));
-
-      // Make API call to buyshortindia cloud function
       const response = await fetch('https://buyshortindia-ezeznlhr5a-uc.a.run.app', {
         method: 'POST',
         headers: {
@@ -486,10 +437,8 @@ const ShortNumbers: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Success case - redirect to history
         navigate('/history');
       } else {
-        // Handle error responses for buyshortindia
         let errorMsg = 'An unknown error occurred';
 
         if (data.message === 'Unauthorized') {
@@ -508,7 +457,6 @@ const ShortNumbers: React.FC = () => {
         setShowErrorModal(true);
       }
     } catch (error) {
-      console.error('Buy Short India purchase error:', error);
       setErrorMessage('Please contact our customer support');
       setShowErrorModal(true);
     } finally {
@@ -516,7 +464,6 @@ const ShortNumbers: React.FC = () => {
     }
   };
 
-  // Handle purchase for Germany numbers (opt2, opt5)
   const handleBuyShortGermanyPurchase = async (uniqueOptionId: string) => {
     const currentUser = getAuth().currentUser;
 
@@ -529,14 +476,8 @@ const ShortNumbers: React.FC = () => {
     setPurchasingOptionId(uniqueOptionId);
 
     try {
-      // Get Firebase ID token using official method
       const idToken = await currentUser.getIdToken();
 
-      // Log token for debugging (remove in production)
-      console.log('Buy Short Germany - ID Token length:', idToken?.length);
-      console.log('Buy Short Germany - ID Token starts with:', idToken?.substring(0, 20));
-
-      // Make API call to buyshortgermany cloud function
       const response = await fetch('https://buyshortgermany-ezeznlhr5a-uc.a.run.app', {
         method: 'POST',
         headers: {
@@ -552,10 +493,8 @@ const ShortNumbers: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Success case - redirect to history
         navigate('/history');
       } else {
-        // Handle error responses for buyshortgermany
         let errorMsg = 'An unknown error occurred';
 
         if (data.message === 'Unauthorized') {
@@ -574,7 +513,6 @@ const ShortNumbers: React.FC = () => {
         setShowErrorModal(true);
       }
     } catch (error) {
-      console.error('Buy Short Germany purchase error:', error);
       setErrorMessage('Please contact our customer support');
       setShowErrorModal(true);
     } finally {
@@ -582,7 +520,6 @@ const ShortNumbers: React.FC = () => {
     }
   };
 
-  // Handle purchase for France numbers (opt2, opt5)
   const handleBuyShortFrancePurchase = async (uniqueOptionId: string) => {
     const currentUser = getAuth().currentUser;
 
@@ -595,14 +532,8 @@ const ShortNumbers: React.FC = () => {
     setPurchasingOptionId(uniqueOptionId);
 
     try {
-      // Get Firebase ID token using official method
       const idToken = await currentUser.getIdToken();
 
-      // Log token for debugging (remove in production)
-      console.log('Buy Short France - ID Token length:', idToken?.length);
-      console.log('Buy Short France - ID Token starts with:', idToken?.substring(0, 20));
-
-      // Make API call to buyshortfrance cloud function
       const response = await fetch('https://buyshortfrance-ezeznlhr5a-uc.a.run.app', {
         method: 'POST',
         headers: {
@@ -618,10 +549,8 @@ const ShortNumbers: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Success case - redirect to history
         navigate('/history');
       } else {
-        // Handle error responses for buyshortfrance
         let errorMsg = 'An unknown error occurred';
 
         if (data.message === 'Unauthorized') {
@@ -640,7 +569,6 @@ const ShortNumbers: React.FC = () => {
         setShowErrorModal(true);
       }
     } catch (error) {
-      console.error('Buy Short France purchase error:', error);
       setErrorMessage('Please contact our customer support');
       setShowErrorModal(true);
     } finally {
@@ -648,7 +576,6 @@ const ShortNumbers: React.FC = () => {
     }
   };
 
-  // Handle service search filtering
   const handleServiceSearch = (value: string) => {
     setSearchTerm(value);
 
@@ -658,12 +585,10 @@ const ShortNumbers: React.FC = () => {
       return;
     }
 
-    // Filter services based on search term
     const filtered = services.filter(service =>
       service.name.toLowerCase().includes(value.toLowerCase())
     );
 
-    // If no matches found, show "Service not listed" option
     if (filtered.length === 0) {
       setFilteredServices([{ id: 'not-listed', name: 'Service not listed' }]);
     } else {
@@ -673,14 +598,12 @@ const ShortNumbers: React.FC = () => {
     setIsServiceDropdownOpen(true);
   };
 
-  // Handle service selection
   const handleServiceSelect = (service: ServiceOption) => {
     setSelectedService(service);
     setSearchTerm(service.name);
     setIsServiceDropdownOpen(false);
   };
 
-  // Handle service input focus
   const handleServiceInputFocus = () => {
     if (!isLoadingServices && !isSearching && services.length > 0) {
       setFilteredServices(services);
@@ -688,14 +611,10 @@ const ShortNumbers: React.FC = () => {
     }
   };
 
-  // Handle purchase click to log option data
   const handlePurchaseClick = (option: NumberOption) => {
-    // Fill global purchase data
     globalPurchaseData.serviceId = option.id;
 
-    // Map opt to option number based on country
     if (selectedCountry === 'United States') {
-      // USA has opt1, opt2, opt3, opt6
       switch (option.opt) {
         case 'opt1':
           globalPurchaseData.option = 1;
@@ -710,10 +629,9 @@ const ShortNumbers: React.FC = () => {
           globalPurchaseData.option = 6;
           break;*/
         default:
-          globalPurchaseData.option = 0; // fallback
+          globalPurchaseData.option = 0;
       }
     } else {
-      // UK, India, Germany, France have opt2, opt5
       switch (option.opt) {
         case 'opt2':
           globalPurchaseData.option = 2;
@@ -722,21 +640,12 @@ const ShortNumbers: React.FC = () => {
           globalPurchaseData.option = 5;
           break;
         default:
-          globalPurchaseData.option = 0; // fallback
+          globalPurchaseData.option = 0;
       }
     }
 
-    // Log the global purchase data
-    console.log('Purchase clicked:', {
-      serviceId: globalPurchaseData.serviceId,
-      option: globalPurchaseData.option,
-      opt: option.opt
-    });
-
-    // Create unique identifier combining serviceId and opt
     const uniqueOptionId = `${option.id}-${option.opt}`;
 
-    // Handle purchase based on selected country
     if (selectedCountry === 'United States') {
       // Use different cloud functions based on opt
       // if (option.opt === 'opt6') {
@@ -747,16 +656,12 @@ const ShortNumbers: React.FC = () => {
         handleBuyShortUSAPurchase(uniqueOptionId);
       // }
     } else if (selectedCountry === 'United Kingdom') {
-      // Use buyshortuk cloud function for opt2, opt5
       handleBuyShortUKPurchase(uniqueOptionId);
     } else if (selectedCountry === 'India') {
-      // Use buyshortindia cloud function for opt2, opt5
       handleBuyShortIndiaPurchase(uniqueOptionId);
     } else if (selectedCountry === 'Germany') {
-      // Use buyshortgermany cloud function for opt2, opt5
       handleBuyShortGermanyPurchase(uniqueOptionId);
     } else if (selectedCountry === 'France') {
-      // Use buyshortfrance cloud function for opt2, opt5
       handleBuyShortFrancePurchase(uniqueOptionId);
     }
   };
@@ -764,11 +669,7 @@ const ShortNumbers: React.FC = () => {
   const handleSearch = async () => {
     if (!selectedService) return;
 
-    // Store service name in global object
     globalSearchData.serviceName = selectedService.name;
-
-    // Print to console for verification
-    console.log('Selected service name:', globalSearchData.serviceName);
 
     setIsSearching(true);
     setHasSearched(false);
@@ -776,9 +677,7 @@ const ShortNumbers: React.FC = () => {
     try {
       let allNumbers: NumberOption[] = [];
 
-      // For United States, search in stnUSA collection
       if (selectedCountry === 'United States') {
-        // Search across opt1, opt2, opt3 documents and their services subcollections simultaneously
         // opt6 (reusable numbers) is commented out: const searchPromises = ['opt1', 'opt2', 'opt3', 'opt6'].map(async (optDoc) => {
         const searchPromises = ['opt1', 'opt2', 'opt3'].map(async (optDoc) => {
           const servicesRef = collection(db, 'stnUSA', optDoc, 'services');
@@ -788,26 +687,24 @@ const ShortNumbers: React.FC = () => {
           querySnapshot.forEach((doc) => {
             const data = doc.data();
 
-            // Check if service name matches EXACTLY (case insensitive)
             if (data.serviceName && data.serviceName.toLowerCase() === globalSearchData.serviceName.toLowerCase()) {
               const selectedCountryData = countries.find(c => c.name === selectedCountry);
               const countryCode = selectedCountryData?.code || 'US';
               const countryPrefix = selectedCountryData?.prefix || '+1';
 
-              // Map properties based on source document
               const isOpt3 = optDoc === 'opt3';
               // const isOpt6 = optDoc === 'opt6';
 
               results.push({
                 id: data.id,
-                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
-                price: data.price, // Only use Firestore price
+                number: `${countryPrefix}-XXXXXX`,
+                price: data.price,
                 // extraSmsPrice: isOpt6 ? (data.price / 2) : undefined, // Only opt6 has extraSmsPrice for reuse (half of price)
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 // isReusable: isOpt6, // Only opt6 is reusable
-                receiveSend: isOpt3, // Only opt3 has receive/send capability
+                receiveSend: isOpt3,
                 opt: optDoc
               });
             }
@@ -816,16 +713,12 @@ const ShortNumbers: React.FC = () => {
           return results;
         });
 
-        // Wait for all searches to complete
         const searchResults = await Promise.all(searchPromises);
 
-        // Flatten results from all documents
         allNumbers = searchResults.flat();
 
-        // Sort by price (lowest first)
         allNumbers.sort((a, b) => a.price - b.price);
       } else if (selectedCountry === 'United Kingdom') {
-        // For United Kingdom, search in stnUK collection (opt2 and opt5 only)
         const searchPromises = ['opt2', 'opt5'].map(async (optDoc) => {
           const servicesRef = collection(db, 'stnUK', optDoc, 'services');
           const querySnapshot = await getDocs(servicesRef);
@@ -834,22 +727,20 @@ const ShortNumbers: React.FC = () => {
           querySnapshot.forEach((doc) => {
             const data = doc.data();
 
-            // Check if service name matches EXACTLY (case insensitive)
             if (data.serviceName && data.serviceName.toLowerCase() === globalSearchData.serviceName.toLowerCase()) {
               const selectedCountryData = countries.find(c => c.name === selectedCountry);
               const countryCode = selectedCountryData?.code || 'GB';
               const countryPrefix = selectedCountryData?.prefix || '+44';
 
-              // Both opt2 and opt5 for UK have same properties: not reusable, no receive/send
               results.push({
                 id: data.id,
-                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
-                price: data.price, // Only use Firestore price
+                number: `${countryPrefix}-XXXXXX`,
+                price: data.price,
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 // isReusable: false, // Both options are not reusable
-                receiveSend: false, // Both options do not have receive/send
+                receiveSend: false,
                 opt: optDoc
               });
             }
@@ -858,16 +749,12 @@ const ShortNumbers: React.FC = () => {
           return results;
         });
 
-        // Wait for all searches to complete
         const searchResults = await Promise.all(searchPromises);
 
-        // Flatten results from all documents
         allNumbers = searchResults.flat();
 
-        // Sort by price (lowest first)
         allNumbers.sort((a, b) => a.price - b.price);
       } else if (selectedCountry === 'India') {
-        // For India, search in stnIndia collection (opt2 and opt5 only)
         const searchPromises = ['opt2', 'opt5'].map(async (optDoc) => {
           const servicesRef = collection(db, 'stnIndia', optDoc, 'services');
           const querySnapshot = await getDocs(servicesRef);
@@ -876,22 +763,20 @@ const ShortNumbers: React.FC = () => {
           querySnapshot.forEach((doc) => {
             const data = doc.data();
 
-            // Check if service name matches EXACTLY (case insensitive)
             if (data.serviceName && data.serviceName.toLowerCase() === globalSearchData.serviceName.toLowerCase()) {
               const selectedCountryData = countries.find(c => c.name === selectedCountry);
               const countryCode = selectedCountryData?.code || 'IN';
               const countryPrefix = selectedCountryData?.prefix || '+91';
 
-              // Both opt2 and opt5 for India have same properties: not reusable, no receive/send
               results.push({
                 id: data.id,
-                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
-                price: data.price, // Only use Firestore price
+                number: `${countryPrefix}-XXXXXX`,
+                price: data.price,
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 // isReusable: false, // Both options are not reusable
-                receiveSend: false, // Both options do not have receive/send
+                receiveSend: false,
                 opt: optDoc
               });
             }
@@ -900,16 +785,12 @@ const ShortNumbers: React.FC = () => {
           return results;
         });
 
-        // Wait for all searches to complete
         const searchResults = await Promise.all(searchPromises);
 
-        // Flatten results from all documents
         allNumbers = searchResults.flat();
 
-        // Sort by price (lowest first)
         allNumbers.sort((a, b) => a.price - b.price);
       } else if (selectedCountry === 'Germany') {
-        // For Germany, search in stnGermany collection (opt2 and opt5 only)
         const searchPromises = ['opt2', 'opt5'].map(async (optDoc) => {
           const servicesRef = collection(db, 'stnGermany', optDoc, 'services');
           const querySnapshot = await getDocs(servicesRef);
@@ -918,22 +799,20 @@ const ShortNumbers: React.FC = () => {
           querySnapshot.forEach((doc) => {
             const data = doc.data();
 
-            // Check if service name matches EXACTLY (case insensitive)
             if (data.serviceName && data.serviceName.toLowerCase() === globalSearchData.serviceName.toLowerCase()) {
               const selectedCountryData = countries.find(c => c.name === selectedCountry);
               const countryCode = selectedCountryData?.code || 'DE';
               const countryPrefix = selectedCountryData?.prefix || '+49';
 
-              // Both opt2 and opt5 for Germany have same properties: not reusable, no receive/send
               results.push({
                 id: data.id,
-                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
-                price: data.price, // Only use Firestore price
+                number: `${countryPrefix}-XXXXXX`,
+                price: data.price,
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 // isReusable: false, // Both options are not reusable
-                receiveSend: false, // Both options do not have receive/send
+                receiveSend: false,
                 opt: optDoc
               });
             }
@@ -942,16 +821,12 @@ const ShortNumbers: React.FC = () => {
           return results;
         });
 
-        // Wait for all searches to complete
         const searchResults = await Promise.all(searchPromises);
 
-        // Flatten results from all documents
         allNumbers = searchResults.flat();
 
-        // Sort by price (lowest first)
         allNumbers.sort((a, b) => a.price - b.price);
       } else if (selectedCountry === 'France') {
-        // For France, search in stnFrance collection (opt2 and opt5 only)
         const searchPromises = ['opt2', 'opt5'].map(async (optDoc) => {
           const servicesRef = collection(db, 'stnFrance', optDoc, 'services');
           const querySnapshot = await getDocs(servicesRef);
@@ -960,22 +835,20 @@ const ShortNumbers: React.FC = () => {
           querySnapshot.forEach((doc) => {
             const data = doc.data();
 
-            // Check if service name matches EXACTLY (case insensitive)
             if (data.serviceName && data.serviceName.toLowerCase() === globalSearchData.serviceName.toLowerCase()) {
               const selectedCountryData = countries.find(c => c.name === selectedCountry);
               const countryCode = selectedCountryData?.code || 'FR';
               const countryPrefix = selectedCountryData?.prefix || '+33';
 
-              // Both opt2 and opt5 for France have same properties: not reusable, no receive/send
               results.push({
                 id: data.id,
-                number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
-                price: data.price, // Only use Firestore price
+                number: `${countryPrefix}-XXXXXX`,
+                price: data.price,
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 // isReusable: false, // Both options are not reusable
-                receiveSend: false, // Both options do not have receive/send
+                receiveSend: false,
                 opt: optDoc
               });
             }
@@ -984,20 +857,15 @@ const ShortNumbers: React.FC = () => {
           return results;
         });
 
-        // Wait for all searches to complete
         const searchResults = await Promise.all(searchPromises);
 
-        // Flatten results from all documents
         allNumbers = searchResults.flat();
 
-        // Sort by price (lowest first)
         allNumbers.sort((a, b) => a.price - b.price);
       } else {
-        // For other countries, no collections available yet
         allNumbers = [];
       }
 
-      // Only show results if we have them, otherwise stay in search view
       if (allNumbers.length > 0) {
         setSearchResults(allNumbers);
         setHasSearched(true);
@@ -1006,13 +874,10 @@ const ShortNumbers: React.FC = () => {
         setHasSearched(false);
       }
     } catch (error) {
-      console.error('Error searching numbers:', error);
 
-      // Reset search state to allow retry
       setSearchResults([]);
       setHasSearched(false);
 
-      // Determine error message based on error type
       let userErrorMessage = 'An error occurred while searching for numbers, please try again';
 
       if (error instanceof Error) {
@@ -1061,8 +926,9 @@ const ShortNumbers: React.FC = () => {
               <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
               <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                 {/* <li>• They can only be reused if you select the Reusable option, reusable numbers last 12 hours</li> */}
-                <li>• They can only receive/send SMS if you select the Receive/Send option, they can receive 1 code and send multiple SMS</li>
+                <li>• They can only receive/send SMS if you purchase the Receive/Send option, they can receive 1 code and send multiple SMS</li>
                 <li>• Receive/Send numbers last 5 minutes and you can only send SMS if the code has arrived</li>
+                <li>• Each SMS sent with a Receive/Send number costs $0.5</li>
                 <li>• They can't be refunded once a code arrives</li>
                 <li>• Cancelled and timed out (no code arrived) numbers are automatically refunded</li>
                 <li>• If you want to verify 1 service more than once, go to <Link to="/middle" className="text-blue-400 hover:text-blue-300 underline font-semibold">Middle</Link> or <Link to="/long" className="text-blue-400 hover:text-blue-300 underline font-semibold">Long</Link> Numbers</li>

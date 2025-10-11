@@ -17,7 +17,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
 
-  // Listen to user balance in real-time
   useEffect(() => {
     if (!currentUser) {
       setBalance(null);
@@ -30,7 +29,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
 
     const userDocRef = doc(db, 'users', currentUser.uid);
 
-    // Set up real-time listener
     const unsubscribe = onSnapshot(
       userDocRef,
       (docSnap) => {
@@ -44,7 +42,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
         setIsLoadingBalance(false);
       },
       (error: any) => {
-        console.error('Error listening to user balance:', error);
         let errorMessage = 'Failed to load balance';
 
         if (error.code === 'permission-denied') {
@@ -62,18 +59,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
       }
     );
 
-    // Cleanup listener on unmount
     return () => unsubscribe();
   }, [currentUser]);
 
   const formatBalance = (amount: number | null) => {
     if (amount === null) return '-';
 
-    // Check if the number is an integer
     if (Number.isInteger(amount)) {
       return `$${amount.toLocaleString('en-US')}`;
     } else {
-      // Show up to 2 decimal places, removing trailing zeros
       return `$${amount.toFixed(2).replace(/\.00$/, '')}`;
     }
   };

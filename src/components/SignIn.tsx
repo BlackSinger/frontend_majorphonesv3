@@ -14,7 +14,6 @@ const SignIn: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
   
-  // MFA/TOTP states
   const [showTOTPModal, setShowTOTPModal] = useState(false);
   const [totpCode, setTotpCode] = useState('');
   const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
@@ -38,7 +37,6 @@ const SignIn: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Custom validation
     if (!email.trim()) {
       setModalMessage('Please enter your email address.');
       setShowModal(true);
@@ -62,24 +60,16 @@ const SignIn: React.FC = () => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      console.log('User signed in:', user);
 
-      // Check if email is verified
       if (!user.emailVerified) {
         setModalMessage('Your account has not been verified yet');
         setShowModal(true);
         setIsLoading(false);
-        // User stays logged in but can't access dashboard until verified
         return;
       }
       
-      // Si el email está verificado, el useEffect manejará la navegación
-      // cuando currentUser se actualice
     } catch (error: any) {
-      console.error('Error signing in:', error);
-      console.log('Error code:', error.code);
       
-      // Handle MFA required error
       if (error.code === 'auth/multi-factor-auth-required') {
         const resolver = getMultiFactorResolver(auth, error);
         setMfaResolver(resolver);
@@ -137,10 +127,7 @@ const SignIn: React.FC = () => {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      // El useEffect manejará la navegación cuando currentUser se actualice
     } catch (error: any) {
-      console.error('Error signing in with Google:', error);
-      console.log('Error code:', error.code);
 
       let errorMessage = 'Error signing in with Google, please try again';
 
@@ -184,12 +171,7 @@ const SignIn: React.FC = () => {
 
 
   const handleVerifyTOTP = async () => {
-    console.log('=== handleVerifyTOTP called ===');
-    console.log('totpCode raw:', totpCode);
-    console.log('totpCode trimmed:', totpCode.trim());
-    console.log('totpCode length:', totpCode.trim().length);
     
-    // Limpiar error previo
     setTotpError(null);
     
     if (!totpCode.trim()) {
@@ -203,7 +185,6 @@ const SignIn: React.FC = () => {
     }
 
     if (!mfaResolver) {
-      console.error('No mfaResolver found');
       setTotpError('Session expired. Please sign in again.');
       setTimeout(() => {
         setShowTOTPModal(false);
@@ -216,43 +197,32 @@ const SignIn: React.FC = () => {
     setIsVerifyingTOTP(true);
 
     try {
-      console.log('MFA Resolver:', mfaResolver);
-      console.log('MFA Hints:', mfaResolver.hints);
       
-      // Get the TOTP factor from the resolver
       const totpFactor = mfaResolver.hints.find(
         hint => hint.factorId === TotpMultiFactorGenerator.FACTOR_ID
       );
 
-      console.log('TOTP Factor found:', totpFactor);
 
       if (!totpFactor) {
         throw new Error('TOTP factor not found');
       }
 
-      console.log('Creating assertion with UID:', totpFactor.uid, 'Code:', totpCode.trim());
 
-      // Create TOTP assertion with the verification code - asegurarse de usar trim()
       const multiFactorAssertion = TotpMultiFactorGenerator.assertionForSignIn(
         totpFactor.uid,
         totpCode.trim()
       );
 
-      console.log('Assertion created, resolving sign in...');
 
-      // Complete sign-in with MFA
       const userCredential = await mfaResolver.resolveSignIn(multiFactorAssertion);
       const user = userCredential.user;
       
-      console.log('User signed in with MFA:', user);
 
-      // Close TOTP modal
       setShowTOTPModal(false);
       setTotpCode('');
       setTotpError(null);
       setMfaResolver(null);
 
-      // Check email verification
       if (!user.emailVerified) {
         setModalMessage('Your account has not been verified yet');
         setShowModal(true);
@@ -260,11 +230,7 @@ const SignIn: React.FC = () => {
         return;
       }
       
-      // El useEffect manejará la navegación cuando currentUser se actualice
     } catch (error: any) {
-      console.error('Error verifying TOTP code:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
       
       let errorMessage = 'Invalid verification code. Please try again.';
 
@@ -280,11 +246,9 @@ const SignIn: React.FC = () => {
         errorMessage = error.message;
       }
 
-      // Mostrar error en el modal TOTP en lugar de abrir otra modal
-      // Usar setTimeout para evitar conflictos de renderizado
       setTimeout(() => {
         setTotpError(errorMessage);
-        setTotpCode(''); // Limpiar el código para que el usuario ingrese uno nuevo
+        setTotpCode('');
       }, 0);
     } finally {
       setIsVerifyingTOTP(false);
@@ -493,7 +457,7 @@ const SignIn: React.FC = () => {
                     value={totpCode}
                     onChange={(e) => {
                       setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6));
-                      setTotpError(null); // Limpiar error cuando el usuario empieza a escribir
+                      setTotpError(null);
                     }}
                     disabled={isVerifyingTOTP}
                     placeholder="000000"

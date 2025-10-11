@@ -71,7 +71,6 @@ const Tickets: React.FC = () => {
   const [isCreatingTicket, setIsCreatingTicket] = useState(false);
   const [checkingTicketId, setCheckingTicketId] = useState<string | null>(null);
 
-  // Firestore states
   const [ticketData, setTicketData] = useState<TicketRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -83,26 +82,21 @@ const Tickets: React.FC = () => {
 
   const itemsPerPage = 10;
 
-  // Format timestamp to readable date format
   const formatDate = (timestamp: any): string => {
     if (!timestamp) return '-';
 
     try {
       let date: Date;
 
-      // Handle Firestore Timestamp
       if (timestamp.toDate && typeof timestamp.toDate === 'function') {
         date = timestamp.toDate();
       }
-      // Handle regular Date object
       else if (timestamp instanceof Date) {
         date = timestamp;
       }
-      // Handle timestamp in milliseconds
       else if (typeof timestamp === 'number') {
         date = new Date(timestamp);
       }
-      // Handle string
       else if (typeof timestamp === 'string') {
         date = new Date(timestamp);
       }
@@ -110,7 +104,6 @@ const Tickets: React.FC = () => {
         return '-';
       }
 
-      // Format: 10/3/2025, 4:01:03 PM
       return date.toLocaleString('en-US', {
         month: 'numeric',
         day: 'numeric',
@@ -121,12 +114,10 @@ const Tickets: React.FC = () => {
         hour12: true
       });
     } catch (error) {
-      console.error('Error formatting date:', error);
       return '-';
     }
   };
 
-  // Map ticket type to display name
   const mapTypeToDisplayName = (type: string): string => {
     const typeValue = String(type || '').toLowerCase();
 
@@ -146,7 +137,6 @@ const Tickets: React.FC = () => {
     }
   };
 
-  // Load tickets from Firestore
   useEffect(() => {
     if (activeTab !== 'numbers') {
       setIsLoading(false);
@@ -191,7 +181,6 @@ const Tickets: React.FC = () => {
           });
         });
 
-        // Sort by createdAt descending (most recent first)
         tickets.sort((a, b) => {
           const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
           const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
@@ -203,8 +192,6 @@ const Tickets: React.FC = () => {
       },
       (error: any) => {
         if (!isSubscribed) return;
-
-        console.error('Error loading tickets:', error);
 
         let errorMsg = 'An error occurred while loading tickets, please contact support';
 
@@ -252,7 +239,6 @@ const Tickets: React.FC = () => {
   ];
 
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (issueDropdownRef.current && !issueDropdownRef.current.contains(event.target as Node)) {
@@ -265,7 +251,6 @@ const Tickets: React.FC = () => {
         setIsIssueTypeDropdownOpen(false);
       }
 
-      // Close action menus when clicking outside
       Object.keys(openActionMenus).forEach(recordId => {
         const ref = actionMenuRefs.current[recordId];
         if (ref && !ref.contains(event.target as Node)) {
@@ -280,8 +265,6 @@ const Tickets: React.FC = () => {
     };
   }, [openActionMenus]);
 
-
-  // Filter the data based on selected filters
   const filteredData = useMemo(() => {
     let filtered = ticketData;
 
@@ -296,21 +279,15 @@ const Tickets: React.FC = () => {
     return filtered;
   }, [ticketData, issueFilter, statusFilter]);
 
-
-  // Calculate pagination for numbers table
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
-
-  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [issueFilter, statusFilter]);
 
-
-  // Get status color
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Active':
@@ -330,7 +307,6 @@ const Tickets: React.FC = () => {
     }
   };
 
-  // Get service type color
   const getServiceTypeColor = (serviceType: string) => {
     switch (serviceType) {
       case 'Short Numbers':
@@ -346,7 +322,6 @@ const Tickets: React.FC = () => {
     }
   };
 
-  // Get country initials
   const getCountryInitials = (countryName: string) => {
     switch (countryName) {
       case 'United States':
@@ -364,7 +339,6 @@ const Tickets: React.FC = () => {
     }
   };
 
-  // Get short number type name
   const getShortNumberType = (serviceType: string) => {
     switch (serviceType) {
       case 'Short Numbers':
@@ -380,8 +354,6 @@ const Tickets: React.FC = () => {
     }
   };
 
-
-  // Handle Info modal
   const handleInfoClick = (record: TicketRecord) => {
     setSelectedRecord(record);
     setShowInfoModal(true);
@@ -395,12 +367,10 @@ const Tickets: React.FC = () => {
         setIsInfoIdCopied(true);
         setTimeout(() => setIsInfoIdCopied(false), 2000);
       } catch (err) {
-        console.error('Failed to copy Ticket ID:', err);
       }
     }
   };
 
-  // Handle action menu toggle
   const handleActionMenuToggle = (recordId: string) => {
     setOpenActionMenus(prev => ({
       ...prev,
@@ -408,14 +378,12 @@ const Tickets: React.FC = () => {
     }));
   };
 
-  // Handle check action
   const handleCheckClick = async (record: TicketRecord) => {
     if (!user) return;
 
     setCheckingTicketId(record.ticketId);
 
     try {
-      // Get Firebase ID token
       const currentUser = getAuth().currentUser;
       if (!currentUser) {
         setCheckingTicketId(null);
@@ -425,7 +393,6 @@ const Tickets: React.FC = () => {
       }
       const idToken = await currentUser.getIdToken();
 
-      // Send to Cloud Function
       const response = await fetch('https://readticket-ezeznlhr5a-uc.a.run.app', {
         method: 'POST',
         headers: {
@@ -440,11 +407,9 @@ const Tickets: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success && data.message === "readTicket successful") {
-        // Success: Show chat interface
         setSelectedTicket(record);
         setShowTicketChat(true);
 
-        // Initialize chat with admin response only
         const mockAdminResponse = {
           id: 'admin-response-1',
           text: "Thank you for contacting us. We have reviewed your issue and our technical team is currently investigating the problem. We will provide you with an update in 2-24 hours.",
@@ -457,15 +422,12 @@ const Tickets: React.FC = () => {
         setChatImages([]);
         setCheckingTicketId(null);
       } else {
-        // Handle error responses
         if (data.message === "Unauthorized") {
           setErrorMessage("You are not authenticated or your token is invalid");
           setShowErrorModal(true);
-          // Keep checkingTicketId to keep all buttons disabled
           return;
         }
 
-        // For all other errors, enable buttons
         setCheckingTicketId(null);
 
         if (data.message === "ticketId is required") {
@@ -484,25 +446,21 @@ const Tickets: React.FC = () => {
       }
 
     } catch (error) {
-      console.error('Error reading ticket:', error);
       setCheckingTicketId(null);
       setErrorMessage("Network error, please check your connection and try again");
       setShowErrorModal(true);
     }
   };
 
-  // Handle issue type change
   const handleIssueTypeChange = (issueType: string) => {
     setSelectedIssueType(issueType);
     setIsIssueTypeDropdownOpen(false);
-    // Clear form fields when issue type changes
     setTicketSubject('');
     setTicketId('');
     setIssueDescription('');
     setUploadedImages([]);
   };
 
-  // Get ID input placeholder based on issue type
   const getIdPlaceholder = (issueType: string) => {
     switch (issueType) {
       case 'Payment':
@@ -518,29 +476,24 @@ const Tickets: React.FC = () => {
     }
   };
 
-  // Validate file format
   const isValidImageFormat = (file: File) => {
     const validFormats = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     return validFormats.includes(file.type.toLowerCase());
   };
 
-  // Calculate total size of uploaded images
   const getTotalImageSize = (images: File[]) => {
     return images.reduce((total, file) => total + file.size, 0);
   };
 
-  // Convert bytes to MB
   const bytesToMB = (bytes: number) => {
     return bytes / (1024 * 1024);
   };
 
-  // Show error modal
   const showError = (message: string) => {
     setErrorMessage(message);
     setShowErrorModal(true);
   };
 
-  // Handle file upload
   const handleFileUpload = (files: FileList | null) => {
     if (!files) return;
 
@@ -548,26 +501,22 @@ const Tickets: React.FC = () => {
     const validFiles: File[] = [];
 
     for (const file of fileArray) {
-      // Check format
       if (!isValidImageFormat(file)) {
         showError('You can only upload images in JPEG, JPG, PNG and WEBP format');
         return;
       }
 
-      // Check individual file size (max 3MB per image)
       if (bytesToMB(file.size) > 3) {
         showError('Each image cannot weigh more than 3MB');
         return;
       }
 
-      // Check if adding this file would exceed count limit
       const currentTotal = uploadedImages.length + validFiles.length;
       if (currentTotal >= 5) {
         showError('You can only upload 5 images');
         return;
       }
 
-      // Check if adding this file would exceed size limit
       const newTotalSize = getTotalImageSize([...uploadedImages, ...validFiles, file]);
       if (bytesToMB(newTotalSize) > 15) {
         showError('You can only upload a total of 15MB');
@@ -582,7 +531,6 @@ const Tickets: React.FC = () => {
     }
   };
 
-  // Handle drag events
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(true);
@@ -599,7 +547,6 @@ const Tickets: React.FC = () => {
     handleFileUpload(e.dataTransfer.files);
   };
 
-  // Handle click upload
   const handleClickUpload = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -612,12 +559,10 @@ const Tickets: React.FC = () => {
     input.click();
   };
 
-  // Remove image
   const removeImage = (index: number) => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Chat image functions
   const handleChatImageUpload = (files: FileList | null) => {
     if (!files) return;
 
@@ -625,26 +570,22 @@ const Tickets: React.FC = () => {
     const validFiles: File[] = [];
 
     for (const file of fileArray) {
-      // Check format
       if (!isValidImageFormat(file)) {
         showError('You can only upload images in JPEG, JPG, PNG and WEBP format');
         return;
       }
 
-      // Check individual file size (max 3MB per image)
       if (bytesToMB(file.size) > 3) {
         showError('Each image cannot weigh more than 3MB');
         return;
       }
 
-      // Check if adding this file would exceed count limit
       const currentTotal = chatImages.length + validFiles.length;
       if (currentTotal >= 5) {
         showError('You can only upload 5 images');
         return;
       }
 
-      // Check if adding this file would exceed size limit
       const newTotalSize = getTotalImageSize([...chatImages, ...validFiles, file]);
       if (bytesToMB(newTotalSize) > 15) {
         showError('You can only upload a total of 15MB');
@@ -659,7 +600,6 @@ const Tickets: React.FC = () => {
     }
   };
 
-  // Handle chat drag events
   const handleChatDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsChatDragOver(true);
@@ -676,7 +616,6 @@ const Tickets: React.FC = () => {
     handleChatImageUpload(e.dataTransfer.files);
   };
 
-  // Handle chat click upload
   const handleChatClickUpload = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -689,12 +628,10 @@ const Tickets: React.FC = () => {
     input.click();
   };
 
-  // Remove chat image
   const removeChatImage = (index: number) => {
     setChatImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Send chat message
   const sendChatMessage = async () => {
     if (!chatInput.trim() && chatImages.length === 0) return;
     if (!selectedTicket || !user) return;
@@ -702,7 +639,6 @@ const Tickets: React.FC = () => {
     setIsSendingMessage(true);
 
     try {
-      // Get Firebase ID token
       const currentUser = getAuth().currentUser;
       if (!currentUser) {
         setIsSendingMessage(false);
@@ -712,21 +648,17 @@ const Tickets: React.FC = () => {
       }
       const idToken = await currentUser.getIdToken();
 
-      // Create FormData
       const formData = new FormData();
 
-      // Add required fields
       formData.append('ticketId', selectedTicket.ticketId);
       formData.append('message', chatInput.trim());
 
-      // Add images if any
       if (chatImages.length > 0) {
         chatImages.forEach((image) => {
           formData.append('files', image);
         });
       }
 
-      // Send to Cloud Function
       const response = await fetch('https://userresponseticket-ezeznlhr5a-uc.a.run.app', {
         method: 'POST',
         headers: {
@@ -738,7 +670,6 @@ const Tickets: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.message === "Ticket updated successfully") {
-        // Success: Add message to UI, clear inputs, enable controls
         const newMessage = {
           id: Date.now().toString(),
           text: chatInput.trim(),
@@ -751,20 +682,15 @@ const Tickets: React.FC = () => {
         setChatImages([]);
         setIsSendingMessage(false);
       } else {
-        // Handle error responses
         if (data.message === "Unauthorized") {
           setErrorMessage("You are not authenticated or your token is invalid");
           setShowErrorModal(true);
           setChatInput('');
           setChatImages([]);
-          // Keep isSendingMessage true to keep controls disabled
           return;
         }
 
-        // For all other errors, enable controls and show error
         setIsSendingMessage(false);
-
-        console.log(data.message);
 
         if (data.message === "Ticket ID is required") {
           setErrorMessage("Please refresh the page and try again");
@@ -788,14 +714,12 @@ const Tickets: React.FC = () => {
       }
 
     } catch (error) {
-      console.error('Error sending message:', error);
       setIsSendingMessage(false);
       setErrorMessage("Network error, please check your connection and try again");
       setShowErrorModal(true);
     }
   };
 
-  // Map issue type to API type value
   const mapIssueTypeToApiType = (issueType: string): string => {
     switch (issueType) {
       case 'Payment':
@@ -813,14 +737,12 @@ const Tickets: React.FC = () => {
     }
   };
 
-  // Create ticket
   const handleCreateTicket = async () => {
     if (!user) return;
 
     setIsCreatingTicket(true);
 
     try {
-      // Get Firebase ID token
       const currentUser = getAuth().currentUser;
       if (!currentUser) {
         setIsCreatingTicket(false);
@@ -830,31 +752,25 @@ const Tickets: React.FC = () => {
       }
       const idToken = await currentUser.getIdToken();
 
-      // Create FormData
       const formData = new FormData();
 
-      // Add required fields
       formData.append('subject', ticketSubject.trim());
       formData.append('message', issueDescription.trim());
 
-      // Add optional type field
       if (selectedIssueType) {
         formData.append('type', mapIssueTypeToApiType(selectedIssueType));
       }
 
-      // Add conditional orderId field
       if (ticketId.trim()) {
         formData.append('orderId', ticketId.trim());
       }
 
-      // Add images if any
       if (uploadedImages.length > 0) {
         uploadedImages.forEach((image) => {
           formData.append('files', image);
         });
       }
 
-      // Send to Cloud Function
       const response = await fetch('https://createticket-ezeznlhr5a-uc.a.run.app', {
         method: 'POST',
         headers: {
@@ -866,18 +782,14 @@ const Tickets: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.message === "Ticket created successfully") {
-        // Success: Refresh the page to show the new ticket
         window.location.reload();
       } else {
-        // Handle error responses
         if (data.message === "Unauthorized") {
           setErrorMessage("You are not authenticated or your token is invalid");
           setShowErrorModal(true);
-          // Keep isCreatingTicket true to keep controls disabled
           return;
         }
 
-        // For all other errors, enable controls
         setIsCreatingTicket(false);
 
         if (data.message === "Order ID, subject, and message are required") {
@@ -899,7 +811,6 @@ const Tickets: React.FC = () => {
       }
 
     } catch (error) {
-      console.error('Error creating ticket:', error);
       setIsCreatingTicket(false);
       setErrorMessage("Network error, please check your connection and try again");
       setShowErrorModal(true);

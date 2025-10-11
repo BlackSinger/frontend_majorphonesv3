@@ -33,7 +33,6 @@ const SignUp: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Custom validation
     if (!email.trim()) {
       setModalType('error');
       setModalMessage('Please enter your email address.');
@@ -82,24 +81,17 @@ const SignUp: React.FC = () => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Send email verification
       await sendEmailVerification(user);
 
-      console.log('User created and verification email sent');
 
-      // Clear form fields
       setEmail('');
       setPassword('');
       setConfirmPassword('');
 
-      // Show success message - user stays on signup page
-      // AuthContext will ignore this user until email is verified
       setModalType('success');
       setModalMessage('An account verification email has been sent to you');
       setShowModal(true);
     } catch (error: any) {
-      console.error('Error signing up:', error);
-      console.log('Error code:', error.code);
       let errorMessage = 'An error occurred during sign up';
 
       switch (error.code) {
@@ -145,11 +137,8 @@ const SignUp: React.FC = () => {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      console.log('User signed up with Google:', user);
       navigate('/dashboard');
     } catch (error: any) {
-      console.error('Error signing up with Google:', error);
-      console.log('Error code:', error.code);
 
       let errorMessage = 'Error signing up with Google, please try again';
 

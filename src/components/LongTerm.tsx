@@ -7,12 +7,10 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase/config';
 import { getAuth } from 'firebase/auth';
 
-// Global object to store service name
 const globalSearchData = {
   name: ''
 };
 
-// Global object to store purchase data
 const globalPurchaseData = {
   serviceId: '',
   duration: 0
@@ -44,27 +42,22 @@ const LongTerm: React.FC = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
 
-  // Services state
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [selectedService, setSelectedService] = useState<ServiceOption | null>(null);
   const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
   const [filteredServices, setFilteredServices] = useState<ServiceOption[]>([]);
 
-  // Error handling state
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [hasError, setHasError] = useState(false);
 
-  // Purchase state - track which option is being purchased
   const [purchasingOptionId, setPurchasingOptionId] = useState<string | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const serviceDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Helper function to safely format price
   const formatPrice = (price: any): string => {
-    // Convert to number and take only first 2 decimals
     const numPrice = parseFloat(Number(price).toFixed(2));
     return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
   };
@@ -89,12 +82,10 @@ const LongTerm: React.FC = () => {
     }
   ];
 
-  // Load services from Firebase
   const loadServices = async () => {
     try {
       setIsLoadingServices(true);
       setHasError(false);
-      // Clear previous services and search state
       setServices([]);
       setFilteredServices([]);
       setSelectedService(null);
@@ -109,23 +100,20 @@ const LongTerm: React.FC = () => {
         const data = doc.data();
         servicesList.push({
           id: doc.id,
-          name: data.name || doc.id // Use name field or document ID as fallback
+          name: data.name || doc.id
         });
       });
 
-      // Sort services alphabetically
       servicesList.sort((a, b) => a.name.localeCompare(b.name));
 
       setServices(servicesList);
       setFilteredServices(servicesList);
       setHasError(false);
     } catch (error) {
-      console.error('Error loading services:', error);
       setServices([]);
       setFilteredServices([]);
       setHasError(true);
 
-      // Determine error message based on error type
       let userErrorMessage = 'An error occurred while loading services, please contact support';
 
       if (error instanceof Error) {
@@ -147,18 +135,15 @@ const LongTerm: React.FC = () => {
     }
   };
 
-  // Load services on component mount
   useEffect(() => {
     loadServices();
   }, []);
 
-  // Handle error modal close
   const handleErrorModalClose = () => {
     setShowErrorModal(false);
     setErrorMessage('');
   };
 
-  // Handle service search filtering
   const handleServiceSearch = (value: string) => {
     setSearchTerm(value);
 
@@ -168,12 +153,10 @@ const LongTerm: React.FC = () => {
       return;
     }
 
-    // Filter services based on search term
     const filtered = services.filter(service =>
       service.name.toLowerCase().includes(value.toLowerCase())
     );
 
-    // If no matches found, show "Service not listed" option
     if (filtered.length === 0) {
       setFilteredServices([{ id: 'allservices', name: 'Service not listed' }]);
     } else {
@@ -183,14 +166,12 @@ const LongTerm: React.FC = () => {
     setIsServiceDropdownOpen(true);
   };
 
-  // Handle service selection
   const handleServiceSelect = (service: ServiceOption) => {
     setSelectedService(service);
     setSearchTerm(service.name);
     setIsServiceDropdownOpen(false);
   };
 
-  // Handle service input focus
   const handleServiceInputFocus = () => {
     if (!isLoadingServices && !isSearching && services.length > 0) {
       setFilteredServices(services);
@@ -198,7 +179,6 @@ const LongTerm: React.FC = () => {
     }
   };
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -224,12 +204,10 @@ const LongTerm: React.FC = () => {
       return;
     }
 
-    // Create unique identifier for this option
     const uniqueOptionId = `${option.duration}days-${option.id}`;
     setPurchasingOptionId(uniqueOptionId);
 
     try {
-      // Get the service data from Firebase to fill globalPurchaseData
       const servicesRef = collection(db, 'longUSA', 'opt4', 'services');
       const querySnapshot = await getDocs(servicesRef);
 
@@ -237,15 +215,11 @@ const LongTerm: React.FC = () => {
       querySnapshot.forEach((doc) => {
         const data = doc.data();
 
-        // Check if this is the correct service
         if (data.name && data.name.toLowerCase() === globalSearchData.name.toLowerCase()) {
-          // Fill the global purchase data object
           globalPurchaseData.serviceId = doc.id;
           globalPurchaseData.duration = option.duration;
           serviceFound = true;
 
-          // Print the global purchase data object
-          console.log(globalPurchaseData);
         }
       });
 
@@ -256,10 +230,8 @@ const LongTerm: React.FC = () => {
         return;
       }
 
-      // Get Firebase ID token
       const idToken = await currentUser.getIdToken();
 
-      // Make API call to buylongusa cloud function
       const response = await fetch('https://buylongusa-ezeznlhr5a-uc.a.run.app', {
         method: 'POST',
         headers: {
@@ -272,10 +244,8 @@ const LongTerm: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Success case - redirect to history
         navigate('/history');
       } else {
-        // Handle error responses
         let errorMsg = 'An unknown error occurred';
 
         if (data.message === 'Unauthorized') {
@@ -296,7 +266,6 @@ const LongTerm: React.FC = () => {
         setShowErrorModal(true);
       }
     } catch (error) {
-      console.error('Buy Long USA purchase error:', error);
       setErrorMessage('Please contact our customer support');
       setShowErrorModal(true);
     } finally {
@@ -307,11 +276,7 @@ const LongTerm: React.FC = () => {
   const handleSearch = async () => {
     if (!selectedService) return;
 
-    // Store service name in global object
     globalSearchData.name = selectedService.name;
-
-    // Print to console for verification
-    console.log('Selected service name:', globalSearchData.name);
 
     setIsSearching(true);
     setHasSearched(false);
@@ -319,7 +284,6 @@ const LongTerm: React.FC = () => {
     try {
       let allNumbers: NumberOption[] = [];
 
-      // Search in longUSA/opt4/services collection
       const servicesRef = collection(db, 'longUSA', 'opt4', 'services');
       const querySnapshot = await getDocs(servicesRef);
 
@@ -327,12 +291,9 @@ const LongTerm: React.FC = () => {
         const data = doc.data();
         let shouldInclude = false;
 
-        // Check if this is the "Service not listed" case
         if (globalSearchData.name.toLowerCase() === 'service not listed') {
-          // For "Service not listed", look for document ID "allservices"
           shouldInclude = doc.id === 'allservices';
         } else {
-          // For other services, check if service name matches EXACTLY (case insensitive)
           shouldInclude = data.name && data.name.toLowerCase() === globalSearchData.name.toLowerCase();
         }
 
@@ -341,11 +302,10 @@ const LongTerm: React.FC = () => {
           const countryCode = selectedCountryData?.code || 'US';
           const countryPrefix = selectedCountryData?.prefix || '+1';
 
-          // Create 2 number options based on the two prices: priceThirtyDays and priceYear
           if (data.priceThirtyDays) {
             allNumbers.push({
               id: `30days-${doc.id}`,
-              number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+              number: `${countryPrefix}-XXXXXX`,
               priceThirtyDays: Number(data.priceThirtyDays),
               priceYear: Number(data.priceYear || 0),
               country: selectedCountry,
@@ -358,7 +318,7 @@ const LongTerm: React.FC = () => {
           if (data.priceYear) {
             allNumbers.push({
               id: `365days-${doc.id}`,
-              number: `${countryPrefix}-XXXXXX`, // No numbers needed, just placeholder
+              number: `${countryPrefix}-XXXXXX`,
               priceThirtyDays: Number(data.priceThirtyDays || 0),
               priceYear: Number(data.priceYear),
               country: selectedCountry,
@@ -370,7 +330,6 @@ const LongTerm: React.FC = () => {
         }
       });
 
-      // Only show results if we have them, otherwise stay in search view
       if (allNumbers.length > 0) {
         setSearchResults(allNumbers);
         setHasSearched(true);
@@ -379,13 +338,10 @@ const LongTerm: React.FC = () => {
         setHasSearched(false);
       }
     } catch (error) {
-      console.error('Error searching numbers:', error);
 
-      // Reset search state to allow retry
       setSearchResults([]);
       setHasSearched(false);
 
-      // Determine error message based on error type
       let userErrorMessage = 'An error occurred while searching for numbers, please try again';
 
       if (error instanceof Error) {
@@ -437,7 +393,7 @@ const LongTerm: React.FC = () => {
                   <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
                   <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                     <li>• They can only be used to verify just 1 service</li>
-                    <li>• They are valid for 30 days</li>
+                    <li>• They are valid for 30 or 365 days</li>
                     <li>• Their duration can't be extended</li>
                     <li>• After purchased, some can be cancelled and some can't</li>
                     <li>• Users that deposit through Amazon Pay can't purchase them</li>
@@ -594,7 +550,7 @@ const LongTerm: React.FC = () => {
                   <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
                   <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                     <li>• They can only be used to verify just 1 service</li>
-                    <li>• They are valid for 30 days</li>
+                    <li>• They are valid for 30 or 365 days</li>
                     <li>• Their duration can't be extended</li>
                     <li>• After purchased, some can be cancelled and some can't</li>
                     <li>• Users that deposit through Amazon Pay can't purchase them</li>

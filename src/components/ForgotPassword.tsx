@@ -22,7 +22,6 @@ const ForgotPassword: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Custom validation
     if (!email.trim()) {
       setModalMessage('Please enter your email address.');
       setShowModal(true);
@@ -39,12 +38,9 @@ const ForgotPassword: React.FC = () => {
 
     try {
       await sendPasswordResetEmail(auth, email);
-      console.log('Password reset email sent successfully');
       setIsLoading(false);
       setIsSuccess(true);
     } catch (error: any) {
-      console.error('Error sending password reset email:', error);
-      console.log('Error code:', error.code);
       setIsLoading(false);
 
       let errorMessage = 'An error occurred while sending the reset email';
