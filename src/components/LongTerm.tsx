@@ -421,11 +421,11 @@ const LongTerm: React.FC = () => {
                   {/* Form Elements Container */}
                   <div className="space-y-6">
                     {/* Service Input and Country Selection Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6">
                       {/* Search Input */}
                       <div className="space-y-3">
                         <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
-                          Search Service
+                          Which service do you want to receive an SMS from?
                         </label>
                         <div className="relative group" ref={serviceDropdownRef}>
                           <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
@@ -440,7 +440,7 @@ const LongTerm: React.FC = () => {
                             onFocus={handleServiceInputFocus}
                             disabled={isLoadingServices || hasError || isSearching}
                             className="w-full pl-14 pr-3 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 text-sm shadow-inner hover:border-slate-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                            placeholder={isLoadingServices ? "Loading services..." : "Enter service name"}
+                            placeholder={isLoadingServices ? "Loading services..." : "Gmail, Facebook, eBay..."}
                           />
 
                           {/* Service Dropdown */}

@@ -18,20 +18,52 @@
       ]
     }
   ],
-  "hosting": {
-    "public": "build",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  },
+  "hosting": [
+    {
+      "site": "apimajorphones",
+      "public": "build",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "/v1/**",
+          "function": {
+            "functionId": "api"
+          }
+        },
+        {
+          "source": "**",
+          "function": {
+            "functionId": "api"
+          }
+        }
+      ]
+    },
+    {
+      "site": "majorphonesv3",
+      "public": "build",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "/v1/**",
+          "function": {
+            "functionId": "api"
+          }
+        },
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
+    }
+  ],
   "storage": {
     "rules": "storage.rules"
   }

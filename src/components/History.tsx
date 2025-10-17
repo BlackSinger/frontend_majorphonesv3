@@ -763,9 +763,19 @@ const History: React.FC = () => {
 
       const validatedStatus = allowedStatuses.includes(statusValue as any) ? statusValue as typeof allowedStatuses[number] : 'Pending';
 
-      const allowedTypes = ['Short', 'Middle', 'Long', 'Empty simcard'] as const;
-      const typeValue = typeof docData.type === 'string' ? docData.type : String(docData.type || 'Short');
-      const validatedType = allowedTypes.includes(typeValue as any) ? typeValue as typeof allowedTypes[number] : 'Short';
+      // Normalize Firestore type to lowercase then map to display format
+      const typeLower = String(docData.type || '').toLowerCase().trim();
+
+      let validatedType: 'Short' | 'Middle' | 'Long' | 'Empty simcard' = '-' as any;
+      if (typeLower === 'short') {
+        validatedType = 'Short';
+      } else if (typeLower === 'middle') {
+        validatedType = 'Middle';
+      } else if (typeLower === 'long') {
+        validatedType = 'Long';
+      } else if (typeLower === 'empty simcard' || typeLower === 'empty sim card') {
+        validatedType = 'Empty simcard';
+      }
 
       return {
         id: docData.orderId || docId,

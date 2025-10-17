@@ -114,7 +114,7 @@ const VirtualCard: React.FC = () => {
           expirationDate: '',
           cvv: '',
           cardFunds: hasBalance ? 3 : 0,
-          price: hasBalance ? 7 : 4,
+          price: hasBalance ? 9 : 4,
           hasBalance: hasBalance
         }
       ];

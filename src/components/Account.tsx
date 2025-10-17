@@ -152,7 +152,7 @@ const Account: React.FC = () => {
           {hasVerificationParams ? (
             <div className="text-center mb-2 relative z-10">
               <div className="inline-flex items-center justify-center">
-                <img src={LogoMajor} alt="Major Phones Logo" className="w-30 h-20" />
+                <img src={LogoMajor} alt="Major Phones Logo" className="w-38 h-20" />
               </div>
               <h1 className="text-xl font-medium text-white">
                 {isPasswordReset ? 'Reset Password' : 'Email Verification'}
@@ -161,7 +161,7 @@ const Account: React.FC = () => {
           ) : (
             <div className="text-center relative z-10">
               <div className="inline-flex items-center justify-center">
-                <img src={LogoMajor} alt="Major Phones Logo" className="w-30 h-30" />
+                <img src={LogoMajor} alt="Major Phones Logo" className="w-38 h-30" />
               </div>
             </div>
           )}

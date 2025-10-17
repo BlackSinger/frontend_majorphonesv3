@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getAuth } from 'firebase/auth';
+import AmazonPay from './AmazonPay';
 import CryptomusLogo from '../CryptomusLogo.svg';
 import AmazonPayLogo from '../AmazonPayLogo.png';
 import BinancePayLogo from '../BinancePayLogo.svg';
@@ -105,7 +106,7 @@ const AddFunds: React.FC = () => {
       ),
       description: 'Credit card payment through Amazon',
       minAmount: 2,
-      isAvailable: false
+      isAvailable: true
     },
     {
       id: 'binance',
@@ -280,19 +281,17 @@ const AddFunds: React.FC = () => {
     }
   }, [selectedWallet]);
 
-  const handleAmazonModalOk = async () => {
+  const handleAmazonPaySuccess = () => {
     setShowAmazonModal(false);
-    
-    setIsProcessing(true);
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    alert(`Payment of $${amount} via ${selectedPaymentMethod?.name} has been initiated!`);
-    
-    setIsProcessing(false);
     setAmount('');
     setSelectedMethod('');
-    setSelectedWallet('');
+    // Redirect to transactions page after successful payment
+    window.location.href = '/transactions';
+  };
+
+  const handleAmazonPayError = (error: string) => {
+    console.error('Amazon Pay error:', error);
+    // You can show an error modal here if needed
   };
 
   const handleCryptomusErrorModalClose = () => {
@@ -994,6 +993,9 @@ const AddFunds: React.FC = () => {
                           <div className="bg-slate-700/50 rounded-xl p-4 border border-slate-600/50">
                             <div className="text-sm text-slate-400">
                               <span>Minimum: ${selectedPaymentMethod.minAmount}</span>
+                              {selectedMethod === 'amazon' && (
+                                <span className="ml-4">Fee: $0.3</span>
+                              )}
                             </div>
                           </div>
                         )}
@@ -1375,7 +1377,9 @@ const AddFunds: React.FC = () => {
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                           </div>
                         ) : (
-                          `Add $${amount} via ${selectedPaymentMethod?.name}`
+                          selectedMethod === 'amazon'
+                            ? `Add $${(parseFloat(amount) + 0.3).toFixed(2)} via ${selectedPaymentMethod?.name}`
+                            : `Add $${amount} via ${selectedPaymentMethod?.name}`
                         )}
                       </button>
                     </div>
@@ -1433,32 +1437,58 @@ const AddFunds: React.FC = () => {
 
     {/* Amazon Pay Modal */}
     {showAmazonModal && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-70 h-58">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{ margin: '0' }}>
+        <div className="bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-full max-w-md border border-slate-700/50">
           <div className="text-center">
+            {/* Warning Icon */}
             <div className="mb-4">
-              <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto bg-gradient-to-br from-orange-500 to-amber-500 rounded-full flex items-center justify-center shadow-lg">
                 <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01" />
                 </svg>
               </div>
             </div>
-            <h3 className="text-lg font-medium text-white mb-2">Wait</h3>
-            <p className="text-blue-200 mb-4 text-justify" style={{ maxWidth: '16rem' }}>If you deposit through Amazon Pay, you can't purchase middle/long numbers, virtual debit cards or proxies.</p>
-            <div className="flex space-x-4">
-              <button
-                onClick={() => setShowAmazonModal(false)}
-                className="flex-1 bg-slate-600 hover:bg-slate-500 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300"
-              >
-                Back
-              </button>
-              <button
-                onClick={handleAmazonModalOk}
-                className="flex-1 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
-              >
-                Ok
-              </button>
+
+            {/* Title */}
+            <h3 className="text-xl font-bold text-white mb-3">Amazon Pay Restrictions</h3>
+
+            {/* Warning Message */}
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-4">
+              <p className="text-orange-200 text-sm">
+                If you deposit through Amazon Pay, you can't purchase middle/long numbers, virtual debit cards or proxies.
+              </p>
             </div>
+
+            {/* Payment Details */}
+            <div className="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700/50">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-slate-400 text-sm">Amount to deposit:</span>
+                <span className="text-white font-bold text-lg">${(parseFloat(amount) + 0.3).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-center items-center mt-3">
+                <img src={AmazonPayLogo} alt="Amazon Pay" className="w-24 h-auto" />
+              </div>
+            </div>
+
+            {/* Amazon Pay Button Component */}
+            <div className="mb-4">
+              <AmazonPay
+                amount={parseFloat(amount) + 0.3}
+                onSuccess={handleAmazonPaySuccess}
+                onError={handleAmazonPayError}
+                sandbox={false}
+                placement="Cart"
+                buttonColor="Gold"
+              />
+            </div>
+
+            {/* Back Button */}
+            <button
+              onClick={() => setShowAmazonModal(false)}
+              className="w-full bg-slate-700/50 hover:bg-slate-600/50 text-white font-medium py-3 px-4 rounded-xl transition-all duration-300 border border-slate-600/50"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       </div>

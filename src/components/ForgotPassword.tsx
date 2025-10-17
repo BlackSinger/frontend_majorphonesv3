@@ -85,7 +85,7 @@ const ForgotPassword: React.FC = () => {
             <div className="text-center mb-6 relative z-10">
               {/* Success Icon */}
               <div className="inline-flex items-center justify-center">
-                <img src={LogoMajor} alt="Major Phones Logo" className="w-30 h-20" />
+                <img src={LogoMajor} alt="Major Phones Logo" className="w-38 h-20" />
               </div>
               <h1 className="text-2xl font-bold text-white">Email Sent</h1>
               <p className="text-blue-200">
@@ -127,7 +127,7 @@ const ForgotPassword: React.FC = () => {
           {/* Header */}
           <div className="text-center mb-6 relative z-10">
             <div className="inline-flex items-center justify-center">
-              <img src={LogoMajor} alt="Major Phones Logo" className="w-30 h-20" />
+              <img src={LogoMajor} alt="Major Phones Logo" className="w-38 h-20" />
             </div>
             <h1 className="text-2xl font-bold text-white">Forgot Password</h1>
             <p className="text-blue-200">
