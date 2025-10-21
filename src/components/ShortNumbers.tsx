@@ -61,6 +61,9 @@ const ShortNumbers: React.FC = () => {
 
   const [purchasingOptionId, setPurchasingOptionId] = useState<string | null>(null);
 
+  const [showSendSmsWarningModal, setShowSendSmsWarningModal] = useState(false);
+  const [pendingPurchaseOption, setPendingPurchaseOption] = useState<NumberOption | null>(null);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const serviceDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -612,6 +615,18 @@ const ShortNumbers: React.FC = () => {
   };
 
   const handlePurchaseClick = (option: NumberOption) => {
+    // If option has Send SMS: Yes (receiveSend: true), show warning modal first
+    if (option.receiveSend) {
+      setPendingPurchaseOption(option);
+      setShowSendSmsWarningModal(true);
+      return;
+    }
+
+    // Otherwise, proceed directly with purchase
+    executePurchase(option);
+  };
+
+  const executePurchase = (option: NumberOption) => {
     globalPurchaseData.serviceId = option.id;
 
     if (selectedCountry === 'United States') {
@@ -628,8 +643,6 @@ const ShortNumbers: React.FC = () => {
         /*case 'opt6':
           globalPurchaseData.option = 6;
           break;*/
-        default:
-          globalPurchaseData.option = 0;
       }
     } else {
       switch (option.opt) {
@@ -639,8 +652,6 @@ const ShortNumbers: React.FC = () => {
         case 'opt5':
           globalPurchaseData.option = 5;
           break;
-        default:
-          globalPurchaseData.option = 0;
       }
     }
 
@@ -663,6 +674,14 @@ const ShortNumbers: React.FC = () => {
       handleBuyShortGermanyPurchase(uniqueOptionId);
     } else if (selectedCountry === 'France') {
       handleBuyShortFrancePurchase(uniqueOptionId);
+    }
+  };
+
+  const handleProceedWithSendSmsPurchase = () => {
+    if (pendingPurchaseOption) {
+      setShowSendSmsWarningModal(false);
+      executePurchase(pendingPurchaseOption);
+      setPendingPurchaseOption(null);
     }
   };
 
@@ -719,7 +738,8 @@ const ShortNumbers: React.FC = () => {
 
         allNumbers.sort((a, b) => a.price - b.price);
       } else if (selectedCountry === 'United Kingdom') {
-        const searchPromises = ['opt2', 'opt5'].map(async (optDoc) => {
+        // For United Kingdom, only search opt2 (single use, receive only)
+        const searchPromises = ['opt2'].map(async (optDoc) => {
           const servicesRef = collection(db, 'stnUK', optDoc, 'services');
           const querySnapshot = await getDocs(servicesRef);
 
@@ -926,9 +946,8 @@ const ShortNumbers: React.FC = () => {
               <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
               <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                 {/* <li>• They can only be reused if you select the Reusable option, reusable numbers last 12 hours</li> */}
-                <li>• They can only receive/send SMS if you purchase the Receive/Send option, they can receive 1 code and send multiple SMS</li>
-                <li>• Receive/Send numbers last 5 minutes and you can only send SMS if the code has arrived</li>
-                <li>• Each SMS sent with a Receive/Send number costs $0.5</li>
+                <li>• They can only receive and send SMS if you purchase the "Send SMS: Yes" option, they can receive 1 code and send multiple SMS</li>
+                <li>• Numbers with "Send SMS: Yes" last 5 minutes and you can only send SMS if the code has arrived; each sending costs $0.5</li>
                 <li>• They can't be refunded once a code arrives</li>
                 <li>• Cancelled and timed out (no code arrived) numbers are automatically refunded</li>
                 <li>• If you want to verify 1 service more than once, go to <Link to="/middle" className="text-blue-400 hover:text-blue-300 underline font-semibold">Middle</Link> or <Link to="/long" className="text-blue-400 hover:text-blue-300 underline font-semibold">Long</Link> Numbers</li>
@@ -1153,7 +1172,7 @@ const ShortNumbers: React.FC = () => {
                           <div className="md:flex md:items-center md:justify-between">
                             {/* Mobile Layout */}
                             <div className="md:hidden space-y-3">
-                              {/* Price, Reusable, Each Reuse, Receive/Send in order */}
+                              {/* Price, Receive SMS, Send SMS */}
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between text-md">
                                   <span className="text-slate-300 font-medium">Price:</span>
@@ -1161,34 +1180,18 @@ const ShortNumbers: React.FC = () => {
                                     ${formatPrice(option.price)}
                                   </span>
                                 </div>
-                                {/* <div className="flex items-center justify-between text-md">
-                                  <span className="text-slate-300 font-medium">Reusable:</span>
-                                  <span className={`font-semibold ${option.isReusable ? 'text-emerald-400' : 'text-red-400'}`}>
-                                    {option.isReusable ? 'Yes' : 'No'}
-                                  </span>
-                                </div> */}
-                                {/* {option.isReusable && option.extraSmsPrice && (
-                                  <div className="flex items-center justify-between text-md">
-                                    <span className="text-slate-300 font-medium">Each reuse:</span>
-                                    <span className="text-emerald-400 font-semibold">
-                                      ${formatPrice(option.extraSmsPrice)}
-                                    </span>
-                                  </div>
-                                )} */}
                                 <div className="flex items-center justify-between text-md">
-                                  <span className="text-slate-300 font-medium">Receive/Send:</span>
+                                  <span className="text-slate-300 font-medium">Receive SMS:</span>
+                                  <span className="font-semibold text-emerald-400">
+                                    Yes
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between text-md">
+                                  <span className="text-slate-300 font-medium">Send SMS:</span>
                                   <span className={`font-semibold ${option.receiveSend ? 'text-emerald-400' : 'text-red-400'}`}>
                                     {option.receiveSend ? 'Yes' : 'No'}
                                   </span>
                                 </div>
-                                {option.receiveSend && (
-                                  <div className="flex items-center justify-between text-md">
-                                    <span className="text-slate-300 font-medium">Each sending:</span>
-                                    <span className="text-emerald-400 font-semibold">
-                                      $0.50
-                                    </span>
-                                  </div>
-                                )}
                               </div>
                               {/* Purchase Button - full width */}
                               <button
@@ -1208,7 +1211,7 @@ const ShortNumbers: React.FC = () => {
                               </button>
                             </div>
 
-                            {/* Desktop Layout - ordered: Price, Reusable, Each Reuse, Receive/Send, Purchase */}
+                            {/* Desktop Layout - ordered: Price, Receive SMS, Send SMS, Purchase */}
                             <div className="hidden md:flex md:items-center md:space-x-2 text-md">
                               <span className="text-slate-300 font-medium">Price:</span>
                               <span className="text-emerald-400 font-semibold">
@@ -1216,37 +1219,19 @@ const ShortNumbers: React.FC = () => {
                               </span>
                             </div>
 
-                            {/* <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                              <span className="text-slate-300 font-medium">Reusable:</span>
-                              <span className={`font-semibold ${option.isReusable ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {option.isReusable ? 'Yes' : 'No'}
+                            <div className="hidden md:flex md:items-center md:space-x-2 text-md">
+                              <span className="text-slate-300 font-medium">Receive SMS:</span>
+                              <span className="font-semibold text-emerald-400">
+                                Yes
                               </span>
-                            </div> */}
-
-                            {/* {option.isReusable && option.extraSmsPrice && (
-                              <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                                <span className="text-slate-300 font-medium">Each reuse:</span>
-                                <span className="text-emerald-400 font-semibold">
-                                  ${formatPrice(option.extraSmsPrice)}
-                                </span>
-                              </div>
-                            )} */}
+                            </div>
 
                             <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                              <span className="text-slate-300 font-medium">Receive/Send:</span>
+                              <span className="text-slate-300 font-medium">Send SMS:</span>
                               <span className={`font-semibold ${option.receiveSend ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {option.receiveSend ? 'Yes' : 'No'}
                               </span>
                             </div>
-
-                            {option.receiveSend && (
-                              <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                                <span className="text-slate-300 font-medium">Each sending:</span>
-                                <span className="text-emerald-400 font-semibold">
-                                  $0.50
-                                </span>
-                              </div>
-                            )}
 
                             <button
                               onClick={() => handlePurchaseClick(option)}
@@ -1283,6 +1268,31 @@ const ShortNumbers: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Send SMS Warning Modal */}
+        {showSendSmsWarningModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto bg-yellow-500 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.964-1.333-2.732 0L3.732 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Be Aware</h3>
+                <p className="text-blue-200 mb-4">Each SMS sending costs $0.5</p>
+                <button
+                  onClick={handleProceedWithSendSmsPurchase}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  Proceed
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Error Modal */}
         {showErrorModal && (

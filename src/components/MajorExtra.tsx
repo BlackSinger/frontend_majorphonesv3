@@ -1,20 +1,20 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { signOut, getAuth } from 'firebase/auth';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { useAuth } from '../contexts/AuthContext';
 import MajorDashboardLayout from './MajorDashboardLayout';
 
 interface TransactionRecord {
   id: string;
-  email: string;
-  option: string;
+  option: 'Cryptomus' | 'Amazon Pay' | 'Admin Update' | 'Payeer' | 'USDT Tether' | 'USDC' | 'Matic' | 'Tron';
   date: string;
-  status: string;
+  status: 'Created' | 'Pending' | 'Completed' | 'Cancelled' | 'Expired' | 'Overpayment' | 'Underpayment';
   amount: number;
   transactionId: string;
 }
 
-const MajorTransactions: React.FC = () => {
-  const navigate = useNavigate();
+const MajorExtra: React.FC = () => {
+  const { currentUser } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('All');
   // const [staticWalletFilter, setStaticWalletFilter] = useState<string>('All');
@@ -24,12 +24,10 @@ const MajorTransactions: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [transactionData, setTransactionData] = useState<TransactionRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const paymentMethodDropdownRef = useRef<HTMLDivElement>(null);
   // const staticWalletDropdownRef = useRef<HTMLDivElement>(null);
-
+  
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -52,99 +50,66 @@ const MajorTransactions: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const fetchTransactions = async () => {
-      setLoading(true);
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
 
-      try {
-        const currentUser = getAuth().currentUser;
+    setLoading(true);
+    const rechargesRef = collection(db, 'recharges');
+    const q = query(
+      rechargesRef,
+      where('uid', '==', currentUser.uid),
+      orderBy('createdAt', 'desc')
+    );
 
-        if (!currentUser) {
-          setLoading(false);
-          return;
-        }
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const transactions: TransactionRecord[] = [];
 
-        const idToken = await currentUser.getIdToken();
-        console.log(idToken);
-        const response = await fetch('https://getlastrecharges-ezeznlhr5a-uc.a.run.app', {
-          method: 'GET',
-          headers: {
-            'authorization': `${idToken}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          if (data.message === 'Forbidden') {
-            // Sign out user immediately
-            const auth = getAuth();
-            await signOut(auth);
-            navigate('/signin');
-            return;
-          } else if (data.message === 'Internal Server Error') {
-            setErrorMessage('Please refresh');
-            setShowErrorModal(true);
-            setLoading(false);
-            return;
-          }
-        }
-
-        // Log response for debugging
-        console.log('Backend response:', data);
-
-        // Check if data has a recharges property (array)
-        const rechargesArray = data.recharges || data;
-
-        // Verify it's an array
-        if (!Array.isArray(rechargesArray)) {
-          console.error('Expected array but got:', rechargesArray);
-          setTransactionData([]);
-          setLoading(false);
-          return;
-        }
-
-        // Format the data
-        const formattedData = rechargesArray.map((item: any) => {
-          // Format date from Firestore Timestamp to readable format
-          let formattedDate = 'N/A';
-          if (item.createdAt && item.createdAt._seconds) {
-            // Convert Firestore Timestamp to JavaScript Date
-            const date = new Date(item.createdAt._seconds * 1000);
+          let formattedDate = '';
+          if (data.createdAt) {
+            const date = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
             formattedDate = date.toLocaleString('en-US', {
+              year: 'numeric',
               month: '2-digit',
               day: '2-digit',
-              year: 'numeric',
               hour: '2-digit',
               minute: '2-digit',
               second: '2-digit',
               hour12: true
-            });
+            }).replace(',', ', ');
           }
 
-          return {
-            id: item.orderId,
-            email: item.email || 'N/A',
-            option: item.paymentMethod || 'N/A',
+          let displayPaymentMethod = data.paymentMethod || 'Unknown';
+          if (data.paymentMethod === 'Static Wallet') {
+            displayPaymentMethod = 'Static Wallet';
+          }
+
+          transactions.push({
+            id: doc.id,
+            option: displayPaymentMethod,
             date: formattedDate,
-            status: item.status || 'N/A',
-            amount: item.amount || 0,
-            transactionId: item.orderId || 'N/A'
-          };
+            status: data.status || 'Pending',
+            amount: data.amount || 0,
+            transactionId: doc.id
+          });
         });
 
-        setTransactionData(formattedData);
+        setTransactionData(transactions);
         setLoading(false);
-      } catch (error) {
-        console.error('Error fetching transactions:', error);
-        setErrorMessage('Please refresh');
-        setShowErrorModal(true);
+      },
+      (error) => {
         setLoading(false);
       }
-    };
+    );
 
-    fetchTransactions();
-  }, [navigate]);
+    return () => unsubscribe();
+  }, [currentUser]);
 
   const filteredData = useMemo(() => {
     let filtered = transactionData;
@@ -208,7 +173,7 @@ const MajorTransactions: React.FC = () => {
   };
 
   return (
-    <MajorDashboardLayout currentPath="/major-transactions">
+    <MajorDashboardLayout currentPath="/major-extra">
       <div className="space-y-6">
         {/* Header */}
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
@@ -216,9 +181,9 @@ const MajorTransactions: React.FC = () => {
             <div className="flex items-center space-x-4">
               <div>
                 <h1 className="text-left text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent">
-                  Transactions
+                  Extra
                 </h1>
-                <p className="text-slate-300 text-md text-left">View all transactions</p>
+                <p className="text-slate-300 text-md text-left">View high-balance users</p>
               </div>
             </div>
           </div>
@@ -363,7 +328,6 @@ const MajorTransactions: React.FC = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-700/50">
-                      <th className="text-center py-4 px-4 text-slate-300 font-semibold">Email</th>
                       <th className="text-center py-4 px-4 text-slate-300 font-semibold">Option</th>
                       <th className="text-center py-4 px-6 text-slate-300 font-semibold">Date</th>
                       <th className="text-center py-4 px-5 text-slate-300 font-semibold">Status</th>
@@ -379,7 +343,6 @@ const MajorTransactions: React.FC = () => {
                           index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
                         }`}
                       >
-                        <td className="py-4 px-6 text-white">{record.email}</td>
                         <td className="py-4 px-6 text-white">{record.option}</td>
                         <td className="py-4 px-6 text-white">{record.date}</td>
                         <td className="py-4 px-6">
@@ -437,9 +400,9 @@ const MajorTransactions: React.FC = () => {
                     </svg>
                   </button>
 
-                  {/* Page Numbers - Show current and next page only */}
+                  {/* Page Numbers */}
                   <div className="flex space-x-1">
-                    {[currentPage, currentPage + 1].filter(page => page <= totalPages).map((page) => (
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                       <button
                         key={page}
                         onClick={() => setCurrentPage(page)}
@@ -470,39 +433,9 @@ const MajorTransactions: React.FC = () => {
             )}
           </div>
         </div>
-
-        {/* Error Modal */}
-        {showErrorModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80 max-w-md">
-              <div className="text-center">
-                <div className="mb-4">
-                  <div className="w-12 h-12 mx-auto flex items-center justify-center bg-red-500/20 rounded-full">
-                    <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                    </svg>
-                  </div>
-                </div>
-                <h3 className="text-lg font-medium text-white mb-2">Error</h3>
-                <p className="text-blue-200 mb-4">{errorMessage}</p>
-                <div className="flex justify-center">
-                  <button
-                    onClick={() => {
-                      setShowErrorModal(false);
-                      setErrorMessage('');
-                    }}
-                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
-                  >
-                    Ok
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </MajorDashboardLayout>
   );
 };
 
-export default MajorTransactions;
+export default MajorExtra;
