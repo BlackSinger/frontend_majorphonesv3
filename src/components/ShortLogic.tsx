@@ -5,7 +5,7 @@ interface HistoryRecord {
   date: string;
   expirationDate: string;
   number: string;
-  serviceType: 'Short' | 'Middle' | 'Long' | 'Empty simcard';
+  serviceType: string; // Normalized to lowercase: 'short' | 'middle' | 'long' | 'empty simcard'
   status: 'Pending' | 'Cancelled' | 'Completed' | 'Inactive' | 'Active' | 'Expired' | 'Timed out';
   service: string;
   price: number;
@@ -24,7 +24,7 @@ interface HistoryRecord {
 }
 
 export const hasTimedOut = (record: HistoryRecord): boolean => {
-  if (record.serviceType !== 'Short' || record.status !== 'Pending' || !record.createdAt) {
+  if (record.serviceType.toLowerCase() !== 'short' || record.status !== 'Pending' || !record.createdAt) {
     return false;
   }
   const now = new Date().getTime();

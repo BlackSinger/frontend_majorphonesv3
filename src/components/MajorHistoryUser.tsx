@@ -36,7 +36,7 @@ interface HistoryRecord {
   date: string;
   expirationDate: string;
   number: string;
-  serviceType: 'Short' | 'Middle' | 'Long' | 'Empty simcard';
+  serviceType: string; // Normalized to lowercase: 'short' | 'middle' | 'long' | 'empty simcard'
   status: 'Pending' | 'Cancelled' | 'Completed' | 'Inactive' | 'Active' | 'Expired' | 'Timed out';
   service: string;
   price: number;
@@ -215,11 +215,14 @@ const MajorHistoryUser: React.FC = () => {
           ? new Date(item.codeAwakeAt._seconds * 1000)
           : undefined;
 
+        // Normalize serviceType to lowercase for consistent filtering
+        const normalizedServiceType = item.type ? String(item.type).toLowerCase() : '';
+
         // Calculate duration
         let duration = 'N/A';
-        if (createdAtDate && expiryDate && item.type) {
+        if (createdAtDate && expiryDate && normalizedServiceType) {
           duration = calculateDuration(
-            item.type,
+            normalizedServiceType,
             createdAtDate,
             expiryDate,
             item.reuse,
@@ -231,8 +234,8 @@ const MajorHistoryUser: React.FC = () => {
           id: item.orderId || 'N/A',
           date: formattedDate,
           expirationDate: formattedExpirationDate,
-          number: item.number || 'N/A',
-          serviceType: item.type,
+          number: item.number ? String(item.number) : 'N/A',
+          serviceType: normalizedServiceType,
           status: item.status || 'N/A',
           service: item.serviceName || 'N/A',
           price: item.price || 0,
@@ -344,13 +347,14 @@ const MajorHistoryUser: React.FC = () => {
   };
 
   const calculateDuration = (type: string, createdAt: Date, expiry: Date, reuse?: boolean, maySend?: boolean): string => {
-    if (type === 'Short') {
+    const normalizedType = type.toLowerCase();
+    if (normalizedType === 'short') {
       return calculateShortDuration(createdAt, expiry, reuse, maySend);
-    } else if (type === 'Middle') {
+    } else if (normalizedType === 'middle') {
       return calculateMiddleDuration(createdAt, expiry);
-    } else if (type === 'Long') {
+    } else if (normalizedType === 'long') {
       return calculateLongDuration(createdAt, expiry);
-    } else if (type === 'Empty simcard') {
+    } else if (normalizedType === 'empty simcard') {
       return calculateEmptySimDuration(createdAt, expiry);
     }
     return '';
@@ -417,10 +421,10 @@ const MajorHistoryUser: React.FC = () => {
 
   const mapServiceTypeToFirestore = (uiServiceType: string) => {
     switch (uiServiceType) {
-      case 'Short Numbers': return 'Short';
-      case 'Middle Numbers': return 'Middle';
-      case 'Long Numbers': return 'Long';
-      case 'Empty SIM cards': return 'Empty simcard';
+      case 'Short Numbers': return 'short';
+      case 'Middle Numbers': return 'middle';
+      case 'Long Numbers': return 'long';
+      case 'Empty SIM cards': return 'empty simcard';
       default: return null;
     }
   };
@@ -468,13 +472,14 @@ const MajorHistoryUser: React.FC = () => {
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
   const getDisplayStatus = (record: HistoryRecord): string => {
-    if (record.serviceType === 'Short') {
+    const normalizedType = record.serviceType.toLowerCase();
+    if (normalizedType === 'short') {
       return getShortDisplayStatus(record);
-    } else if (record.serviceType === 'Middle') {
+    } else if (normalizedType === 'middle') {
       return getMiddleDisplayStatus(record);
-    } else if (record.serviceType === 'Long') {
+    } else if (normalizedType === 'long') {
       return getLongDisplayStatus(record);
-    } else if (record.serviceType === 'Empty simcard') {
+    } else if (normalizedType === 'empty simcard') {
       return getEmptySimDisplayStatus(record);
     }
     return record.status;
@@ -485,13 +490,14 @@ const MajorHistoryUser: React.FC = () => {
   };
 
   const getStatusColor = (status: string, serviceType: string) => {
-    if (serviceType === 'Short' || serviceType === 'Short Numbers') {
+    const normalizedType = serviceType.toLowerCase();
+    if (normalizedType === 'short' || normalizedType === 'short numbers') {
       return getShortStatusColor(status);
-    } else if (serviceType === 'Middle' || serviceType === 'Middle Numbers') {
+    } else if (normalizedType === 'middle' || normalizedType === 'middle numbers') {
       return getMiddleStatusColor(status);
-    } else if (serviceType === 'Long' || serviceType === 'Long Numbers') {
+    } else if (normalizedType === 'long' || normalizedType === 'long numbers') {
       return getLongStatusColor(status);
-    } else if (serviceType === 'Empty simcard' || serviceType === 'Empty SIM card' || serviceType === 'Empty Simcard' || serviceType === 'Empty SIM cards') {
+    } else if (normalizedType === 'empty simcard' || normalizedType === 'empty sim card' || normalizedType === 'empty sim cards') {
       return getEmptySimStatusColor(status);
     }
     return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
@@ -515,14 +521,15 @@ const MajorHistoryUser: React.FC = () => {
   };
 
   const getServiceTypeDisplayName = (serviceType: string) => {
-    switch (serviceType) {
-      case 'Short':
+    const normalizedType = serviceType.toLowerCase();
+    switch (normalizedType) {
+      case 'short':
         return 'Short';
-      case 'Middle':
+      case 'middle':
         return 'Middle';
-      case 'Long':
+      case 'long':
         return 'Long';
-      case 'Empty simcard':
+      case 'empty simcard':
         return 'Empty SIM card';
       default:
         return serviceType;

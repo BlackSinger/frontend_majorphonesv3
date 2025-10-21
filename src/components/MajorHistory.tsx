@@ -55,7 +55,7 @@ interface HistoryRecord {
   date: string;
   expirationDate: string;
   number: string;
-  serviceType: 'Short' | 'Middle' | 'Long' | 'Empty simcard';
+  serviceType: string; // Normalized to lowercase: 'short' | 'middle' | 'long' | 'empty simcard'
   status: 'Pending' | 'Cancelled' | 'Completed' | 'Inactive' | 'Active' | 'Expired' | 'Timed out';
   service: string;
   price: number;
@@ -379,13 +379,14 @@ const MajorHistory: React.FC = () => {
   const itemsPerPage = 10;
 
   const getDisplayStatus = (record: HistoryRecord): string => {
-    if (record.serviceType === 'Short') {
+    const normalizedType = record.serviceType.toLowerCase();
+    if (normalizedType === 'short') {
       return getShortDisplayStatus(record);
-    } else if (record.serviceType === 'Middle') {
+    } else if (normalizedType === 'middle') {
       return getMiddleDisplayStatus(record);
-    } else if (record.serviceType === 'Long') {
+    } else if (normalizedType === 'long') {
       return getLongDisplayStatus(record);
-    } else if (record.serviceType === 'Empty simcard') {
+    } else if (normalizedType === 'empty simcard') {
       return getEmptySimDisplayStatus(record);
     }
     return record.status;
@@ -399,8 +400,9 @@ const MajorHistory: React.FC = () => {
     const { serviceType, status, code, createdAt, codeAwakeAt } = record;
     const smsValue = code || '';
     const hasSms = smsValue && smsValue.trim() !== '';
+    const normalizedType = serviceType.toLowerCase();
 
-    if (serviceType === 'Short') { 
+    if (normalizedType === 'short') {
       if (codeAwakeAt) {
         const now = new Date().getTime();
         const startTime = codeAwakeAt.getTime();
@@ -421,7 +423,7 @@ const MajorHistory: React.FC = () => {
       } else {
         return { type: 'text', value: smsValue };
       }
-    } else if (serviceType === 'Middle') {
+    } else if (normalizedType === 'middle') {
       const countdownTime = getMiddleCountdownTime(record);
       if (countdownTime !== null) {
         return { type: 'middleCountdown', value: countdownTime };
@@ -439,7 +441,7 @@ const MajorHistory: React.FC = () => {
         default:
           return { type: 'text', value: smsValue };
       }
-    } else if (serviceType === 'Long') {
+    } else if (normalizedType === 'long') {
       const countdownTime = getLongCountdownTime(record);
       if (countdownTime !== null) {
         return { type: 'longCountdown', value: countdownTime };
@@ -457,7 +459,7 @@ const MajorHistory: React.FC = () => {
         default:
           return { type: 'text', value: smsValue };
       }
-    } else if (serviceType === 'Empty simcard') {
+    } else if (normalizedType === 'empty simcard') {
       const countdownTime = getEmptySimCountdownTime(record);
       if (countdownTime !== null) {
         return { type: 'emptySimCountdown', value: countdownTime };
@@ -481,13 +483,14 @@ const MajorHistory: React.FC = () => {
   };
 
   const calculateDuration = (type: string, createdAt: Date, expiry: Date, reuse?: boolean, maySend?: boolean): string => {
-    if (type === 'Short') {
+    const normalizedType = type.toLowerCase();
+    if (normalizedType === 'short') {
       return calculateShortDuration(createdAt, expiry, reuse, maySend);
-    } else if (type === 'Middle') {
+    } else if (normalizedType === 'middle') {
       return calculateMiddleDuration(createdAt, expiry);
-    } else if (type === 'Long') {
+    } else if (normalizedType === 'long') {
       return calculateLongDuration(createdAt, expiry);
-    } else if (type === 'Empty simcard') {
+    } else if (normalizedType === 'empty simcard') {
       return calculateEmptySimDuration(createdAt, expiry);
     }
     return '';
@@ -561,10 +564,10 @@ const MajorHistory: React.FC = () => {
 
   const mapServiceTypeToFirestore = (uiServiceType: string) => {
     switch (uiServiceType) {
-      case 'Short Numbers': return 'Short';
-      case 'Middle Numbers': return 'Middle';
-      case 'Long Numbers': return 'Long';
-      case 'Empty SIM cards': return 'Empty simcard';
+      case 'Short Numbers': return 'short';
+      case 'Middle Numbers': return 'middle';
+      case 'Long Numbers': return 'long';
+      case 'Empty SIM cards': return 'empty simcard';
       default: return null;
     }
   };
@@ -761,10 +764,13 @@ const MajorHistory: React.FC = () => {
               ? new Date(item.codeAwakeAt._seconds * 1000)
               : undefined;
 
+            // Normalize serviceType to lowercase for consistent filtering
+            const normalizedServiceType = item.type ? String(item.type).toLowerCase() : '';
+
             let duration = 'N/A';
-            if (createdAtDate && expiryDate && item.type) {
+            if (createdAtDate && expiryDate && normalizedServiceType) {
               duration = calculateDuration(
-                item.type,
+                normalizedServiceType,
                 createdAtDate,
                 expiryDate,
                 item.reuse,
@@ -776,8 +782,8 @@ const MajorHistory: React.FC = () => {
               id: item.orderId || 'N/A',
               date: formattedDate,
               expirationDate: formattedExpirationDate,
-              number: item.number || 'N/A',
-              serviceType: item.type,
+              number: item.number ? String(item.number) : 'N/A',
+              serviceType: normalizedServiceType,
               status: item.status || 'N/A',
               service: item.serviceName || 'N/A',
               price: item.price || 0,
@@ -914,13 +920,14 @@ const MajorHistory: React.FC = () => {
 
 
   const getStatusColor = (status: string, serviceType: string) => {
-    if (serviceType === 'Short' || serviceType === 'Short Numbers') {
+    const normalizedType = serviceType.toLowerCase();
+    if (normalizedType === 'short' || normalizedType === 'short numbers') {
       return getShortStatusColor(status);
-    } else if (serviceType === 'Middle' || serviceType === 'Middle Numbers') {
+    } else if (normalizedType === 'middle' || normalizedType === 'middle numbers') {
       return getMiddleStatusColor(status);
-    } else if (serviceType === 'Long' || serviceType === 'Long Numbers') {
+    } else if (normalizedType === 'long' || normalizedType === 'long numbers') {
       return getLongStatusColor(status);
-    } else if (serviceType === 'Empty simcard' || serviceType === 'Empty SIM card' || serviceType === 'Empty Simcard' || serviceType === 'Empty SIM cards') {
+    } else if (normalizedType === 'empty simcard' || normalizedType === 'empty sim card' || normalizedType === 'empty sim cards') {
       return getEmptySimStatusColor(status);
     }
     return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
@@ -959,14 +966,15 @@ const MajorHistory: React.FC = () => {
   };
 
   const getServiceTypeDisplayName = (serviceType: string) => {
-    switch (serviceType) {
-      case 'Short':
+    const normalizedType = serviceType.toLowerCase();
+    switch (normalizedType) {
+      case 'short':
         return 'Short';
-      case 'Middle':
+      case 'middle':
         return 'Middle';
-      case 'Long':
+      case 'long':
         return 'Long';
-      case 'Empty simcard':
+      case 'empty simcard':
         return 'Empty SIM card';
       default:
         return serviceType;
@@ -1008,14 +1016,15 @@ const MajorHistory: React.FC = () => {
 
   const getAvailableActions = (record: HistoryRecord) => {
     const { serviceType } = record;
+    const normalizedType = serviceType.toLowerCase();
 
-    if (serviceType === 'Short') {
+    if (normalizedType === 'short') {
       return getShortAvailableActions(record);
-    } else if (serviceType === 'Middle') {
+    } else if (normalizedType === 'middle') {
       return getMiddleAvailableActions(record);
-    } else if (serviceType === 'Long') {
+    } else if (normalizedType === 'long') {
       return getLongAvailableActions(record);
-    } else if (serviceType === 'Empty simcard') {
+    } else if (normalizedType === 'empty simcard') {
       return getEmptySimAvailableActions(record);
     }
 
@@ -1031,15 +1040,16 @@ const MajorHistory: React.FC = () => {
 
   const handleActionClick = async (action: string, record: HistoryRecord) => {
     setOpenActionMenus(prev => ({ ...prev, [record.id]: false }));
+    const normalizedType = record.serviceType.toLowerCase();
 
     if (action === 'Cancel') {
-      if (record.serviceType === 'Short') {
+      if (normalizedType === 'short') {
         await handleCancelShort(record.orderId || '', setErrorMessage, setShowErrorModal, setCancellingOrderId);
-      } else if (record.serviceType === 'Middle') {
+      } else if (normalizedType === 'middle') {
         await handleCancelMiddle(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setCancellingOrderId);
-      } else if (record.serviceType === 'Long') {
+      } else if (normalizedType === 'long') {
         await handleCancelLong(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setCancellingOrderId);
-      } else if (record.serviceType === 'Empty simcard') {
+      } else if (normalizedType === 'empty simcard') {
         await handleCancelEmptySim(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setCancellingOrderId);
       }
       return;
@@ -1057,11 +1067,11 @@ const MajorHistory: React.FC = () => {
     }
 
     if (action === 'Activate') {
-      if (record.serviceType === 'Middle') {
+      if (normalizedType === 'middle') {
         await handleActivateMiddle(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setActivatingOrderId);
-      } else if (record.serviceType === 'Long') {
+      } else if (normalizedType === 'long') {
         await handleActivateLong(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setActivatingOrderId);
-      } else if (record.serviceType === 'Empty simcard') {
+      } else if (normalizedType === 'empty simcard') {
         await handleActivateEmptySim(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setActivatingOrderId);
       }
       return;
@@ -1339,7 +1349,8 @@ const MajorHistory: React.FC = () => {
                         </td>
                         <td className="py-4 px-6">
                           {(() => {
-                            if (record.serviceType === 'Short') {
+                            const normalizedType = record.serviceType.toLowerCase();
+                            if (normalizedType === 'short') {
                               if (record.awakeIn) {
                                 const now = new Date().getTime();
                                 const wakeTime = record.awakeIn.getTime();
@@ -1384,7 +1395,7 @@ const MajorHistory: React.FC = () => {
                               } else {
                                 return <span className="font-mono text-slate-400">-</span>;
                               }
-                            } else if (record.serviceType === 'Middle') {
+                            } else if (normalizedType === 'middle') {
                               if (record.status === 'Active') {
                                 return <MiddleCountdownTimer
                                   record={record}
@@ -1398,7 +1409,7 @@ const MajorHistory: React.FC = () => {
                               } else {
                                 return <span className="font-mono text-slate-400">-</span>;
                               }
-                            } else if (record.serviceType === 'Long') {
+                            } else if (normalizedType === 'long') {
                               if (record.status === 'Active') {
                                 return <LongCountdownTimer
                                   record={record}
@@ -1412,7 +1423,7 @@ const MajorHistory: React.FC = () => {
                               } else {
                                 return <span className="font-mono text-slate-400">-</span>;
                               }
-                            } else if (record.serviceType === 'Empty simcard') {
+                            } else if (normalizedType === 'empty simcard') {
                               if (record.status === 'Active') {
                                 return <EmptySimCountdownTimer
                                   record={record}

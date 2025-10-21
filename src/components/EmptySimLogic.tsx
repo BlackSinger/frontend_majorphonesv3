@@ -5,7 +5,7 @@ interface HistoryRecord {
   date: string;
   expirationDate: string;
   number: string;
-  serviceType: 'Short' | 'Middle' | 'Long' | 'Empty simcard';
+  serviceType: string; // Normalized to lowercase: 'short' | 'middle' | 'long' | 'empty simcard'
   status: 'Pending' | 'Cancelled' | 'Completed' | 'Inactive' | 'Active' | 'Expired' | 'Timed out';
   service: string;
   price: number;
@@ -44,7 +44,7 @@ const saveActivationTimestamps = () => {
 export const hasEmptySimTimedOut = (record: HistoryRecord): boolean => {
   const recordId = record.orderId || record.id;
 
-  if (record.serviceType !== 'Empty simcard' || record.status !== 'Active') {
+  if (record.serviceType.toLowerCase() !== 'empty simcard' || record.status !== 'Active') {
     clearActivationTime(recordId);
     return false;
   }
@@ -72,7 +72,7 @@ export const clearActivationTime = (orderId: string) => {
 };
 
 export const getEmptySimCountdownTime = (record: HistoryRecord): string | null => {
-  if (record.serviceType !== 'Empty simcard' || record.status !== 'Active') {
+  if (record.serviceType.toLowerCase() !== 'empty simcard' || record.status !== 'Active') {
     return null;
   }
 
