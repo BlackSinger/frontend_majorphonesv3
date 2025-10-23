@@ -84,7 +84,6 @@ const AddFunds: React.FC = () => {
   const [showGenerateWalletErrorModal, setShowGenerateWalletErrorModal] = useState(false);
   const [generateWalletErrorMessage, setGenerateWalletErrorMessage] = useState('');
 
-  // Estado general para saber si alguna wallet está cargando
   const isAnyWalletLoading = isLoadingUsdtWallet || isLoadingUsdcWallet || isLoadingPolWallet || isLoadingTronWallet || isLoadingLtcWallet || isLoadingEthWallet || isLoadingBtcWallet || isGeneratingWallet;
 
   const amountSectionRef = useRef<HTMLDivElement>(null);
@@ -227,7 +226,6 @@ const AddFunds: React.FC = () => {
     }
   };
 
-  // Page load animation
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoaded(true);
@@ -235,7 +233,6 @@ const AddFunds: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Auto-scroll when payment method is selected
   useEffect(() => {
     if (selectedMethod) {
       setTimeout(() => {
@@ -254,7 +251,6 @@ const AddFunds: React.FC = () => {
     }
   }, [selectedMethod]);
 
-  // Auto-scroll when amount is valid or wallet is selected
   useEffect(() => {
     if (selectedMethod && selectedMethod !== 'static-wallets' && amount && parseFloat(amount) > 0) {
       const selectedPaymentMethod = paymentMethods.find(method => method.id === selectedMethod);
@@ -271,7 +267,6 @@ const AddFunds: React.FC = () => {
     }
   }, [selectedMethod, amount, paymentMethods]);
 
-  // Auto-scroll when crypto wallet is selected
   useEffect(() => {
     if (selectedWallet) {
       setTimeout(() => {
@@ -289,13 +284,11 @@ const AddFunds: React.FC = () => {
     setShowAmazonModal(false);
     setAmount('');
     setSelectedMethod('');
-    // Redirect to transactions page after successful payment
     window.location.href = '/transactions';
   };
 
   const handleAmazonPayError = (error: string) => {
     console.error('Amazon Pay error:', error);
-    // You can show an error modal here if needed
   };
 
   const handleCryptomusErrorModalClose = () => {
@@ -319,7 +312,6 @@ const AddFunds: React.FC = () => {
     setGenerateWalletErrorMessage('');
   };
 
-  // Function to regenerate static wallet
   const handleGetWallet = async () => {
     try {
       const currentUser = getAuth().currentUser;
@@ -329,10 +321,8 @@ const AddFunds: React.FC = () => {
         return;
       }
 
-      // Close modal immediately
       handleStaticWalletErrorModalClose();
 
-      // Set generating state and disable all buttons
       setIsGeneratingWallet(true);
 
       const idToken = await currentUser.getIdToken();
@@ -346,9 +336,7 @@ const AddFunds: React.FC = () => {
       });
 
       const data = await response.json();
-      console.log('Response from regeneratestaticwallet:', data);
 
-      // Check for errors in response
       if (!response.ok || data.message === 'Internal Server Error') {
         setIsGeneratingWallet(false);
         setGenerateWalletErrorMessage('An error occurred, please contact our customer support');
@@ -356,10 +344,8 @@ const AddFunds: React.FC = () => {
         return;
       }
 
-      // Success: Re-enable all buttons and fetch the wallet based on type
       setIsGeneratingWallet(false);
 
-      // Call the appropriate fetch function based on generatingWalletType
       if (generatingWalletType === 'usdt') {
         await fetchUsdtWallet();
       } else if (generatingWalletType === 'usdc') {
@@ -377,14 +363,12 @@ const AddFunds: React.FC = () => {
       }
 
     } catch (error) {
-      console.log('Error calling regeneratestaticwallet:', error);
       setIsGeneratingWallet(false);
       setGenerateWalletErrorMessage('An error occurred, please contact our customer support');
       setShowGenerateWalletErrorModal(true);
     }
   };
 
-  // Function to fetch USDT wallet address from Firestore
   const fetchUsdtWallet = async () => {
     if (!currentUser) {
       setStaticWalletErrorMessage('User not authenticated');
@@ -433,7 +417,6 @@ const AddFunds: React.FC = () => {
     }
   };
 
-  // Function to fetch USDC wallet address from Firestore
   const fetchUsdcWallet = async () => {
     if (!currentUser) {
       setStaticWalletErrorMessage('User not authenticated');
@@ -482,7 +465,6 @@ const AddFunds: React.FC = () => {
     }
   };
 
-  // Function to fetch POL wallet address from Firestore
   const fetchPolWallet = async () => {
     if (!currentUser) {
       setStaticWalletErrorMessage('User not authenticated');
@@ -531,7 +513,6 @@ const AddFunds: React.FC = () => {
     }
   };
 
-  // Function to fetch LTC wallet address from Firestore
   const fetchLtcWallet = async () => {
     if (!currentUser) {
       setStaticWalletErrorMessage('User not authenticated');
@@ -580,7 +561,6 @@ const AddFunds: React.FC = () => {
     }
   };
 
-  // Function to fetch ETH wallet address from Firestore
   const fetchEthWallet = async () => {
     if (!currentUser) {
       setStaticWalletErrorMessage('User not authenticated');
@@ -629,7 +609,6 @@ const AddFunds: React.FC = () => {
     }
   };
 
-  // Function to fetch BTC wallet address from Firestore
   const fetchBtcWallet = async () => {
     if (!currentUser) {
       setStaticWalletErrorMessage('User not authenticated');
@@ -678,7 +657,6 @@ const AddFunds: React.FC = () => {
     }
   };
 
-  // Function to fetch TRON wallet address from Firestore
   const fetchTronWallet = async () => {
     if (!currentUser) {
       setStaticWalletErrorMessage('User not authenticated');
@@ -727,16 +705,13 @@ const AddFunds: React.FC = () => {
     }
   };
 
-  // Function to create Cryptomus order
   const createCryptomusOrder = async (amount: number) => {
-    // Get Firebase ID token
     const currentUser = getAuth().currentUser;
     if (!currentUser) {
       throw new Error('User not authenticated');
     }
     const idToken = await currentUser.getIdToken();
 
-    // Call the CloudFunction
     const response = await fetch('https://createordercryptomus-ezeznlhr5a-uc.a.run.app', {
       method: 'POST',
       headers: {
@@ -749,7 +724,6 @@ const AddFunds: React.FC = () => {
     });
 
     if (!response.ok) {
-      // Parse error response and map to user-friendly messages
       const errorText = await response.text();
       let errorMessage = 'An error has occurred, please contact support';
       let isAuthError = false;
@@ -772,16 +746,13 @@ const AddFunds: React.FC = () => {
     return data;
   };
 
-  // Function to create Payeer order
   const createPayeerOrder = async (amount: number) => {
-    // Get Firebase ID token
     const currentUser = getAuth().currentUser;
     if (!currentUser) {
       throw new Error('User not authenticated');
     }
     const idToken = await currentUser.getIdToken();
 
-    // Call the CloudFunction
     const response = await fetch('https://createorderpayeer-ezeznlhr5a-uc.a.run.app', {
       method: 'POST',
       headers: {
@@ -794,7 +765,6 @@ const AddFunds: React.FC = () => {
     });
 
     if (!response.ok) {
-      // Parse error response and map to user-friendly messages
       const errorData = await response.json();
       let errorMessage = 'An error has occured, please contact support';
 
@@ -839,14 +809,11 @@ const AddFunds: React.FC = () => {
       }
     }
 
-    // Special handling for Amazon Pay
     if (selectedMethod === 'amazon') {
-      console.log('Amazon Pay selected, showing modal');
       setShowAmazonModal(true);
       return;
     }
 
-    // Special handling for Binance Pay
     if (selectedMethod === 'binance') {
       setShowBinanceInstructions(true);
       return;
@@ -856,26 +823,22 @@ const AddFunds: React.FC = () => {
 
     try {
       if (selectedMethod === 'cryptomus') {
-        // Handle Cryptomus payment
         setIsCryptomusProcessing(true);
         setIsUnauthorized(false);
         const numAmount = parseFloat(amount);
         const orderData = await createCryptomusOrder(numAmount);
 
         if (orderData.success && orderData.url) {
-          // Redirect to payment URL
           window.location.href = orderData.url;
           return;
         }
       } else if (selectedMethod === 'payeer') {
-        // Handle Payeer payment
         setIsPayeerProcessing(true);
         setIsPayeerUnauthorized(false);
         const numAmount = parseFloat(amount);
         const orderData = await createPayeerOrder(numAmount);
 
         if (orderData.success && orderData.url) {
-          // Redirect to payment URL
           window.location.href = orderData.url;
           return;
         }
@@ -883,7 +846,6 @@ const AddFunds: React.FC = () => {
         const selectedWalletData = staticWallets.find(wallet => wallet.id === selectedWallet);
         alert(`Your ${selectedWalletData?.name} wallet address is ready. Send any amount to the provided address and notify us with your transaction hash for verification.`);
       } else {
-        // Other payment methods (fallback)
         await new Promise(resolve => setTimeout(resolve, 2000));
         alert(`Payment of $${amount} via ${selectedPaymentMethod.name} has been initiated!`);
       }
@@ -1098,20 +1060,16 @@ const AddFunds: React.FC = () => {
                             onChange={(e) => {
                               let newValue = e.target.value;
 
-                              // Remove any negative signs
                               newValue = newValue.replace(/-/g, '');
 
                               const decimalParts = newValue.split('.');
 
-                              // Only allow up to 2 decimal places
                               if (decimalParts.length > 1 && decimalParts[1].length <= 2) {
                                 const numValue = parseFloat(newValue);
-                                // Don't allow values greater than 10000
                                 if (numValue <= 10000) {
                                   setAmount(newValue);
                                 }
                               } else if (decimalParts.length === 1) {
-                                // No decimal point yet, allow it if <= 10000
                                 const numValue = parseFloat(newValue);
                                 if (newValue === '' || numValue <= 10000) {
                                   setAmount(newValue);
@@ -1162,7 +1120,6 @@ const AddFunds: React.FC = () => {
                               disabled={(selectedMethod === 'cryptomus' && (isCryptomusProcessing || isUnauthorized)) || (selectedMethod === 'payeer' && (isPayeerProcessing || isPayeerUnauthorized))}
                               onClick={() => {
                                 setAmount(quickAmount.toString());
-                                // Auto-scroll to submit button after quick amount is selected
                                 setTimeout(() => {
                                   if (submitButtonRef.current) {
                                     submitButtonRef.current.scrollIntoView({
@@ -1371,7 +1328,6 @@ const AddFunds: React.FC = () => {
                                             setTimeout(() => setCopiedAddress(false), 2000);
                                           } catch (err) {
                                             console.error('Failed to copy: ', err);
-                                            // Fallback for older browsers
                                             const textArea = document.createElement('textarea');
                                             const addressToCopy = wallet.id === 'usdt' && usdtWalletAddress
                                               ? usdtWalletAddress
