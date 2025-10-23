@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import DashboardLayout from './DashboardLayout';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getAuth } from 'firebase/auth';
@@ -194,7 +193,6 @@ const EmptySimcard: React.FC = () => {
   };
 
   return (
-    <DashboardLayout currentPath="/emptysimcard">
       <div className="space-y-6">
         {/* Header */}
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
@@ -515,7 +513,6 @@ const EmptySimcard: React.FC = () => {
           </div>
         )}
       </div>
-    </DashboardLayout>
   );
 };
 

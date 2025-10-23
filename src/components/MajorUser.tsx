@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import MajorDashboardLayout from './MajorDashboardLayout';
 
 const MajorUser: React.FC = () => {
   const [email, setEmail] = useState('');
   const [selectedType, setSelectedType] = useState('numbers');
 
   return (
-    <MajorDashboardLayout currentPath="/major-user">
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
           <div className="relative z-10">
@@ -51,7 +49,6 @@ const MajorUser: React.FC = () => {
           </div>
         </div>
       </div>
-    </MajorDashboardLayout>
   );
 };
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import DashboardLayout from './DashboardLayout';
 import { db, auth } from '../firebase/config';
 import { collection, query, where, getDocs, Timestamp, onSnapshot, doc, orderBy } from 'firebase/firestore';
 
@@ -296,7 +295,6 @@ const SendMessage: React.FC = () => {
   };
 
   return (
-    <DashboardLayout currentPath="/sendmessage">
       <div className="space-y-6">
         {/* Header */}
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
@@ -669,7 +667,6 @@ const SendMessage: React.FC = () => {
           </div>
         )}
       </div>
-    </DashboardLayout>
   );
 };
 

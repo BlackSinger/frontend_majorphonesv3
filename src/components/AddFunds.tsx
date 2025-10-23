@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import DashboardLayout from './DashboardLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -60,6 +59,7 @@ const AddFunds: React.FC = () => {
   const [usdtWalletAddress, setUsdtWalletAddress] = useState('');
   const [showStaticWalletErrorModal, setShowStaticWalletErrorModal] = useState(false);
   const [staticWalletErrorMessage, setStaticWalletErrorMessage] = useState('');
+  const [isGenerateWalletModal, setIsGenerateWalletModal] = useState(false);
   const [isUsdtButtonDisabled, setIsUsdtButtonDisabled] = useState(false);
   const [isLoadingUsdcWallet, setIsLoadingUsdcWallet] = useState(false);
   const [usdcWalletAddress, setUsdcWalletAddress] = useState('');
@@ -79,9 +79,13 @@ const AddFunds: React.FC = () => {
   const [isLoadingTronWallet, setIsLoadingTronWallet] = useState(false);
   const [tronWalletAddress, setTronWalletAddress] = useState('');
   const [isTronButtonDisabled, setIsTronButtonDisabled] = useState(false);
+  const [isGeneratingWallet, setIsGeneratingWallet] = useState(false);
+  const [generatingWalletType, setGeneratingWalletType] = useState<string>('');
+  const [showGenerateWalletErrorModal, setShowGenerateWalletErrorModal] = useState(false);
+  const [generateWalletErrorMessage, setGenerateWalletErrorMessage] = useState('');
 
   // Estado general para saber si alguna wallet está cargando
-  const isAnyWalletLoading = isLoadingUsdtWallet || isLoadingUsdcWallet || isLoadingPolWallet || isLoadingTronWallet || isLoadingLtcWallet || isLoadingEthWallet || isLoadingBtcWallet;
+  const isAnyWalletLoading = isLoadingUsdtWallet || isLoadingUsdcWallet || isLoadingPolWallet || isLoadingTronWallet || isLoadingLtcWallet || isLoadingEthWallet || isLoadingBtcWallet || isGeneratingWallet;
 
   const amountSectionRef = useRef<HTMLDivElement>(null);
   const staticWalletsSectionRef = useRef<HTMLDivElement>(null);
@@ -307,6 +311,77 @@ const AddFunds: React.FC = () => {
   const handleStaticWalletErrorModalClose = () => {
     setShowStaticWalletErrorModal(false);
     setStaticWalletErrorMessage('');
+    setIsGenerateWalletModal(false);
+  };
+
+  const handleGenerateWalletErrorModalClose = () => {
+    setShowGenerateWalletErrorModal(false);
+    setGenerateWalletErrorMessage('');
+  };
+
+  // Function to regenerate static wallet
+  const handleGetWallet = async () => {
+    try {
+      const currentUser = getAuth().currentUser;
+
+      if (!currentUser) {
+        console.log('User not authenticated');
+        return;
+      }
+
+      // Close modal immediately
+      handleStaticWalletErrorModalClose();
+
+      // Set generating state and disable all buttons
+      setIsGeneratingWallet(true);
+
+      const idToken = await currentUser.getIdToken();
+
+      const response = await fetch('https://regeneratestaticwallet-ezeznlhr5a-uc.a.run.app', {
+        method: 'GET',
+        headers: {
+          'Authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      console.log('Response from regeneratestaticwallet:', data);
+
+      // Check for errors in response
+      if (!response.ok || data.message === 'Internal Server Error') {
+        setIsGeneratingWallet(false);
+        setGenerateWalletErrorMessage('An error occurred, please contact our customer support');
+        setShowGenerateWalletErrorModal(true);
+        return;
+      }
+
+      // Success: Re-enable all buttons and fetch the wallet based on type
+      setIsGeneratingWallet(false);
+
+      // Call the appropriate fetch function based on generatingWalletType
+      if (generatingWalletType === 'usdt') {
+        await fetchUsdtWallet();
+      } else if (generatingWalletType === 'usdc') {
+        await fetchUsdcWallet();
+      } else if (generatingWalletType === 'pol') {
+        await fetchPolWallet();
+      } else if (generatingWalletType === 'ltc') {
+        await fetchLtcWallet();
+      } else if (generatingWalletType === 'eth') {
+        await fetchEthWallet();
+      } else if (generatingWalletType === 'btc') {
+        await fetchBtcWallet();
+      } else if (generatingWalletType === 'trx') {
+        await fetchTronWallet();
+      }
+
+    } catch (error) {
+      console.log('Error calling regeneratestaticwallet:', error);
+      setIsGeneratingWallet(false);
+      setGenerateWalletErrorMessage('An error occurred, please contact our customer support');
+      setShowGenerateWalletErrorModal(true);
+    }
   };
 
   // Function to fetch USDT wallet address from Firestore
@@ -335,7 +410,9 @@ const AddFunds: React.FC = () => {
           setSelectedWallet('usdt');
         } else {
           setStaticWalletErrorMessage('USDT wallet address not found');
+          setIsGenerateWalletModal(true);
           setShowStaticWalletErrorModal(true);
+          setGeneratingWalletType('usdt');
           setSelectedWallet('');
           setUsdtWalletAddress('');
         }
@@ -382,7 +459,9 @@ const AddFunds: React.FC = () => {
           setSelectedWallet('usdc');
         } else {
           setStaticWalletErrorMessage('USDC wallet address not found');
+          setIsGenerateWalletModal(true);
           setShowStaticWalletErrorModal(true);
+          setGeneratingWalletType('usdc');
           setSelectedWallet('');
           setUsdcWalletAddress('');
         }
@@ -429,7 +508,9 @@ const AddFunds: React.FC = () => {
           setSelectedWallet('pol');
         } else {
           setStaticWalletErrorMessage('POL wallet address not found');
+          setIsGenerateWalletModal(true);
           setShowStaticWalletErrorModal(true);
+          setGeneratingWalletType('pol');
           setSelectedWallet('');
           setPolWalletAddress('');
         }
@@ -476,7 +557,9 @@ const AddFunds: React.FC = () => {
           setSelectedWallet('ltc');
         } else {
           setStaticWalletErrorMessage('LTC wallet address not found');
+          setIsGenerateWalletModal(true);
           setShowStaticWalletErrorModal(true);
+          setGeneratingWalletType('ltc');
           setSelectedWallet('');
           setLtcWalletAddress('');
         }
@@ -523,7 +606,9 @@ const AddFunds: React.FC = () => {
           setSelectedWallet('eth');
         } else {
           setStaticWalletErrorMessage('ETH wallet address not found');
+          setIsGenerateWalletModal(true);
           setShowStaticWalletErrorModal(true);
+          setGeneratingWalletType('eth');
           setSelectedWallet('');
           setEthWalletAddress('');
         }
@@ -570,7 +655,9 @@ const AddFunds: React.FC = () => {
           setSelectedWallet('btc');
         } else {
           setStaticWalletErrorMessage('BTC wallet address not found');
+          setIsGenerateWalletModal(true);
           setShowStaticWalletErrorModal(true);
+          setGeneratingWalletType('btc');
           setSelectedWallet('');
           setBtcWalletAddress('');
         }
@@ -617,7 +704,9 @@ const AddFunds: React.FC = () => {
           setSelectedWallet('trx');
         } else {
           setStaticWalletErrorMessage('TRX wallet address not found');
+          setIsGenerateWalletModal(true);
           setShowStaticWalletErrorModal(true);
+          setGeneratingWalletType('trx');
           setSelectedWallet('');
           setTronWalletAddress('');
         }
@@ -859,9 +948,7 @@ const AddFunds: React.FC = () => {
           background: rgba(71, 85, 105, 0.8);
         }
       `}</style>
-      
-    <DashboardLayout currentPath="/add-funds">
-      
+
       <div className={`space-y-6 transition-all duration-1000 ${isLoaded ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-8'}`}>
         {/* Header */}
         <div 
@@ -1206,7 +1293,7 @@ const AddFunds: React.FC = () => {
                                         : 'bg-slate-600/50 hover:bg-slate-500/50 text-slate-300 hover:text-white border border-slate-500/30 hover:border-slate-400/50'
                                   }`}
                                 >
-                                  {(wallet.id === 'usdt' && isLoadingUsdtWallet) || (wallet.id === 'usdc' && isLoadingUsdcWallet) || (wallet.id === 'pol' && isLoadingPolWallet) || (wallet.id === 'trx' && isLoadingTronWallet) || (wallet.id === 'ltc' && isLoadingLtcWallet) || (wallet.id === 'eth' && isLoadingEthWallet) || (wallet.id === 'btc' && isLoadingBtcWallet) ? (
+                                  {(wallet.id === 'usdt' && isLoadingUsdtWallet) || (wallet.id === 'usdc' && isLoadingUsdcWallet) || (wallet.id === 'pol' && isLoadingPolWallet) || (wallet.id === 'trx' && isLoadingTronWallet) || (wallet.id === 'ltc' && isLoadingLtcWallet) || (wallet.id === 'eth' && isLoadingEthWallet) || (wallet.id === 'btc' && isLoadingBtcWallet) || (isGeneratingWallet && generatingWalletType === wallet.id) ? (
                                     <div className="flex items-center justify-center">
                                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                     </div>
@@ -1406,7 +1493,6 @@ const AddFunds: React.FC = () => {
           </div>
         </div>
       </div>
-    </DashboardLayout>
 
     {/* Validation Modal */}
     {showModal && (
@@ -1546,8 +1632,45 @@ const AddFunds: React.FC = () => {
 
     {/* Static Wallet Error Modal */}
     {showStaticWalletErrorModal && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }} onClick={handleStaticWalletErrorModalClose}>
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80" onClick={(e) => e.stopPropagation()}>
+          <div className="text-center">
+            <div className="mb-4">
+              {isGenerateWalletModal ? (
+                <div className="w-12 h-12 mx-auto bg-yellow-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+              ) : (
+                <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </div>
+              )}
+            </div>
+            <h3 className="text-lg font-medium text-white mb-2">
+              {isGenerateWalletModal ? 'Generate Wallet' : 'Wallet Error'}
+            </h3>
+            <p className="text-blue-200 mb-4">
+              {isGenerateWalletModal ? 'Click on the following button to generate your wallet' : staticWalletErrorMessage}
+            </p>
+            <button
+              onClick={isGenerateWalletModal ? handleGetWallet : handleStaticWalletErrorModalClose}
+              className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+            >
+              {isGenerateWalletModal ? 'Get Wallet' : 'OK'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Generate Wallet Error Modal */}
+    {showGenerateWalletErrorModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }} onClick={handleGenerateWalletErrorModalClose}>
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80" onClick={(e) => e.stopPropagation()}>
           <div className="text-center">
             <div className="mb-4">
               <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
@@ -1556,10 +1679,10 @@ const AddFunds: React.FC = () => {
                 </svg>
               </div>
             </div>
-            <h3 className="text-lg font-medium text-white mb-2">Wallet Error</h3>
-            <p className="text-blue-200 mb-4">{staticWalletErrorMessage}</p>
+            <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+            <p className="text-blue-200 mb-4">{generateWalletErrorMessage}</p>
             <button
-              onClick={handleStaticWalletErrorModalClose}
+              onClick={handleGenerateWalletErrorModalClose}
               className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
             >
               OK

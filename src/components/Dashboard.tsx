@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, Timestamp, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
-import DashboardLayout from './DashboardLayout';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 
 const Dashboard: React.FC = () => {
@@ -604,9 +603,6 @@ const Dashboard: React.FC = () => {
           background: rgba(71, 85, 105, 0.8);
         }
       `}</style>
-      
-    <DashboardLayout currentPath="/dashboard">
-      
 
       <div className={`space-y-6 transition-all duration-1000 ${isLoaded ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-8'}`}>
         {/* Combined Welcome & Stats Section */}
@@ -665,7 +661,7 @@ const Dashboard: React.FC = () => {
 
               <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
                 <p className="text-orange-100 text-sm font-semibold mb-2 uppercase tracking-wider">Tickets</p>
-                <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-orange-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderTicketsContent()}</p>
+                <div className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-orange-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderTicketsContent()}</div>
                 <p className="text-orange-200 text-sm font-medium">Unread</p>
               </div>
             </div>
@@ -691,7 +687,7 @@ const Dashboard: React.FC = () => {
               <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
                 <p className="text-emerald-100 text-sm font-semibold mb-1 uppercase tracking-wider">Purchases</p>
                 <div className="mb-1">
-                  <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderPurchasesContent()}</p>
+                  <div className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderPurchasesContent()}</div>
                 </div>
                 <p className="text-emerald-200 text-sm font-medium">Last 30 days</p>
               </div>
@@ -717,7 +713,7 @@ const Dashboard: React.FC = () => {
               
               <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
                 <p className="text-blue-100 text-sm font-semibold mb-2 uppercase tracking-wider">Total Spent</p>
-                <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderSpentContent()}</p>
+                <div className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderSpentContent()}</div>
                 <p className="text-blue-200 text-sm font-medium">Last 30 days</p>
               </div>
             </div>
@@ -742,7 +738,7 @@ const Dashboard: React.FC = () => {
               
               <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
                 <p className="text-purple-100 text-sm font-semibold mb-2 uppercase tracking-wider">Deposited</p>
-                <p className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderDepositedContent()}</p>
+                <div className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderDepositedContent()}</div>
                 <p className="text-purple-200 text-sm font-medium">Last 30 days</p>
               </div>
             </div>
@@ -977,7 +973,6 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       )}
-    </DashboardLayout>
     </>
   );
 };

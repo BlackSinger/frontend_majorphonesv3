@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import DashboardLayout from './DashboardLayout';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -269,7 +268,7 @@ const Proxies: React.FC = () => {
   };
 
   return (
-    <DashboardLayout currentPath="/proxies">
+    <>
       <div className="space-y-6">
         {/* Header */}
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
@@ -608,7 +607,7 @@ const Proxies: React.FC = () => {
           </div>
         </div>
       )}
-    </DashboardLayout>
+    </>
   );
 };
 

@@ -3,7 +3,6 @@ import { doc, getDoc } from 'firebase/firestore';
 import { sendPasswordResetEmail, multiFactor, reauthenticateWithCredential, EmailAuthProvider, TotpMultiFactorGenerator, TotpSecret, MultiFactorResolver, getMultiFactorResolver, deleteUser, GoogleAuthProvider, reauthenticateWithPopup } from 'firebase/auth';
 import { db, auth } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
-import DashboardLayout from './DashboardLayout';
 import QRCode from 'qrcode';
 
 const Profile: React.FC = () => {
@@ -700,9 +699,7 @@ const Profile: React.FC = () => {
           background: rgba(71, 85, 105, 0.8);
         }
       `}</style>
-      
-    <DashboardLayout currentPath="/profile">
-      
+
       <div className={`space-y-6 transition-all duration-1000 ${isLoaded ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-8'}`}>
         {/* Header */}
         <div 
@@ -1504,7 +1501,6 @@ const Profile: React.FC = () => {
           </div>
         </div>
       )}
-    </DashboardLayout>
     </>
   );
 };

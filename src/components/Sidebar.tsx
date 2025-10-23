@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import LogoMajor from '../LogoMajor.png';
-
-interface SidebarProps {
-  currentPath?: string;
-}
 
 interface MenuItem {
   name: string;
@@ -15,7 +11,9 @@ interface MenuItem {
   badge?: string;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPath = '/dashboard' }) => {
+const Sidebar: React.FC = () => {
+  const location = useLocation();
+  const currentPath = location.pathname;
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
@@ -212,9 +210,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPath = '/dashboard' }) => {
             {menuItems.map((item) => {
               const isActive = currentPath === item.path;
               return (
-                <a
+                <Link
                   key={item.path}
-                  href={item.path}
+                  to={item.path}
                   className={`group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300 relative overflow-hidden ${
                     isActive
                       ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg transform scale-105'
@@ -225,21 +223,21 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPath = '/dashboard' }) => {
                   {isActive && (
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 to-cyan-500/30 blur-sm"></div>
                   )}
-                  
+
                   <div className={`mr-3 transition-all duration-300 relative z-10 ${
                     isActive ? 'text-blue-100 drop-shadow-sm' : 'text-slate-400 group-hover:text-blue-400'
                   }`}>
                     {item.icon}
                   </div>
-                  
+
                   <span className="flex-1 font-medium relative z-10">{item.name}</span>
-                  
+
                   {item.badge && (
                     <span className="ml-2 px-2.5 py-1 text-xs font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-full shadow-sm animate-pulse relative z-10">
                       {item.badge}
                     </span>
                   )}
-                </a>
+                </Link>
               );
             })}
           </nav>

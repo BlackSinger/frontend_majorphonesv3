@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import DashboardLayout from './DashboardLayout';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
@@ -73,7 +72,6 @@ const API: React.FC = () => {
   };
 
   return (
-    <DashboardLayout currentPath="/api">
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-700/50 p-4 sm:p-6 relative overflow-hidden">
@@ -791,7 +789,6 @@ const API: React.FC = () => {
           </div>
         )}
       </div>
-    </DashboardLayout>
   );
 };
 

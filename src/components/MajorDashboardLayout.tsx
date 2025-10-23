@@ -3,15 +3,14 @@ import MajorSidebar from './MajorSidebar';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  currentPath?: string;
 }
 
-const MajorDashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath }) => {
+const MajorDashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   return (
     <div className="flex h-screen" style={{backgroundColor: '#1e293b'}}>
       {/* Sidebar */}
-      <MajorSidebar currentPath={currentPath} />
+      <MajorSidebar />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">

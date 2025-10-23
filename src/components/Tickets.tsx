@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import DashboardLayout from './DashboardLayout';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
@@ -818,7 +817,6 @@ const Tickets: React.FC = () => {
   };
 
   return (
-    <DashboardLayout currentPath="/tickets">
       <div className="space-y-6">
         {/* Header */}
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
@@ -1737,7 +1735,6 @@ const Tickets: React.FC = () => {
         )}
 
       </div>
-    </DashboardLayout>
   );
 };
 

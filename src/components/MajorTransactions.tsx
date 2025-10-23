@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut, getAuth } from 'firebase/auth';
-import MajorDashboardLayout from './MajorDashboardLayout';
 
 interface TransactionRecord {
   id: string;
@@ -208,8 +207,7 @@ const MajorTransactions: React.FC = () => {
   };
 
   return (
-    <MajorDashboardLayout currentPath="/major-transactions">
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
           <div className="relative z-10">
@@ -501,7 +499,6 @@ const MajorTransactions: React.FC = () => {
           </div>
         )}
       </div>
-    </MajorDashboardLayout>
   );
 };
 

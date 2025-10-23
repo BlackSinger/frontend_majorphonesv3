@@ -7,60 +7,97 @@ import Sidebar from './Sidebar';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  currentPath?: string;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath }) => {
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { currentUser } = useAuth();
   const [balance, setBalance] = useState<number | null>(null);
-  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
-
-  useEffect(() => {
+  const [showBalance, setShowBalance] = useState(false);
+  const [hideBalanceTimeout, setHideBalanceTimeout] = useState<NodeJS.Timeout | null>(null);
+  // Function to fetch balance when eye icon is clicked
+  const handleShowBalance = async () => {
     if (!currentUser) {
-      setBalance(null);
-      setIsLoadingBalance(false);
+      setBalanceError('User not authenticated');
+      setShowErrorModal(true);
       return;
     }
 
     setIsLoadingBalance(true);
     setBalanceError(null);
 
-    const userDocRef = doc(db, 'users', currentUser.uid);
+    try {
+      const userDocRef = doc(db, 'users', currentUser.uid);
 
-    const unsubscribe = onSnapshot(
-      userDocRef,
-      (docSnap) => {
-        if (docSnap.exists()) {
-          const userData = docSnap.data();
-          const rawBalance = userData.balance || 0;
-          setBalance(parseFloat(rawBalance) || 0);
-        } else {
-          setBalance(0);
+      // Use onSnapshot for a single read
+      const unsubscribe = onSnapshot(
+        userDocRef,
+        (docSnap) => {
+          if (docSnap.exists()) {
+            const userData = docSnap.data();
+            const rawBalance = userData.balance || 0;
+            setBalance(parseFloat(rawBalance) || 0);
+            setShowBalance(true);
+            setIsLoadingBalance(false);
+
+            // Clear any existing timeout
+            if (hideBalanceTimeout) {
+              clearTimeout(hideBalanceTimeout);
+            }
+
+            // Set timeout to hide balance after 5 seconds
+            const timeout = setTimeout(() => {
+              setShowBalance(false);
+              setBalance(null);
+            }, 5000);
+
+            setHideBalanceTimeout(timeout);
+
+            // Unsubscribe immediately after getting the data
+            unsubscribe();
+          } else {
+            setBalance(0);
+            setShowBalance(true);
+            setIsLoadingBalance(false);
+            unsubscribe();
+          }
+        },
+        (error: any) => {
+          let errorMessage = 'Failed to load balance';
+
+          if (error.code === 'permission-denied') {
+            errorMessage = 'Access denied to balance information';
+          } else if (error.code === 'unavailable') {
+            errorMessage = 'Service temporarily unavailable, try again later';
+          } else if (error.code === 'unauthenticated') {
+            errorMessage = 'Authentication required';
+          }
+
+          setBalanceError(errorMessage);
+          setShowErrorModal(true);
+          setBalance(null);
+          setIsLoadingBalance(false);
+          setShowBalance(false);
         }
-        setIsLoadingBalance(false);
-      },
-      (error: any) => {
-        let errorMessage = 'Failed to load balance';
+      );
+    } catch (error) {
+      setBalanceError('Error loading balance');
+      setShowErrorModal(true);
+      setIsLoadingBalance(false);
+      setShowBalance(false);
+    }
+  };
 
-        if (error.code === 'permission-denied') {
-          errorMessage = 'Access denied to balance information';
-        } else if (error.code === 'unavailable') {
-          errorMessage = 'Service temporarily unavailable, try again later';
-        } else if (error.code === 'unauthenticated') {
-          errorMessage = 'Authentication required';
-        }
-
-        setBalanceError(errorMessage);
-        setShowErrorModal(true);
-        setBalance(null);
-        setIsLoadingBalance(false);
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hideBalanceTimeout) {
+        clearTimeout(hideBalanceTimeout);
       }
-    );
-
-    return () => unsubscribe();
-  }, [currentUser]);
+    };
+  }, [hideBalanceTimeout]);
 
   const formatBalance = (amount: number | null) => {
     if (amount === null) return '-';
@@ -88,8 +125,18 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
       );
     }
 
-    if (balanceError) {
-      return '-';
+    if (!showBalance) {
+      return (
+        <button
+          onClick={handleShowBalance}
+          className="flex items-center justify-center hover:opacity-80 transition-opacity"
+        >
+          <svg className="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        </button>
+      );
     }
 
     return formatBalance(balance);
@@ -98,7 +145,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
   return (
     <div className="flex h-screen" style={{backgroundColor: '#1e293b'}}>
       {/* Sidebar */}
-      <Sidebar currentPath={currentPath} />
+      <Sidebar />
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
@@ -132,10 +179,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
             {/* Right side - Combined User Actions */}
             <div className="flex items-center">
               {/* Desktop Version - Full layout */}
-              <Link to="/profile" className="hidden md:block group bg-slate-700/50 hover:bg-slate-600/50 rounded-2xl p-2 border border-slate-600/50 hover:border-blue-500/50 backdrop-blur-sm transition-all duration-300 hover:scale-104">
+              <div className="hidden md:block group bg-slate-700/50 hover:bg-slate-600/50 rounded-2xl p-2 border border-slate-600/50 hover:border-blue-500/50 backdrop-blur-sm transition-all duration-300 hover:scale-104">
                 <div className="flex items-center space-x-4">
                   {/* Profile Section */}
-                  <div className="flex items-center space-x-3">
+                  <Link to="/profile" className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -144,7 +191,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
                     <div>
                       <p className="text-white font-semibold text-sm group-hover:text-cyan-200 transition-colors duration-300">Profile</p>
                     </div>
-                  </div>
+                  </Link>
 
                   {/* Separator 1 */}
                   <div className="w-px h-12 bg-slate-600/50 group-hover:bg-blue-500/30 transition-colors duration-300"></div>
@@ -158,7 +205,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
                     </div>
                     <div>
                       <p className="text-slate-400 text-xs font-medium group-hover:text-slate-300 transition-colors duration-300">Balance</p>
-                      <p className="text-white font-bold text-sm group-hover:text-emerald-200 transition-colors duration-300">{renderBalanceContent()}</p>
+                      <div className="text-white font-bold text-sm group-hover:text-emerald-200 transition-colors duration-300 flex justify-center">{renderBalanceContent()}</div>
                     </div>
                   </div>
 
@@ -177,7 +224,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, currentPath
                     </div>
                   </Link>
                 </div>
-              </Link>
+              </div>
 
               {/* Mobile/Tablet Version - Compact icons only */}
               <div className="md:hidden flex items-center space-x-2">

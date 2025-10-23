@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import DashboardLayout from './DashboardLayout';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -411,7 +410,6 @@ const Middle: React.FC = () => {
   };
 
   return (
-    <DashboardLayout currentPath="/middle">
       <div className="space-y-6">
         {/* Header */}
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
@@ -785,7 +783,6 @@ const Middle: React.FC = () => {
           </div>
         )}
       </div>
-    </DashboardLayout>
   );
 };
 

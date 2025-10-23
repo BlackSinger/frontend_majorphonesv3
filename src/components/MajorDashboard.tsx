@@ -3,7 +3,6 @@ import { collection, query, where, getDocs, Timestamp, onSnapshot } from 'fireba
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
-import MajorDashboardLayout from './MajorDashboardLayout';
 
 const MajorDashboard: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -524,9 +523,6 @@ const MajorDashboard: React.FC = () => {
           background: rgba(71, 85, 105, 0.8);
         }
       `}</style>
-      
-    <MajorDashboardLayout currentPath="/major-dashboard">
-      
 
       <div className={`space-y-6 transition-all duration-1000 ${isLoaded ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-8'}`}>
         {/* Combined Welcome & Stats Section */}
@@ -775,7 +771,6 @@ const MajorDashboard: React.FC = () => {
           </div>
         </div>
       )}
-    </MajorDashboardLayout>
     </>
   );
 };

@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
-import MajorDashboardLayout from './MajorDashboardLayout';
 
 interface TransactionRecord {
   id: string;
@@ -173,8 +172,7 @@ const MajorExtra: React.FC = () => {
   };
 
   return (
-    <MajorDashboardLayout currentPath="/major-extra">
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
           <div className="relative z-10">
@@ -434,7 +432,6 @@ const MajorExtra: React.FC = () => {
           </div>
         </div>
       </div>
-    </MajorDashboardLayout>
   );
 };
 

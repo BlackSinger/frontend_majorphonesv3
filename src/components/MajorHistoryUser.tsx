@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut, getAuth } from 'firebase/auth';
-import MajorDashboardLayout from './MajorDashboardLayout';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 
 import {
@@ -554,8 +553,7 @@ const MajorHistoryUser: React.FC = () => {
   };
 
   return (
-    <MajorDashboardLayout currentPath="/major-user-history">
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
           <div className="relative z-10">
@@ -1078,7 +1076,6 @@ const MajorHistoryUser: React.FC = () => {
           </div>
         )}
       </div>
-    </MajorDashboardLayout>
   );
 };
 
