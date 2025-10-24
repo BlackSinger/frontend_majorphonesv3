@@ -13,21 +13,27 @@ const Dashboard: React.FC = () => {
   const [animatedTickets, setAnimatedTickets] = useState(0);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [totalPurchases, setTotalPurchases] = useState<number | null>(null);
-  const [isLoadingPurchases, setIsLoadingPurchases] = useState(true);
+  const [isLoadingPurchases, setIsLoadingPurchases] = useState(false);
   const [purchasesError, setPurchasesError] = useState<string | null>(null);
   const [showPurchasesModal, setShowPurchasesModal] = useState(false);
   const [totalSpent, setTotalSpent] = useState<number | null>(null);
-  const [isLoadingSpent, setIsLoadingSpent] = useState(true);
+  const [isLoadingSpent, setIsLoadingSpent] = useState(false);
   const [spentError, setSpentError] = useState<string | null>(null);
   const [showSpentModal, setShowSpentModal] = useState(false);
   const [totalDeposited, setTotalDeposited] = useState<number | null>(null);
-  const [isLoadingDeposited, setIsLoadingDeposited] = useState(true);
+  const [isLoadingDeposited, setIsLoadingDeposited] = useState(false);
   const [depositedError, setDepositedError] = useState<string | null>(null);
   const [showDepositedModal, setShowDepositedModal] = useState(false);
   const [unreadTickets, setUnreadTickets] = useState<number | null>(null);
   const [isLoadingTickets, setIsLoadingTickets] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
   const [showTicketsModal, setShowTicketsModal] = useState(false);
+  const [showPurchases, setShowPurchases] = useState(false);
+  const [showSpent, setShowSpent] = useState(false);
+  const [showDeposited, setShowDeposited] = useState(false);
+  const [purchasesDataLoaded, setPurchasesDataLoaded] = useState(false);
+  const [spentDataLoaded, setSpentDataLoaded] = useState(false);
+  const [depositedDataLoaded, setDepositedDataLoaded] = useState(false);
 
   const { currentUser } = useAuth();
 
@@ -44,13 +50,8 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    setIsLoadingPurchases(true);
-    setIsLoadingSpent(true);
-    setIsLoadingDeposited(true);
+    // Only auto-load tickets, not purchases/spent/deposited
     setIsLoadingTickets(true);
-    setPurchasesError(null);
-    setSpentError(null);
-    setDepositedError(null);
     setTicketsError(null);
 
     const thirtyDaysAgo = new Date();
@@ -60,131 +61,7 @@ const Dashboard: React.FC = () => {
     const unsubscribers: (() => void)[] = [];
 
     try {
-      let ordersCount = 0;
-      let ordersSpent = 0;
-      let proxyOrdersCount = 0;
-      let proxyOrdersSpent = 0;
-      let vccOrdersCount = 0;
-      let vccOrdersSpent = 0;
-      let depositedAmount = 0;
       let unreadCount = 0;
-
-      const updateTotals = () => {
-        setTotalPurchases(ordersCount + proxyOrdersCount + vccOrdersCount);
-        setTotalSpent(ordersSpent + proxyOrdersSpent + vccOrdersSpent);
-      };
-
-      const ordersQuery = query(
-        collection(db, 'orders'),
-        where('uid', '==', currentUser.uid),
-        where('createdAt', '>=', thirtyDaysTimestamp)
-      );
-
-      const unsubscribeOrders = onSnapshot(
-        ordersQuery,
-        (snapshot) => {
-          ordersCount = 0;
-          ordersSpent = 0;
-
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            const type = data.type;
-            const status = data.status;
-
-            if (type === 'Short' && status === 'Completed') {
-              ordersCount++;
-              ordersSpent += parseFloat(data.price) || 0;
-            } else if ((type === 'Middle' || type === 'Long' || type === 'Empty Simcard') && status !== 'Cancelled') {
-              ordersCount++;
-              ordersSpent += parseFloat(data.price) || 0;
-            }
-          });
-
-          updateTotals();
-          setIsLoadingPurchases(false);
-          setIsLoadingSpent(false);
-        },
-        (error) => {
-          handleError(error);
-        }
-      );
-      unsubscribers.push(unsubscribeOrders);
-
-      const proxyOrdersQuery = query(
-        collection(db, 'proxyOrders'),
-        where('uid', '==', currentUser.uid),
-        where('createdAt', '>=', thirtyDaysTimestamp)
-      );
-
-      const unsubscribeProxyOrders = onSnapshot(
-        proxyOrdersQuery,
-        (snapshot) => {
-          proxyOrdersCount = snapshot.size;
-          proxyOrdersSpent = 0;
-
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            proxyOrdersSpent += parseFloat(data.price) || 0;
-          });
-
-          updateTotals();
-        },
-        (error) => {
-          handleError(error);
-        }
-      );
-      unsubscribers.push(unsubscribeProxyOrders);
-
-      const vccOrdersQuery = query(
-        collection(db, 'vccOrders'),
-        where('uid', '==', currentUser.uid),
-        where('createdAt', '>=', thirtyDaysTimestamp)
-      );
-
-      const unsubscribeVccOrders = onSnapshot(
-        vccOrdersQuery,
-        (snapshot) => {
-          vccOrdersCount = snapshot.size;
-          vccOrdersSpent = 0;
-
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            vccOrdersSpent += parseFloat(data.price) || 0;
-          });
-
-          updateTotals();
-        },
-        (error) => {
-          handleError(error);
-        }
-      );
-      unsubscribers.push(unsubscribeVccOrders);
-
-      const rechargesQuery = query(
-        collection(db, 'recharges'),
-        where('uid', '==', currentUser.uid),
-        where('createdAt', '>=', thirtyDaysTimestamp),
-        where('status', '==', 'Completed')
-      );
-
-      const unsubscribeRecharges = onSnapshot(
-        rechargesQuery,
-        (snapshot) => {
-          depositedAmount = 0;
-
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            depositedAmount += parseFloat(data.amount) || 0;
-          });
-
-          setTotalDeposited(depositedAmount);
-          setIsLoadingDeposited(false);
-        },
-        (error) => {
-          handleError(error);
-        }
-      );
-      unsubscribers.push(unsubscribeRecharges);
 
       const ticketsQuery = query(
         collection(db, 'tickets'),
@@ -230,27 +107,15 @@ const Dashboard: React.FC = () => {
           errorMessage = 'Authentication required';
         }
 
-        setPurchasesError(errorMessage);
-        setSpentError(errorMessage);
-        setDepositedError(errorMessage);
         setTicketsError(errorMessage);
-        setShowPurchasesModal(true);
-        setIsLoadingPurchases(false);
-        setIsLoadingSpent(false);
-        setIsLoadingDeposited(false);
+        setShowTicketsModal(true);
         setIsLoadingTickets(false);
       };
     } catch (error: any) {
       let errorMessage = 'Failed to initialize data listeners';
 
-      setPurchasesError(errorMessage);
-      setSpentError(errorMessage);
-      setDepositedError(errorMessage);
       setTicketsError(errorMessage);
-      setShowPurchasesModal(true);
-      setIsLoadingPurchases(false);
-      setIsLoadingSpent(false);
-      setIsLoadingDeposited(false);
+      setShowTicketsModal(true);
       setIsLoadingTickets(false);
     }
 
@@ -267,43 +132,8 @@ const Dashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (isLoaded && totalPurchases !== null && totalSpent !== null && totalDeposited !== null && unreadTickets !== null) {
-      setAnimatedPurchases(0);
-      setAnimatedSpent(0);
-      setAnimatedDeposit(0);
+    if (isLoaded && unreadTickets !== null) {
       setAnimatedTickets(0);
-
-      const purchasesTimer = setInterval(() => {
-        setAnimatedPurchases(prev => {
-          if (prev < totalPurchases) {
-            return prev + 1;
-          }
-          clearInterval(purchasesTimer);
-          return totalPurchases;
-        });
-      }, 150);
-
-      const spentTimer = setInterval(() => {
-        setAnimatedSpent(prev => {
-          if (prev < totalSpent) {
-            const increment = totalSpent / 20;
-            return Math.min(prev + increment, totalSpent);
-          }
-          clearInterval(spentTimer);
-          return totalSpent;
-        });
-      }, 100);
-
-      const depositTimer = setInterval(() => {
-        setAnimatedDeposit(prev => {
-          if (prev < totalDeposited) {
-            const increment = totalDeposited / 20;
-            return Math.min(prev + increment, totalDeposited);
-          }
-          clearInterval(depositTimer);
-          return totalDeposited;
-        });
-      }, 100);
 
       const ticketsTimer = setInterval(() => {
         setAnimatedTickets(prev => {
@@ -316,13 +146,72 @@ const Dashboard: React.FC = () => {
       }, 200);
 
       return () => {
-        clearInterval(purchasesTimer);
-        clearInterval(spentTimer);
-        clearInterval(depositTimer);
         clearInterval(ticketsTimer);
       };
     }
-  }, [isLoaded, totalPurchases, totalSpent, totalDeposited, unreadTickets]);
+  }, [isLoaded, unreadTickets]);
+
+  useEffect(() => {
+    if (isLoaded && totalPurchases !== null && showPurchases) {
+      setAnimatedPurchases(0);
+
+      const purchasesTimer = setInterval(() => {
+        setAnimatedPurchases(prev => {
+          if (prev < totalPurchases) {
+            return prev + 1;
+          }
+          clearInterval(purchasesTimer);
+          return totalPurchases;
+        });
+      }, 150);
+
+      return () => {
+        clearInterval(purchasesTimer);
+      };
+    }
+  }, [isLoaded, totalPurchases, showPurchases]);
+
+  useEffect(() => {
+    if (isLoaded && totalSpent !== null && showSpent) {
+      setAnimatedSpent(0);
+
+      const spentTimer = setInterval(() => {
+        setAnimatedSpent(prev => {
+          if (prev < totalSpent) {
+            const increment = totalSpent / 20;
+            return Math.min(prev + increment, totalSpent);
+          }
+          clearInterval(spentTimer);
+          return totalSpent;
+        });
+      }, 100);
+
+      return () => {
+        clearInterval(spentTimer);
+      };
+    }
+  }, [isLoaded, totalSpent, showSpent]);
+
+  useEffect(() => {
+    if (isLoaded && totalDeposited !== null && showDeposited) {
+      setAnimatedDeposit(0);
+
+      const depositTimer = setInterval(() => {
+        setAnimatedDeposit(prev => {
+          if (prev < totalDeposited) {
+            const increment = totalDeposited / 20;
+            return Math.min(prev + increment, totalDeposited);
+          }
+          clearInterval(depositTimer);
+          return totalDeposited;
+        });
+      }, 100);
+
+      return () => {
+        clearInterval(depositTimer);
+      };
+    }
+  }, [isLoaded, totalDeposited, showDeposited]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -346,6 +235,285 @@ const Dashboard: React.FC = () => {
     spendingIncrease: 8.7,
     depositIncrease: 12.3,
     ticketsIncrease: 18.9
+  };
+
+  // Handler to fetch purchases data when eye icon is clicked
+  const handleShowPurchases = async () => {
+    if (!currentUser || purchasesDataLoaded) return;
+
+    setIsLoadingPurchases(true);
+    setPurchasesError(null);
+
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const thirtyDaysTimestamp = Timestamp.fromDate(thirtyDaysAgo);
+
+      let ordersCount = 0;
+      let proxyOrdersCount = 0;
+      let vccOrdersCount = 0;
+
+      const ordersQuery = query(
+        collection(db, 'orders'),
+        where('uid', '==', currentUser.uid),
+        where('createdAt', '>=', thirtyDaysTimestamp)
+      );
+
+      const unsubscribeOrders = onSnapshot(
+        ordersQuery,
+        (snapshot) => {
+          ordersCount = 0;
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            const type = data.type;
+            const status = data.status;
+
+            if (type === 'Short' && status === 'Completed') {
+              ordersCount++;
+            } else if ((type === 'Middle' || type === 'Long' || type === 'Empty Simcard') && status !== 'Cancelled') {
+              ordersCount++;
+            }
+          });
+
+          setTotalPurchases(ordersCount + proxyOrdersCount + vccOrdersCount);
+          setShowPurchases(true);
+          setPurchasesDataLoaded(true);
+          setIsLoadingPurchases(false);
+        },
+        (error) => {
+          handlePurchasesError(error);
+        }
+      );
+
+      const proxyOrdersQuery = query(
+        collection(db, 'proxyOrders'),
+        where('uid', '==', currentUser.uid),
+        where('createdAt', '>=', thirtyDaysTimestamp)
+      );
+
+      const unsubscribeProxyOrders = onSnapshot(
+        proxyOrdersQuery,
+        (snapshot) => {
+          proxyOrdersCount = snapshot.size;
+
+          setTotalPurchases(ordersCount + proxyOrdersCount + vccOrdersCount);
+        },
+        (error) => {
+          handlePurchasesError(error);
+        }
+      );
+
+      const vccOrdersQuery = query(
+        collection(db, 'vccOrders'),
+        where('uid', '==', currentUser.uid),
+        where('createdAt', '>=', thirtyDaysTimestamp)
+      );
+
+      const unsubscribeVccOrders = onSnapshot(
+        vccOrdersQuery,
+        (snapshot) => {
+          vccOrdersCount = snapshot.size;
+
+          setTotalPurchases(ordersCount + proxyOrdersCount + vccOrdersCount);
+        },
+        (error) => {
+          handlePurchasesError(error);
+        }
+      );
+    } catch (error: any) {
+      handlePurchasesError(error);
+    }
+  };
+
+  const handlePurchasesError = (error: any) => {
+    let errorMessage = 'Failed to load data';
+
+    if (error.code === 'permission-denied') {
+      errorMessage = 'Access denied to information';
+    } else if (error.code === 'unavailable') {
+      errorMessage = 'Service temporarily unavailable, try again later';
+    } else if (error.code === 'unauthenticated') {
+      errorMessage = 'Authentication required';
+    }
+
+    setPurchasesError(errorMessage);
+    setShowPurchasesModal(true);
+    setIsLoadingPurchases(false);
+  };
+
+  // Handler to fetch spent data when eye icon is clicked
+  const handleShowSpent = async () => {
+    if (!currentUser || spentDataLoaded) return;
+
+    setIsLoadingSpent(true);
+    setSpentError(null);
+
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const thirtyDaysTimestamp = Timestamp.fromDate(thirtyDaysAgo);
+
+      let ordersSpent = 0;
+      let proxyOrdersSpent = 0;
+      let vccOrdersSpent = 0;
+
+      const ordersQuery = query(
+        collection(db, 'orders'),
+        where('uid', '==', currentUser.uid),
+        where('createdAt', '>=', thirtyDaysTimestamp)
+      );
+
+      const unsubscribeOrders = onSnapshot(
+        ordersQuery,
+        (snapshot) => {
+          ordersSpent = 0;
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            const type = data.type;
+            const status = data.status;
+
+            if (type === 'Short' && status === 'Completed') {
+              ordersSpent += parseFloat(data.price) || 0;
+            } else if ((type === 'Middle' || type === 'Long' || type === 'Empty Simcard') && status !== 'Cancelled') {
+              ordersSpent += parseFloat(data.price) || 0;
+            }
+          });
+
+          setTotalSpent(ordersSpent + proxyOrdersSpent + vccOrdersSpent);
+          setShowSpent(true);
+          setSpentDataLoaded(true);
+          setIsLoadingSpent(false);
+        },
+        (error) => {
+          handleSpentError(error);
+        }
+      );
+
+      const proxyOrdersQuery = query(
+        collection(db, 'proxyOrders'),
+        where('uid', '==', currentUser.uid),
+        where('createdAt', '>=', thirtyDaysTimestamp)
+      );
+
+      const unsubscribeProxyOrders = onSnapshot(
+        proxyOrdersQuery,
+        (snapshot) => {
+          proxyOrdersSpent = 0;
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            proxyOrdersSpent += parseFloat(data.price) || 0;
+          });
+
+          setTotalSpent(ordersSpent + proxyOrdersSpent + vccOrdersSpent);
+        },
+        (error) => {
+          handleSpentError(error);
+        }
+      );
+
+      const vccOrdersQuery = query(
+        collection(db, 'vccOrders'),
+        where('uid', '==', currentUser.uid),
+        where('createdAt', '>=', thirtyDaysTimestamp)
+      );
+
+      const unsubscribeVccOrders = onSnapshot(
+        vccOrdersQuery,
+        (snapshot) => {
+          vccOrdersSpent = 0;
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            vccOrdersSpent += parseFloat(data.price) || 0;
+          });
+
+          setTotalSpent(ordersSpent + proxyOrdersSpent + vccOrdersSpent);
+        },
+        (error) => {
+          handleSpentError(error);
+        }
+      );
+    } catch (error: any) {
+      handleSpentError(error);
+    }
+  };
+
+  const handleSpentError = (error: any) => {
+    let errorMessage = 'Failed to load data';
+
+    if (error.code === 'permission-denied') {
+      errorMessage = 'Access denied to information';
+    } else if (error.code === 'unavailable') {
+      errorMessage = 'Service temporarily unavailable, try again later';
+    } else if (error.code === 'unauthenticated') {
+      errorMessage = 'Authentication required';
+    }
+
+    setSpentError(errorMessage);
+    setShowSpentModal(true);
+    setIsLoadingSpent(false);
+  };
+
+  // Handler to fetch deposited data when eye icon is clicked
+  const handleShowDeposited = async () => {
+    if (!currentUser || depositedDataLoaded) return;
+
+    setIsLoadingDeposited(true);
+    setDepositedError(null);
+
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const thirtyDaysTimestamp = Timestamp.fromDate(thirtyDaysAgo);
+
+      const rechargesQuery = query(
+        collection(db, 'recharges'),
+        where('uid', '==', currentUser.uid),
+        where('createdAt', '>=', thirtyDaysTimestamp),
+        where('status', '==', 'Completed')
+      );
+
+      const unsubscribeRecharges = onSnapshot(
+        rechargesQuery,
+        (snapshot) => {
+          let depositedAmount = 0;
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            depositedAmount += parseFloat(data.amount) || 0;
+          });
+
+          setTotalDeposited(depositedAmount);
+          setShowDeposited(true);
+          setDepositedDataLoaded(true);
+          setIsLoadingDeposited(false);
+        },
+        (error) => {
+          handleDepositedError(error);
+        }
+      );
+    } catch (error: any) {
+      handleDepositedError(error);
+    }
+  };
+
+  const handleDepositedError = (error: any) => {
+    let errorMessage = 'Failed to load data';
+
+    if (error.code === 'permission-denied') {
+      errorMessage = 'Access denied to information';
+    } else if (error.code === 'unavailable') {
+      errorMessage = 'Service temporarily unavailable, try again later';
+    } else if (error.code === 'unauthenticated') {
+      errorMessage = 'Authentication required';
+    }
+
+    setDepositedError(errorMessage);
+    setShowDepositedModal(true);
+    setIsLoadingDeposited(false);
   };
 
   const handlePurchasesModalClose = () => {
@@ -396,6 +564,20 @@ const Dashboard: React.FC = () => {
       );
     }
 
+    if (!showPurchases) {
+      return (
+        <button
+          onClick={handleShowPurchases}
+          className="flex items-center justify-center hover:opacity-80 transition-opacity"
+        >
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        </button>
+      );
+    }
+
     if (purchasesError) {
       return '-';
     }
@@ -415,6 +597,20 @@ const Dashboard: React.FC = () => {
       );
     }
 
+    if (!showSpent) {
+      return (
+        <button
+          onClick={handleShowSpent}
+          className="flex items-center justify-center hover:opacity-80 transition-opacity"
+        >
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        </button>
+      );
+    }
+
     if (spentError) {
       return '-';
     }
@@ -431,6 +627,20 @@ const Dashboard: React.FC = () => {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
         </div>
+      );
+    }
+
+    if (!showDeposited) {
+      return (
+        <button
+          onClick={handleShowDeposited}
+          className="flex items-center justify-center hover:opacity-80 transition-opacity"
+        >
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        </button>
       );
     }
 
@@ -686,8 +896,8 @@ const Dashboard: React.FC = () => {
               
               <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
                 <p className="text-emerald-100 text-sm font-semibold mb-1 uppercase tracking-wider">Purchases</p>
-                <div className="mb-1">
-                  <div className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderPurchasesContent()}</div>
+                <div className="mb-1 flex justify-center items-center min-h-[32px]">
+                  <div className="text-1xl font-black bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderPurchasesContent()}</div>
                 </div>
                 <p className="text-emerald-200 text-sm font-medium">Last 30 days</p>
               </div>
@@ -713,7 +923,9 @@ const Dashboard: React.FC = () => {
               
               <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
                 <p className="text-blue-100 text-sm font-semibold mb-2 uppercase tracking-wider">Total Spent</p>
-                <div className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderSpentContent()}</div>
+                <div className="mb-1 flex justify-center items-center min-h-[32px]">
+                  <div className="text-1xl font-black bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderSpentContent()}</div>
+                </div>
                 <p className="text-blue-200 text-sm font-medium">Last 30 days</p>
               </div>
             </div>
@@ -738,7 +950,9 @@ const Dashboard: React.FC = () => {
               
               <div className="text-center group-hover/stats:transform group-hover/stats:translate-x-2 transition-transform duration-500">
                 <p className="text-purple-100 text-sm font-semibold mb-2 uppercase tracking-wider">Deposited</p>
-                <div className="text-1xl font-black mb-1 bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderDepositedContent()}</div>
+                <div className="mb-1 flex justify-center items-center min-h-[32px]">
+                  <div className="text-1xl font-black bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent group-hover/stats:scale-110 transition-transform duration-300">{renderDepositedContent()}</div>
+                </div>
                 <p className="text-purple-200 text-sm font-medium">Last 30 days</p>
               </div>
             </div>
