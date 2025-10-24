@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from './Sidebar';
@@ -25,66 +25,56 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       return;
     }
 
+    // Reset balance state before fetching new data
+    setBalance(null);
     setIsLoadingBalance(true);
     setBalanceError(null);
+
+    // Clear any existing timeout
+    if (hideBalanceTimeout) {
+      clearTimeout(hideBalanceTimeout);
+      setHideBalanceTimeout(null);
+    }
 
     try {
       const userDocRef = doc(db, 'users', currentUser.uid);
 
-      // Use onSnapshot for a single read
-      const unsubscribe = onSnapshot(
-        userDocRef,
-        (docSnap) => {
-          if (docSnap.exists()) {
-            const userData = docSnap.data();
-            const rawBalance = userData.balance || 0;
-            setBalance(parseFloat(rawBalance) || 0);
-            setShowBalance(true);
-            setIsLoadingBalance(false);
+      // Force read from server, bypassing cache
+      const docSnap = await getDoc(userDocRef);
 
-            // Clear any existing timeout
-            if (hideBalanceTimeout) {
-              clearTimeout(hideBalanceTimeout);
-            }
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+        const rawBalance = userData.balance || 0;
+        setBalance(parseFloat(rawBalance) || 0);
+        setShowBalance(true);
+        setIsLoadingBalance(false);
 
-            // Set timeout to hide balance after 5 seconds
-            const timeout = setTimeout(() => {
-              setShowBalance(false);
-              setBalance(null);
-            }, 5000);
-
-            setHideBalanceTimeout(timeout);
-
-            // Unsubscribe immediately after getting the data
-            unsubscribe();
-          } else {
-            setBalance(0);
-            setShowBalance(true);
-            setIsLoadingBalance(false);
-            unsubscribe();
-          }
-        },
-        (error: any) => {
-          let errorMessage = 'Failed to load balance';
-
-          if (error.code === 'permission-denied') {
-            errorMessage = 'Access denied to balance information';
-          } else if (error.code === 'unavailable') {
-            errorMessage = 'Service temporarily unavailable, try again later';
-          } else if (error.code === 'unauthenticated') {
-            errorMessage = 'Authentication required';
-          }
-
-          setBalanceError(errorMessage);
-          setShowErrorModal(true);
-          setBalance(null);
-          setIsLoadingBalance(false);
+        // Set timeout to hide balance after 5 seconds
+        const timeout = setTimeout(() => {
           setShowBalance(false);
-        }
-      );
-    } catch (error) {
-      setBalanceError('Error loading balance');
+          setBalance(null);
+        }, 5000);
+
+        setHideBalanceTimeout(timeout);
+      } else {
+        setBalance(0);
+        setShowBalance(true);
+        setIsLoadingBalance(false);
+      }
+    } catch (error: any) {
+      let errorMessage = 'Failed to load balance';
+
+      if (error.code === 'permission-denied') {
+        errorMessage = 'Access denied to balance information';
+      } else if (error.code === 'unavailable') {
+        errorMessage = 'Service temporarily unavailable, try again later';
+      } else if (error.code === 'unauthenticated') {
+        errorMessage = 'Authentication required';
+      }
+
+      setBalanceError(errorMessage);
       setShowErrorModal(true);
+      setBalance(null);
       setIsLoadingBalance(false);
       setShowBalance(false);
     }
