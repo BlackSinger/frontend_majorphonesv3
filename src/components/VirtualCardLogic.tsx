@@ -76,7 +76,7 @@ export const convertVCCDocumentToRecord = (doc: VCCOrderDocument): VirtualCardRe
   let priceNum = typeof doc.price === 'number' ? doc.price : parseFloat(doc.price);
   if (isNaN(priceNum)) priceNum = 0;
 
-  const funds = priceNum === 4.5 ? 0 : priceNum === 7 ? 3 : 0;
+  const funds = priceNum === 4 ? 0 : priceNum === 9 ? 3 : 0;
 
   return {
     id: doc.orderId,

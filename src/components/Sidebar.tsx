@@ -246,14 +246,14 @@ const Sidebar: React.FC = () => {
           <div className="p-4 border-t border-slate-600/50 space-y-3 bg-slate-800/30">
             {/* Quick Actions */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col items-center justify-center p-3 text-slate-300 rounded-xl transition-all duration-300 border border-slate-600/30 opacity-50 cursor-not-allowed">
-                <div className="w-8 h-8 bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg flex items-center justify-center mb-1 transition-all duration-300">
+              <Link to="/api" className="flex flex-col items-center justify-center p-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all duration-300 border border-slate-600/30 hover:border-blue-500/50 hover:shadow-lg hover:scale-105 group">
+                <div className="w-8 h-8 bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg flex items-center justify-center mb-1 group-hover:from-blue-500 group-hover:to-cyan-500 transition-all duration-300">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-5 5v-5zM4.828 7l6.586 6.586a2 2 0 002.828 0l6.586-6.586a2 2 0 000-2.828L14.242 2.172a2 2 0 00-2.828 0L4.828 4.828a2 2 0 000 2.828z" />
                   </svg>
                 </div>
                 <span className="text-xs font-medium">API</span>
-              </div>
+              </Link>
               <a href="mailto:support@majorphones.com" className="flex flex-col items-center justify-center p-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all duration-300 border border-slate-600/30 hover:border-blue-500/50 hover:shadow-lg hover:scale-105 group">
                 <div className="w-8 h-8 bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg flex items-center justify-center mb-1 group-hover:from-blue-500 group-hover:to-cyan-500 transition-all duration-300">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

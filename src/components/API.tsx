@@ -196,7 +196,7 @@ const API: React.FC = () => {
                 </p>
                 <pre className="bg-slate-900 p-3 sm:p-4 rounded-xl overflow-x-auto mb-3 sm:mb-4">
                   <code className="text-emerald-400 text-xs sm:text-sm">
-                    X-API-Key: your-api-key-here
+                    apikey: your-api-key-here
                   </code>
                 </pre>
               </div>
@@ -206,7 +206,7 @@ const API: React.FC = () => {
                 <h3 className="text-lg sm:text-xl font-semibold text-emerald-400 mb-2 sm:mb-3">Base URL</h3>
                 <pre className="bg-slate-900 p-3 sm:p-4 rounded-xl overflow-x-auto">
                   <code className="text-emerald-400 text-xs sm:text-sm">
-                    https://api.majorphones.com/
+                    https://api.majorphones.com/v1
                   </code>
                 </pre>
               </div>
@@ -222,7 +222,7 @@ const API: React.FC = () => {
                     <code className="text-xs sm:text-sm text-slate-300">
 {`curl -X POST https://api.majorphones.com/v1/user/verify \\
   -H "Content-Type: application/json" \\
-  -H "X-API-Key: your-api-key-here"`}
+  -H "apikey: your-api-key-here"`}
                     </code>
                   </pre>
                 </div>
@@ -235,7 +235,7 @@ const API: React.FC = () => {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'X-API-Key': 'your-api-key-here'
+    'apikey': 'your-api-key-here'
   }
 })
 .then(response => response.json())
@@ -258,7 +258,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-blue-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/user/verify</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/user/verify</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Verify that your API key is valid and active</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -272,7 +272,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-blue-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-semibold">GET</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/user/balance</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/user/balance</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Get your current account balance</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -293,14 +293,14 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-blue-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/prices/short</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/prices/short</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Get short SMS prices by country and option</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
                           <p className="text-xs text-slate-400 mb-1">Request Body:</p>
                           <pre className="text-xs text-slate-300 overflow-x-auto text-left">
                             <code>{`{
-  "country": string // Country  "USA", "UK", "France", "Germany", "India" )
+  "country": string // Country  "USA", "UK", "France", "Germany", "India" ),
   "option": integer // Option: 1=high quality, 2=standard, 3=very high quality
 }`}</code>
                           </pre>
@@ -310,7 +310,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-blue-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-semibold">GET</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/prices/middle</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/prices/middle</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Get middle-term SMS prices (USA only)</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -324,7 +324,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-blue-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-semibold">GET</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/prices/long</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/prices/long</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Get long-term SMS prices (USA only)</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -338,15 +338,15 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-green-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/api/sms/short/buy</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/short/buy</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Purchase a short-term SMS number</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
                           <p className="text-xs text-slate-400 mb-1">Request Body:</p>
                           <pre className="text-xs text-slate-300 overflow-x-auto text-left">
                             <code>{`{
-  "country": string // Country  "USA", "UK", "France", "Germany", "India" )
-  "option": integer // Option: 1=high quality, 2=standard, 3=very high quality
+  "country": string // Country  "USA", "UK", "France", "Germany", "India" ),
+  "option": integer // Option: 1=high quality, 2=standard, 3=very high quality,
   "serviceName": string // Service Name (e.g., "google", "facebook", "twitter")
 }`}</code>
                           </pre>
@@ -356,7 +356,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-red-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/short/cancel</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/short/cancel</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Cancel a short SMS order</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -372,7 +372,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-green-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/middle/buy</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/middle/buy</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Purchase a middle-term SMS number</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -389,14 +389,14 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-purple-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/middle/activate</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/middle/activate</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Activate a middle-term SMS number to receive messages</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
                           <p className="text-xs text-slate-400 mb-1">Request Body:</p>
                           <pre className="text-xs text-slate-300 overflow-x-auto text-left">
                             <code>{`{
-  "orderId": string // The orderId of the number to activate,
+  "orderId": string // The orderId of the number to activate
 }`}</code>
                           </pre>
                         </div>
@@ -405,7 +405,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-red-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/middle/cancel</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/middle/cancel</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Cancel a middle-term SMS number and get a full refund</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -421,7 +421,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-green-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/long/buy</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/long/buy</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Purchase a long-term SMS number</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -438,14 +438,14 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-purple-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/long/activate</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/long/activate</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Activate a long-term SMS number to receive messages</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
                           <p className="text-xs text-slate-400 mb-1">Request Body:</p>
                           <pre className="text-xs text-slate-300 overflow-x-auto text-left">
                             <code>{`{
-  "orderId": string // The orderId of the number to activate,
+  "orderId": string // The orderId of the number to activate
 }`}</code>
                           </pre>
                         </div>
@@ -454,7 +454,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-red-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/long/cancel</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/long/cancel</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Cancel a long-term SMS number and get a full refund</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -470,7 +470,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-green-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/simcard/buy</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/simcard/buy</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Purchase an empty SIM card (30 days only)</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -484,14 +484,14 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-purple-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/simcard/activate</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/simcard/activate</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Activate an empty SIM card for a specific service</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
                           <p className="text-xs text-slate-400 mb-1">Request Body:</p>
                           <pre className="text-xs text-slate-300 overflow-x-auto text-left">
                             <code>{`{
-  "orderId": string // The orderId of the number to activate,
+  "orderId": string // The orderId of the number to activate
 }`}</code>
                           </pre>
                         </div>
@@ -500,7 +500,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-red-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/simcard/cancel</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/simcard/cancel</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Cancel a SIM card and get a refund</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -516,7 +516,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-blue-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-semibold">GET</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/orders/all</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/orders/all</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Get all your SMS orders</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -530,14 +530,14 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-blue-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/orders/specific</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/orders/specific</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Get details of a specific order</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
                           <p className="text-xs text-slate-400 mb-1">Request Body:</p>
                           <pre className="text-xs text-slate-300 overflow-x-auto text-left">
                             <code>{`{
-  "orderId": string // The orderId of the number to retrieve,
+  "orderId": string // The orderId of the number to retrieve
 }`}</code>
                           </pre>
                         </div>
@@ -546,14 +546,14 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-blue-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/sms/orders/get-sms</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/orders/get-sms</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Get SMS messages for a specific order</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
                           <p className="text-xs text-slate-400 mb-1">Request Body:</p>
                           <pre className="text-xs text-slate-300 overflow-x-auto text-left">
                             <code>{`{
-  "orderId": string // The orderId of the number to retrieve messages,
+  "orderId": string // The orderId of the number to retrieve messages
 }`}</code>
                           </pre>
                         </div>
@@ -569,7 +569,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-blue-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-semibold">GET</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/vcc/prices</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/vcc/prices</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Get virtual card prices</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -583,7 +583,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-green-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/vcc/buy</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/vcc/buy</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Purchase a virtual debit card</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -606,7 +606,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-blue-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-semibold">GET</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/proxy/prices</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/proxy/prices</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Get mobile proxy prices</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -620,7 +620,7 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-green-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-semibold">POST</span>
-                          <code className="text-slate-300 text-xs sm:text-sm break-all">/v1/proxy/buy</code>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/proxy/buy</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Purchase a mobile proxy</p>
                         <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
@@ -628,7 +628,6 @@ const API: React.FC = () => {
                           <pre className="text-xs text-slate-300 overflow-x-auto text-left">
                             <code>{`{
   "duration": integer // Duration in days (0,1,7,30 only)
-  "state": string // State code (e.g., "CA", "NY", "TX") ("NA" for random USA)
 }`}</code>
                           </pre>
                         </div>
@@ -648,7 +647,6 @@ const API: React.FC = () => {
                     <code className="text-xs sm:text-sm text-green-400">
 {`{
   "success": true,
-  "message": "Operation completed successfully",
   "data": {
     // Response data
   }
@@ -663,9 +661,10 @@ const API: React.FC = () => {
                     <code className="text-xs sm:text-sm text-red-400">
 {`{
   "success": false,
-  "message": "Error description",
-  "error": "ERROR_CODE",
-  "details": {}
+  "error": {
+            "code": string,
+            "details": null
+  }
 }`}
                     </code>
                   </pre>
@@ -736,6 +735,54 @@ const API: React.FC = () => {
                       <tr>
                         <td className="py-2 w-1/3"><code className="text-red-400 text-xs sm:text-sm">ORDER_NOT_FOUND</code></td>
                         <td className="py-2 text-xs sm:text-sm">Specified order ID does not exist</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 w-1/3"><code className="text-red-400 text-xs sm:text-sm">INTERNAL_SERVER_ERROR</code></td>
+                        <td className="py-2 text-xs sm:text-sm">An internal server error has occurred</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 w-1/3"><code className="text-red-400 text-xs sm:text-sm">AMAZON_PAY_RESTRICTION</code></td>
+                        <td className="py-2 text-xs sm:text-sm">You can't purchase this service because you deposited through Amazon Pay</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 w-1/3"><code className="text-red-400 text-xs sm:text-sm">SERVICE_UNAVAILABLE</code></td>
+                        <td className="py-2 text-xs sm:text-sm">The service you are requesting isn't available right now</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 w-1/3"><code className="text-red-400 text-xs sm:text-sm">CANNOT_ACTIVATE_NUMBER</code></td>
+                        <td className="py-2 text-xs sm:text-sm">This number can't be activated right now</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 w-1/3"><code className="text-red-400 text-xs sm:text-sm">CANNOT_REPLY_SMS</code></td>
+                        <td className="py-2 text-xs sm:text-sm">This number can't send SMS right now</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 w-1/3"><code className="text-red-400 text-xs sm:text-sm">SMS_CANCEL_FAILED</code></td>
+                        <td className="py-2 text-xs sm:text-sm">This number can't be cancelled right now</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 w-1/3"><code className="text-red-400 text-xs sm:text-sm">ORDER_ID_REQUIRED</code></td>
+                        <td className="py-2 text-xs sm:text-sm">The Order ID is required</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 w-1/3"><code className="text-red-400 text-xs sm:text-sm">INVALID_ORDER_ID</code></td>
+                        <td className="py-2 text-xs sm:text-sm">The Order ID is invalid</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 w-1/3"><code className="text-red-400 text-xs sm:text-sm">INVALID_SERVICE_NAME</code></td>
+                        <td className="py-2 text-xs sm:text-sm">The name of the service is invalid</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 w-1/3"><code className="text-red-400 text-xs sm:text-sm">INVALID_DURATION</code></td>
+                        <td className="py-2 text-xs sm:text-sm">The duration of the service is invalid</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 w-1/3"><code className="text-red-400 text-xs sm:text-sm">PROXY_PURCHASE_FAILED</code></td>
+                        <td className="py-2 text-xs sm:text-sm">This proxy can't be purchased right now</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 w-1/3"><code className="text-red-400 text-xs sm:text-sm">NO_VCC_AVAILABLE</code></td>
+                        <td className="py-2 text-xs sm:text-sm">There are no VCCs right now</td>
                       </tr>
                     </tbody>
                   </table>
