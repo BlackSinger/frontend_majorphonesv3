@@ -25,6 +25,7 @@ import PaymentReturn from './components/PaymentReturn';
 import PaymentReview from './components/PaymentReview';
 /**/
 import MajorDashboard from './components/MajorDashboard';
+import MajorDashboardLayout from './components/MajorDashboardLayout';
 import MajorHistory from './components/MajorHistory';
 import MajorHistoryUser from './components/MajorHistoryUser';
 import MajorTransactions from './components/MajorTransactions';
@@ -70,15 +71,14 @@ function App() {
             <Route path="/payment-review" element={<PrivateRoute><DashboardLayout><PaymentReview /></DashboardLayout></PrivateRoute>} />
             <Route path="/payment-return" element={<PrivateRoute><DashboardLayout><PaymentReturn /></DashboardLayout></PrivateRoute>} />
 
-            {/* Major Admin Routes */}
-            <Route path="/major-dashboard" element={<PrivateRoute><DashboardLayout><MajorDashboard /></DashboardLayout></PrivateRoute>} />
-            <Route path="/major-history" element={<PrivateRoute><DashboardLayout><MajorHistory /></DashboardLayout></PrivateRoute>} />
-            <Route path="/major-user-history" element={<PrivateRoute><DashboardLayout><MajorHistoryUser /></DashboardLayout></PrivateRoute>} />
-            <Route path="/major-transactions" element={<PrivateRoute><DashboardLayout><MajorTransactions /></DashboardLayout></PrivateRoute>} />
-            <Route path="/major-user-transactions" element={<PrivateRoute><DashboardLayout><MajorTransactionsUser /></DashboardLayout></PrivateRoute>} />
-            <Route path="/major-user" element={<PrivateRoute><DashboardLayout><MajorUser /></DashboardLayout></PrivateRoute>} />
-            <Route path="/major-tickets" element={<PrivateRoute><DashboardLayout><MajorTickets /></DashboardLayout></PrivateRoute>} />
-            <Route path="/major-extra" element={<PrivateRoute><DashboardLayout><MajorExtra /></DashboardLayout></PrivateRoute>} />
+            <Route path="/major-dashboard" element={<PrivateRoute><MajorDashboardLayout><MajorDashboard /></MajorDashboardLayout></PrivateRoute>} />
+            <Route path="/major-history" element={<PrivateRoute><MajorDashboardLayout><MajorHistory /></MajorDashboardLayout></PrivateRoute>} />
+            <Route path="/major-user-history" element={<PrivateRoute><MajorDashboardLayout><MajorHistoryUser /></MajorDashboardLayout></PrivateRoute>} />
+            <Route path="/major-transactions" element={<PrivateRoute><MajorDashboardLayout><MajorTransactions /></MajorDashboardLayout></PrivateRoute>} />
+            <Route path="/major-user-transactions" element={<PrivateRoute><MajorDashboardLayout><MajorTransactionsUser /></MajorDashboardLayout></PrivateRoute>} />
+            <Route path="/major-user" element={<PrivateRoute><MajorDashboardLayout><MajorUser /></MajorDashboardLayout></PrivateRoute>} />
+            <Route path="/major-tickets" element={<PrivateRoute><MajorDashboardLayout><MajorTickets /></MajorDashboardLayout></PrivateRoute>} />
+            <Route path="/major-extra" element={<PrivateRoute><MajorDashboardLayout><MajorExtra /></MajorDashboardLayout></PrivateRoute>} />
           </Routes>
         </div>
       </Router>

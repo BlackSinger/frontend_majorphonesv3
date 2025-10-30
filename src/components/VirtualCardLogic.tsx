@@ -6,6 +6,7 @@ export interface VirtualCardRecord {
   expirationDate: string;
   cvv: string;
   funds: number;
+  email: string;
 }
 
 export interface VCCOrderDocument {
@@ -16,6 +17,7 @@ export interface VCCOrderDocument {
   expirationDate: string;
   cvv: string;
   uid: string;
+  email?: string;
 }
 
 export const handleCopyCardNumber = async (
@@ -93,6 +95,7 @@ export const convertVCCDocumentToRecord = (doc: VCCOrderDocument): VirtualCardRe
     cardNumber: formatCardNumber(doc.cardNumber),
     expirationDate: formatExpirationDate(doc.expirationDate),
     cvv: doc.cvv,
-    funds: funds
+    funds: funds,
+    email: doc.email || 'N/A'
   };
 };

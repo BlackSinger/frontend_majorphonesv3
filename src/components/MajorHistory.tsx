@@ -327,7 +327,7 @@ const MajorHistory: React.FC = () => {
   const searchParams = new URLSearchParams(location.search);
   const tabFromUrl = searchParams.get('tab');
   
-  const [activeTab, setActiveTab] = useState<'numbers' | 'vcc'>('numbers');
+  const [activeTab, setActiveTab] = useState<'numbers' | 'vcc' | 'proxies'>('numbers');
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [numberTypeFilter, setNumberTypeFilter] = useState<string>('All');
@@ -355,8 +355,10 @@ const MajorHistory: React.FC = () => {
   // Cache states for each tab
   const [numbersDataFetched, setNumbersDataFetched] = useState(false);
   const [vccDataFetched, setVccDataFetched] = useState(false);
+  const [proxiesDataFetched, setProxiesDataFetched] = useState(false);
   const [cachedNumbersData, setCachedNumbersData] = useState<HistoryRecord[]>([]);
   const [cachedVccData, setCachedVccData] = useState<VirtualCardRecord[]>([]);
+  const [cachedProxiesData, setCachedProxiesData] = useState<any>(null);
 
   // VCC filters and pagination
   const [cardNumberSearch, setCardNumberSearch] = useState('');
@@ -763,8 +765,23 @@ const MajorHistory: React.FC = () => {
               ? new Date(item.codeAwakeAt._seconds * 1000)
               : undefined;
 
-            // Normalize serviceType to lowercase for consistent filtering
-            const normalizedServiceType = item.type ? String(item.type).toLowerCase() : '';
+            // Normalize serviceType to lowercase and handle variations for consistent filtering
+            const normalizedServiceType = (() => {
+              if (!item.type) return '';
+              const typeStr = String(item.type).toLowerCase().trim();
+
+              // Handle different variations of service types
+              if (typeStr === 'short') return 'short';
+              if (typeStr === 'middle') return 'middle';
+              if (typeStr === 'long') return 'long';
+
+              // Handle all variations of "Empty SIM Card"
+              if (typeStr.includes('empty') && typeStr.includes('sim')) {
+                return 'empty simcard';
+              }
+
+              return typeStr;
+            })();
 
             let duration = 'N/A';
             if (createdAtDate && expiryDate && normalizedServiceType) {
@@ -890,14 +907,23 @@ const MajorHistory: React.FC = () => {
               });
             }
 
+            // Calculate funds based on price
+            let funds = 0;
+            if (item.price === 4) {
+              funds = 0;
+            } else if (item.price === 9) {
+              funds = 3;
+            }
+
             return {
-              id: item.orderId || 'N/A',
+              id: item.id || 'N/A',
               purchaseDate: formattedDate,
-              price: item.price || 0,
+              price: item.price,
               cardNumber: item.cardNumber || 'N/A',
               expirationDate: item.expirationDate || 'N/A',
               cvv: item.cvv || 'N/A',
-              funds: item.price || 0
+              funds: funds,
+              email: item.email || 'N/A'
             };
           });
 
@@ -910,11 +936,78 @@ const MajorHistory: React.FC = () => {
           setShowErrorModal(true);
           setIsLoading(false);
         }
+      } else if (activeTab === 'proxies') {
+        // Check if we already fetched proxies data
+        if (proxiesDataFetched) {
+          // Only log if we have actual data (not empty state)
+          if (!cachedProxiesData?.isEmpty) {
+            console.log('Using cached Proxies data:', cachedProxiesData);
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        setIsLoading(true);
+
+        try {
+          const currentUser = getAuth().currentUser;
+
+          if (!currentUser) {
+            setIsLoading(false);
+            return;
+          }
+
+          const idToken = await currentUser.getIdToken();
+
+          const response = await fetch('https://getproxies-ezeznlhr5a-uc.a.run.app', {
+            method: 'GET',
+            headers: {
+              'authorization': `${idToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            if (data.message === 'Forbidden') {
+              const auth = getAuth();
+              await signOut(auth);
+              navigate('/signin');
+              return;
+            } else if (data.message === 'Internal Server Error') {
+              setErrorMessage('Please refresh');
+              setShowErrorModal(true);
+              setIsLoading(false);
+              return;
+            }
+          }
+
+          // Check if no proxies were found
+          if (data.message === 'No proxy orders found') {
+            // Cache empty state
+            setCachedProxiesData({ isEmpty: true });
+            setProxiesDataFetched(true);
+            setIsLoading(false);
+            return;
+          }
+
+          // Success - print to console and cache data
+          console.log('Backend response (Proxies):', data);
+          setCachedProxiesData(data);
+          setProxiesDataFetched(true);
+          setIsLoading(false);
+        } catch (error) {
+          console.error('Error fetching Proxies:', error);
+          setErrorMessage('Please refresh');
+          setShowErrorModal(true);
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
-  }, [activeTab, navigate, numbersDataFetched, vccDataFetched, cachedNumbersData, cachedVccData]);
+  }, [activeTab, navigate, numbersDataFetched, vccDataFetched, proxiesDataFetched, cachedNumbersData, cachedVccData, cachedProxiesData]);
 
 
 
@@ -1119,6 +1212,16 @@ const MajorHistory: React.FC = () => {
                   }`}
                 >
                   Virtual Debit Cards
+                </button>
+                <button
+                  onClick={() => setActiveTab('proxies')}
+                  className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${
+                    activeTab === 'proxies'
+                      ? 'text-emerald-400 border-emerald-400'
+                      : 'text-slate-400 border-transparent hover:text-slate-300'
+                  }`}
+                >
+                  Proxies
                 </button>
               </div>
             </div>
@@ -1608,6 +1711,7 @@ const MajorHistory: React.FC = () => {
                         <thead>
                           <tr className="border-b border-slate-700/50">
                             <th className="text-center py-4 px-4 text-slate-300 font-semibold">ID</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
                             <th className="text-center py-4 px-4 text-slate-300 font-semibold">Purchase Date</th>
                             <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
                             <th className="text-center py-4 px-6 text-slate-300 font-semibold">Card Number</th>
@@ -1638,6 +1742,7 @@ const MajorHistory: React.FC = () => {
                                   </button>
                                 </div>
                               </td>
+                              <td className="py-4 px-6 text-white text-center">{record.email}</td>
                               <td className="py-4 px-6 text-white text-center">{record.purchaseDate}</td>
                               <td className="py-4 px-6 text-center">
                                 <span className="text-emerald-400 font-semibold">${formatPrice(record.price)}</span>
@@ -1744,6 +1849,43 @@ const MajorHistory: React.FC = () => {
                   )}
                 </div>
               </>
+            )}
+
+            {/* Proxies Tab Content */}
+            {activeTab === 'proxies' && (
+              <div className="overflow-x-auto overflow-y-visible">
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center py-16">
+                    <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p className="text-slate-400 mt-4">Loading proxies...</p>
+                  </div>
+                ) : cachedProxiesData?.isEmpty ? (
+                  /* Empty State for Proxies */
+                  <div className="text-center py-16">
+                    <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
+                      <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                      </svg>
+                    </div>
+                    <h1 className="text-xl font-bold text-slate-300 mb-3">No Proxies Found</h1>
+                    <p className="text-slate-400 text-lg">No proxies have been purchased</p>
+                  </div>
+                ) : (
+                  /* Success State */
+                  <div className="text-center py-16">
+                    <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-700 rounded-2xl mb-5">
+                      <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <h1 className="text-xl font-bold text-slate-300 mb-3">Proxies Loaded Successfully</h1>
+                    <p className="text-slate-400 text-lg">Check the browser console for the response data</p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

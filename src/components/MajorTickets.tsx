@@ -4,7 +4,7 @@ import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { getAuth } from 'firebase/auth';
+import { getAuth, signOut } from 'firebase/auth';
 
 interface ResponseImage {
   url: string;
@@ -137,82 +137,68 @@ const MajorTickets: React.FC = () => {
   };
 
   useEffect(() => {
-    if (activeTab !== 'numbers') {
-      setIsLoading(false);
-      return;
-    }
-
-    if (!user) {
-      setIsLoading(false);
-      setTicketData([]);
-      return;
-    }
-
-    setIsLoading(true);
-    let isSubscribed = true;
-
-    const ticketsRef = collection(db, 'tickets');
-    const q = query(ticketsRef, where('uid', '==', user.uid));
-
-    const unsubscribe = onSnapshot(
-      q,
-      (querySnapshot) => {
-        if (!isSubscribed) return;
-
-        const tickets: TicketRecord[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-
-          tickets.push({
-            id: doc.id,
-            ticketId: data.ticketId || doc.id,
-            date: formatDate(data.createdAt),
-            lastUpdate: formatDate(data.updatedAt),
-            issue: mapTypeToDisplayName(String(data.type || '')),
-            subject: data.subject || '',
-            status: (String(data.status || 'open').toLowerCase() === 'closed' ? 'closed' : 'open') as 'open' | 'closed',
-            message: data.message || '',
-            images: data.images || [],
-            response: data.response || [],
-            createdAt: data.createdAt,
-            updatedAt: data.updatedAt,
-            type: String(data.type || '').toLowerCase()
-          });
-        });
-
-        tickets.sort((a, b) => {
-          const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-          const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-          return bTime - aTime;
-        });
-
-        setTicketData(tickets);
+    const fetchTickets = async () => {
+      if (activeTab !== 'numbers') {
         setIsLoading(false);
-      },
-      (error: any) => {
-        if (!isSubscribed) return;
+        return;
+      }
 
-        let errorMsg = 'An error occurred while loading tickets, please contact support';
+      if (!user) {
+        setIsLoading(false);
+        setTicketData([]);
+        return;
+      }
 
-        if (error.code === 'permission-denied') {
-          errorMsg = 'You do not have permission to access tickets';
-        } else if (error.code === 'unavailable') {
-          errorMsg = 'Tickets are temporarily unavailable, please try again later';
-        } else if (error.message?.includes('network')) {
-          errorMsg = 'Network connection error, please check your internet connection';
+      setIsLoading(true);
+
+      try {
+        const currentUser = getAuth().currentUser;
+        if (!currentUser) {
+          setIsLoading(false);
+          setTicketData([]);
+          return;
         }
 
-        setErrorMessage(errorMsg);
+        const idToken = await currentUser.getIdToken();
+
+        const response = await fetch('https://gettickets-ezeznlhr5a-uc.a.run.app', {
+          method: 'GET',
+          headers: {
+            'authorization': `${idToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          if (data.message === 'Forbidden') {
+            const auth = getAuth();
+            await signOut(auth);
+            navigate('/signin');
+            return;
+          } else if (data.message === 'Internal Server Error') {
+            setErrorMessage('Please refresh');
+            setShowErrorModal(true);
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        console.log('Backend response (Tickets):', data);
+
+        setTicketData([]);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching tickets:', error);
+        setErrorMessage('Please refresh');
         setShowErrorModal(true);
         setIsLoading(false);
       }
-    );
-
-    return () => {
-      isSubscribed = false;
-      unsubscribe();
     };
-  }, [user, activeTab]);
+
+    fetchTickets();
+  }, [user, activeTab, navigate]);
 
   const issueOptions = [
     'All Issues',
@@ -377,79 +363,6 @@ const MajorTickets: React.FC = () => {
     }));
   };
 
-  const handleCheckClick = async (record: TicketRecord) => {
-    if (!user) return;
-
-    setCheckingTicketId(record.ticketId);
-
-    try {
-      const currentUser = getAuth().currentUser;
-      if (!currentUser) {
-        setCheckingTicketId(null);
-        setErrorMessage("You are not authenticated");
-        setShowErrorModal(true);
-        return;
-      }
-      const idToken = await currentUser.getIdToken();
-
-      const response = await fetch('https://readticket-ezeznlhr5a-uc.a.run.app', {
-        method: 'POST',
-        headers: {
-          'authorization': `${idToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ticketId: record.ticketId
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success && data.message === "readTicket successful") {
-        setSelectedTicket(record);
-        setShowTicketChat(true);
-
-        const mockAdminResponse = {
-          id: 'admin-response-1',
-          text: "Thank you for contacting us. We have reviewed your issue and our technical team is currently investigating the problem. We will provide you with an update in 2-24 hours.",
-          timestamp: new Date(),
-          isAdmin: true
-        };
-
-        setChatMessages([mockAdminResponse]);
-        setChatInput('');
-        setChatImages([]);
-        setCheckingTicketId(null);
-      } else {
-        if (data.message === "Unauthorized") {
-          setErrorMessage("You are not authenticated or your token is invalid");
-          setShowErrorModal(true);
-          return;
-        }
-
-        setCheckingTicketId(null);
-
-        if (data.message === "ticketId is required") {
-          setErrorMessage("Please refresh the page and try again");
-          setShowErrorModal(true);
-        } else if (data.message === "Ticket not found") {
-          setErrorMessage("When trying to check this message, please contact our customer support");
-          setShowErrorModal(true);
-        } else if (data.message === "Internal Server Error") {
-          setErrorMessage("Please contact our customer support");
-          setShowErrorModal(true);
-        } else {
-          setErrorMessage("An unexpected error occurred, please try again");
-          setShowErrorModal(true);
-        }
-      }
-
-    } catch (error) {
-      setCheckingTicketId(null);
-      setErrorMessage("Network error, please check your connection and try again");
-      setShowErrorModal(true);
-    }
-  };
 
   const handleIssueTypeChange = (issueType: string) => {
     setSelectedIssueType(issueType);
@@ -631,93 +544,6 @@ const MajorTickets: React.FC = () => {
     setChatImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const sendChatMessage = async () => {
-    if (!chatInput.trim() && chatImages.length === 0) return;
-    if (!selectedTicket || !user) return;
-
-    setIsSendingMessage(true);
-
-    try {
-      const currentUser = getAuth().currentUser;
-      if (!currentUser) {
-        setIsSendingMessage(false);
-        setErrorMessage("You are not authenticated");
-        setShowErrorModal(true);
-        return;
-      }
-      const idToken = await currentUser.getIdToken();
-
-      const formData = new FormData();
-
-      formData.append('ticketId', selectedTicket.ticketId);
-      formData.append('message', chatInput.trim());
-
-      if (chatImages.length > 0) {
-        chatImages.forEach((image) => {
-          formData.append('files', image);
-        });
-      }
-
-      const response = await fetch('https://userresponseticket-ezeznlhr5a-uc.a.run.app', {
-        method: 'POST',
-        headers: {
-          'authorization': `${idToken}`
-        },
-        body: formData
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.message === "Ticket updated successfully") {
-        const newMessage = {
-          id: Date.now().toString(),
-          text: chatInput.trim(),
-          timestamp: new Date(),
-          images: chatImages.length > 0 ? [...chatImages] : undefined
-        };
-
-        setChatMessages(prev => [...prev, newMessage]);
-        setChatInput('');
-        setChatImages([]);
-        setIsSendingMessage(false);
-      } else {
-        if (data.message === "Unauthorized") {
-          setErrorMessage("You are not authenticated or your token is invalid");
-          setShowErrorModal(true);
-          setChatInput('');
-          setChatImages([]);
-          return;
-        }
-
-        setIsSendingMessage(false);
-
-        if (data.message === "Ticket ID is required") {
-          setErrorMessage("Please refresh the page and try again");
-          setShowErrorModal(true);
-        } else if (data.message === "Message is required") {
-          setErrorMessage("Your message must contain text, not just images");
-          setShowErrorModal(true);
-        } else if (data.message === "Ticket not found") {
-          setErrorMessage("When trying to send this message, please contact our customer support");
-          setShowErrorModal(true);
-        } else if (data.message === "Error processing form data") {
-          setErrorMessage("Please refresh the page and try again");
-          setShowErrorModal(true);
-        } else if (data.message === "Internal Server Error") {
-          setErrorMessage("Please contact our customer support");
-          setShowErrorModal(true);
-        } else {
-          setErrorMessage("An unexpected error occurred, please try again");
-          setShowErrorModal(true);
-        }
-      }
-
-    } catch (error) {
-      setIsSendingMessage(false);
-      setErrorMessage("Network error, please check your connection and try again");
-      setShowErrorModal(true);
-    }
-  };
 
   const mapIssueTypeToApiType = (issueType: string): string => {
     switch (issueType) {
@@ -736,84 +562,16 @@ const MajorTickets: React.FC = () => {
     }
   };
 
+  const handleCheckClick = async (record: TicketRecord) => {
+    // Function removed as requested
+  };
+
+  const sendChatMessage = async () => {
+    // Function removed as requested
+  };
+
   const handleCreateTicket = async () => {
-    if (!user) return;
-
-    setIsCreatingTicket(true);
-
-    try {
-      const currentUser = getAuth().currentUser;
-      if (!currentUser) {
-        setIsCreatingTicket(false);
-        setErrorMessage("You are not authenticated");
-        setShowErrorModal(true);
-        return;
-      }
-      const idToken = await currentUser.getIdToken();
-
-      const formData = new FormData();
-
-      formData.append('subject', ticketSubject.trim());
-      formData.append('message', issueDescription.trim());
-
-      if (selectedIssueType) {
-        formData.append('type', mapIssueTypeToApiType(selectedIssueType));
-      }
-
-      if (ticketId.trim()) {
-        formData.append('orderId', ticketId.trim());
-      }
-
-      if (uploadedImages.length > 0) {
-        uploadedImages.forEach((image) => {
-          formData.append('files', image);
-        });
-      }
-
-      const response = await fetch('https://createticket-ezeznlhr5a-uc.a.run.app', {
-        method: 'POST',
-        headers: {
-          'authorization': `${idToken}`
-        },
-        body: formData
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.message === "Ticket created successfully") {
-        window.location.reload();
-      } else {
-        if (data.message === "Unauthorized") {
-          setErrorMessage("You are not authenticated or your token is invalid");
-          setShowErrorModal(true);
-          return;
-        }
-
-        setIsCreatingTicket(false);
-
-        if (data.message === "Order ID, subject, and message are required") {
-          setErrorMessage("You have not completed the form");
-          setShowErrorModal(true);
-        } else if (data.message === "Subject and message are required") {
-          setErrorMessage("You have not completed the form");
-          setShowErrorModal(true);
-        } else if (data.message === "Error processing form data") {
-          setErrorMessage("Please refresh the page and try again");
-          setShowErrorModal(true);
-        } else if (data.message === "Internal Server Error") {
-          setErrorMessage("Please contact our customer support");
-          setShowErrorModal(true);
-        } else {
-          setErrorMessage("An unexpected error occurred, please try again");
-          setShowErrorModal(true);
-        }
-      }
-
-    } catch (error) {
-      setIsCreatingTicket(false);
-      setErrorMessage("Network error, please check your connection and try again");
-      setShowErrorModal(true);
-    }
+    // Function removed as requested
   };
 
   return (

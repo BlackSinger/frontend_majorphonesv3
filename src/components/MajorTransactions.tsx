@@ -361,7 +361,7 @@ const MajorTransactions: React.FC = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-700/50">
-                      <th className="text-center py-4 px-4 text-slate-300 font-semibold">Email</th>
+                      <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
                       <th className="text-center py-4 px-4 text-slate-300 font-semibold">Option</th>
                       <th className="text-center py-4 px-6 text-slate-300 font-semibold">Date</th>
                       <th className="text-center py-4 px-5 text-slate-300 font-semibold">Status</th>

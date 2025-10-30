@@ -97,12 +97,16 @@ const MajorTransactionsUser: React.FC = () => {
           setShowErrorModal(true);
           setLoading(false);
           return;
-        } else if (data.message === 'No recharges found') {
-          setErrorMessage('This user does not have recharges');
-          setShowErrorModal(true);
-          setLoading(false);
-          return;
         }
+      }
+
+      // Check for "No recharges found" message (can come with 200 OK)
+      if (data.message === 'No recharges found') {
+        // Don't show error modal, just set empty data and show the message in the table area
+        setTransactionData([]);
+        setSearchedEmail(email.trim());
+        setLoading(false);
+        return;
       }
 
       // Log response for debugging
@@ -219,8 +223,8 @@ const MajorTransactionsUser: React.FC = () => {
           </div>
         </div>
 
-        {/* Search Form - Hide when we have data */}
-        {transactionData.length === 0 && (
+        {/* Search Form - Hide when we have searched */}
+        {!searchedEmail && (
           <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6">
             <div className="space-y-6 flex flex-col items-center">
               {/* Email Search Bar */}
@@ -261,7 +265,7 @@ const MajorTransactionsUser: React.FC = () => {
         )}
 
         {/* User Email Display - Show only if we have searched */}
-        {searchedEmail && transactionData.length > 0 && (
+        {searchedEmail && (
           <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6">
             <div className="flex flex-col items-center justify-center gap-4">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-center sm:text-left">
@@ -278,8 +282,8 @@ const MajorTransactionsUser: React.FC = () => {
           </div>
         )}
 
-        {/* Filters and Table - Show only if we have data */}
-        {transactionData.length > 0 && (
+        {/* Filters and Table - Show only if we have searched */}
+        {searchedEmail && (
           <div className="rounded-3xl shadow-2xl border border-slate-700/50 relative">
             <div className="p-6">
               {/* Filters */}
@@ -411,8 +415,17 @@ const MajorTransactionsUser: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                       </svg>
                     </div>
-                    <h3 className="text-xl font-bold text-slate-300 mb-3">No Transactions Found</h3>
-                    <p className="text-slate-400 text-lg">No transactions match your current filters</p>
+                    {transactionData.length === 0 && (statusFilter !== 'All' || paymentMethodFilter !== 'All') ? (
+                      <>
+                        <h3 className="text-xl font-bold text-slate-300 mb-3">No Transactions Found</h3>
+                        <p className="text-slate-400 text-lg">No transactions match your current filters</p>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="text-xl font-bold text-slate-300 mb-3">No Transactions Found</h3>
+                        <p className="text-slate-400 text-lg">This user has not made recharges</p>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

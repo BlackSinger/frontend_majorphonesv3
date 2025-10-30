@@ -52,11 +52,21 @@ interface HistoryRecord {
   orderId?: string;
 }
 
+interface VirtualCardRecord {
+  id: string;
+  purchaseDate: string;
+  price: number;
+  cardNumber: string;
+  expirationDate: string;
+  cvv: string;
+  funds: number;
+}
+
 const MajorHistoryUser: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [searchedEmail, setSearchedEmail] = useState('');
-  const [activeTab, setActiveTab] = useState<'numbers' | 'vcc'>('numbers');
+  const [activeTab, setActiveTab] = useState<'numbers' | 'vcc' | 'proxies'>('numbers');
   const [loading, setLoading] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -78,8 +88,16 @@ const MajorHistoryUser: React.FC = () => {
   // Cache states for each tab
   const [numbersDataFetched, setNumbersDataFetched] = useState(false);
   const [vccDataFetched, setVccDataFetched] = useState(false);
+  const [proxiesDataFetched, setProxiesDataFetched] = useState(false);
   const [cachedNumbersData, setCachedNumbersData] = useState<HistoryRecord[]>([]);
-  const [cachedVccData, setCachedVccData] = useState<any[]>([]);
+  const [cachedVccData, setCachedVccData] = useState<VirtualCardRecord[]>([]);
+  const [cachedProxiesData, setCachedProxiesData] = useState<any>(null);
+
+  // VCC states
+  const [showUuidModal, setShowUuidModal] = useState(false);
+  const [selectedUuid, setSelectedUuid] = useState('');
+  const [isCopied, setIsCopied] = useState(false);
+  const [copiedCardNumbers, setCopiedCardNumbers] = useState<{[key: string]: boolean}>({});
 
   const itemsPerPage = 10;
 
@@ -93,8 +111,10 @@ const MajorHistoryUser: React.FC = () => {
     // Reset cache when searching for a new user
     setNumbersDataFetched(false);
     setVccDataFetched(false);
+    setProxiesDataFetched(false);
     setCachedNumbersData([]);
     setCachedVccData([]);
+    setCachedProxiesData(null);
     setActiveTab('numbers');
 
     setLoading(true);
@@ -140,6 +160,8 @@ const MajorHistoryUser: React.FC = () => {
         } else if (data.message === 'No SMS orders found') {
           // Don't show error modal, just set empty data and show the message in the table area
           setHistoryData([]);
+          setCachedNumbersData([]);
+          setNumbersDataFetched(true);
           setSearchedEmail(email.trim());
           setLoading(false);
           return;
@@ -265,7 +287,7 @@ const MajorHistoryUser: React.FC = () => {
     }
   };
 
-  const handleTabChange = async (tab: 'numbers' | 'vcc') => {
+  const handleTabChange = async (tab: 'numbers' | 'vcc' | 'proxies') => {
     setActiveTab(tab);
 
     if (tab === 'numbers') {
@@ -322,22 +344,136 @@ const MajorHistoryUser: React.FC = () => {
             setShowErrorModal(true);
             setLoading(false);
             return;
-          } else if (data.message === 'No vcc orders found') {
-            // Don't show error modal, just set empty data
-            setCachedVccData([]);
-            setVccDataFetched(true);
+          }
+        }
+
+        // Check for "No VCC orders found" message (can come with 200 OK)
+        if (data.message === 'No VCC orders found') {
+          setCachedVccData([]);
+          setVccDataFetched(true);
+          setLoading(false);
+          return;
+        }
+
+        console.log('Backend response (VCC):', data);
+
+        // Format VCC data
+        let vccOrdersArray = [];
+        if (Array.isArray(data)) {
+          vccOrdersArray = data;
+        } else if (data.vccOrders && Array.isArray(data.vccOrders)) {
+          vccOrdersArray = data.vccOrders;
+        } else if (data.orders && Array.isArray(data.orders)) {
+          vccOrdersArray = data.orders;
+        }
+
+        const formattedVccData: VirtualCardRecord[] = vccOrdersArray.map((item: any) => {
+          // Format purchase date
+          let formattedDate = 'N/A';
+          if (item.createdAt && item.createdAt._seconds) {
+            const date = new Date(item.createdAt._seconds * 1000);
+            formattedDate = date.toLocaleString('en-US', {
+              month: '2-digit',
+              day: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true
+            });
+          }
+
+          // Calculate funds based on price
+          let funds = 0;
+          if (item.price === 4) {
+            funds = 0;
+          } else if (item.price === 9) {
+            funds = 3;
+          }
+
+          return {
+            id: item.orderId || 'N/A',
+            purchaseDate: formattedDate,
+            price: item.price || 0,
+            cardNumber: item.cardNumber || 'N/A',
+            expirationDate: item.expirationDate || 'N/A',
+            cvv: item.cvv || 'N/A',
+            funds: funds
+          };
+        });
+
+        setCachedVccData(formattedVccData);
+        setVccDataFetched(true);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching user VCC orders:', error);
+        setErrorMessage('Please refresh');
+        setShowErrorModal(true);
+        setLoading(false);
+      }
+    } else if (tab === 'proxies') {
+      // If we already fetched Proxies data, use cached data
+      if (proxiesDataFetched) {
+        // Only log if we have actual data (not empty state)
+        if (!cachedProxiesData?.isEmpty) {
+          console.log('Using cached Proxies data:', cachedProxiesData);
+        }
+        return;
+      }
+
+      // Fetch Proxies data for the first time
+      setLoading(true);
+
+      try {
+        const currentUser = getAuth().currentUser;
+
+        if (!currentUser) {
+          setLoading(false);
+          return;
+        }
+
+        const idToken = await currentUser.getIdToken();
+
+        const response = await fetch('https://getuserproxyorders-ezeznlhr5a-uc.a.run.app', {
+          method: 'POST',
+          headers: {
+            'authorization': `${idToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email: searchedEmail })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          if (data.message === 'Forbidden') {
+            const auth = getAuth();
+            await signOut(auth);
+            navigate('/signin');
+            return;
+          } else if (data.message === 'Internal Server Error') {
+            setErrorMessage('Please refresh');
+            setShowErrorModal(true);
             setLoading(false);
             return;
           }
         }
 
-        console.log('Backend response (VCC):', data);
+        // Check for "No proxy orders found" message (can come with 200 OK)
+        if (data.message === 'No proxy orders found') {
+          setCachedProxiesData({ isEmpty: true });
+          setProxiesDataFetched(true);
+          setLoading(false);
+          return;
+        }
 
-        setCachedVccData(data);
-        setVccDataFetched(true);
+        console.log('Backend response (Proxies):', data);
+
+        setCachedProxiesData(data);
+        setProxiesDataFetched(true);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching user VCC orders:', error);
+        console.error('Error fetching user Proxy orders:', error);
         setErrorMessage('Please refresh');
         setShowErrorModal(true);
         setLoading(false);
@@ -552,6 +688,32 @@ const MajorHistoryUser: React.FC = () => {
     }
   };
 
+  const handleUuidClick = (uuid: string) => {
+    setSelectedUuid(uuid);
+    setShowUuidModal(true);
+    setIsCopied(false);
+  };
+
+  const handleCopyUuid = async () => {
+    try {
+      await navigator.clipboard.writeText(selectedUuid);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+    }
+  };
+
+  const handleCopyCardNumber = async (cardNumber: string, cardId: string) => {
+    try {
+      await navigator.clipboard.writeText(cardNumber.replace(/\s/g, ''));
+      setCopiedCardNumbers(prev => ({ ...prev, [cardId]: true }));
+      setTimeout(() => {
+        setCopiedCardNumbers(prev => ({ ...prev, [cardId]: false }));
+      }, 2000);
+    } catch (err) {
+    }
+  };
+
   return (
     <div className="space-y-6">
         {/* Header */}
@@ -568,8 +730,8 @@ const MajorHistoryUser: React.FC = () => {
           </div>
         </div>
 
-        {/* Search Form - Hide when we have data */}
-        {historyData.length === 0 && (
+        {/* Search Form - Hide when we have searched */}
+        {!searchedEmail && (
           <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6">
             <div className="space-y-6 flex flex-col items-center">
             {/* Email Search Bar */}
@@ -610,7 +772,7 @@ const MajorHistoryUser: React.FC = () => {
         )}
 
         {/* User Email Display - Show only if we have searched */}
-        {searchedEmail && historyData.length > 0 && (
+        {searchedEmail && (numbersDataFetched || vccDataFetched || proxiesDataFetched) && (
           <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6">
             <div className="flex flex-col items-center justify-center gap-4">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-center sm:text-left">
@@ -627,8 +789,8 @@ const MajorHistoryUser: React.FC = () => {
           </div>
         )}
 
-        {/* Filters and Table - Show only if we have searched and got data (either numbers or attempted VCC) */}
-        {(searchedEmail && (historyData.length > 0 || numbersDataFetched || vccDataFetched)) && (
+        {/* Filters and Table - Show only if we have searched and got data (either numbers or attempted VCC or proxies) */}
+        {(searchedEmail && (historyData.length > 0 || numbersDataFetched || vccDataFetched || proxiesDataFetched)) && (
           <div className="rounded-3xl shadow-2xl border border-slate-700/50 relative">
             <div className="p-6">
               {/* Tab Navigation */}
@@ -653,6 +815,16 @@ const MajorHistoryUser: React.FC = () => {
                     }`}
                   >
                     Virtual Debit Cards
+                  </button>
+                  <button
+                    onClick={() => handleTabChange('proxies')}
+                    className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${
+                      activeTab === 'proxies'
+                        ? 'text-emerald-400 border-emerald-400'
+                        : 'text-slate-400 border-transparent hover:text-slate-300'
+                    }`}
+                  >
+                    Proxies
                   </button>
                 </div>
               </div>
@@ -962,18 +1134,113 @@ const MajorHistoryUser: React.FC = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                         </svg>
                       </div>
-                      <h1 className="text-xl font-bold text-slate-300 mb-3">No VCCs Found</h1>
+                      <h1 className="text-xl font-bold text-slate-300 mb-3">No Virtual Debit Cards Found</h1>
                       <p className="text-slate-400 text-lg">This user has not purchased VCCs</p>
                     </div>
                   ) : (
+                    <div className="overflow-x-auto overflow-y-visible">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-700/50">
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">ID</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Purchase Date</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
+                            <th className="text-center py-4 px-6 text-slate-300 font-semibold">Card Number</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Expiration Date</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">CVV</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Initial Funds</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cachedVccData.map((record, index) => (
+                            <tr
+                              key={record.id}
+                              className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${
+                                index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
+                              }`}
+                            >
+                              <td className="py-4 px-6">
+                                <div className="flex items-center justify-center">
+                                  <button
+                                    onClick={() => handleUuidClick(record.id)}
+                                    className="p-2 text-slate-400 hover:text-blue-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
+                                    title="View UUID"
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="py-4 px-6 text-white text-center">{record.purchaseDate}</td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-emerald-400 font-semibold">${formatPrice(record.price)}</span>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="font-mono text-white text-center">
+                                  {record.cardNumber}
+                                  <button
+                                    onClick={() => handleCopyCardNumber(record.cardNumber, record.id)}
+                                    className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                                    title={copiedCardNumbers[record.id] ? "Copied!" : "Copy Card Number"}
+                                  >
+                                    {copiedCardNumbers[record.id] ? (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    ) : (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                      </svg>
+                                    )}
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="py-4 px-6 text-white text-center">{record.expirationDate}</td>
+                              <td className="py-4 px-6 text-white text-center font-mono">{record.cvv}</td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-emerald-400 font-semibold">${record.funds}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Proxies Tab Content */}
+              {activeTab === 'proxies' && (
+                <>
+                  {loading ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                      <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <p className="text-slate-400 mt-4">Loading Proxies...</p>
+                    </div>
+                  ) : cachedProxiesData?.isEmpty ? (
                     <div className="text-center py-16">
                       <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
-                        <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                         </svg>
                       </div>
-                      <h3 className="text-xl font-bold text-slate-300 mb-3">Virtual Debit Cards</h3>
-                      <p className="text-slate-400 text-lg">VCC data loaded successfully. Check console for details.</p>
+                      <h1 className="text-xl font-bold text-slate-300 mb-3">No Proxies Found</h1>
+                      <p className="text-slate-400 text-lg">This user has not purchased proxies</p>
+                    </div>
+                  ) : (
+                    <div className="text-center py-16">
+                      <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-700 rounded-2xl mb-5">
+                        <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <h1 className="text-xl font-bold text-slate-300 mb-3">Proxies Loaded Successfully</h1>
+                      <p className="text-slate-400 text-lg">Check the browser console for the response data</p>
                     </div>
                   )}
                 </>
@@ -1039,6 +1306,46 @@ const MajorHistoryUser: React.FC = () => {
                     className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
                   >
                     Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* UUID Modal */}
+        {showUuidModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-70 h-58">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto flex items-center justify-center">
+                    <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Order ID</h3>
+                <p className="text-blue-200 mb-4 break-all">{selectedUuid}</p>
+                <div className="flex space-x-3 justify-center">
+                  <button
+                    onClick={handleCopyUuid}
+                    style={{ width: '5.5rem' }}
+                    className={`font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg flex items-center justify-center ${
+                      isCopied
+                        ? 'bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600'
+                        : 'bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600'
+                    } text-white`}
+                  >
+                    {isCopied ? (
+                      <span>Copied</span>
+                    ) : (
+                      <span>Copy</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setShowUuidModal(false)}
+                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                  >
+                    OK
                   </button>
                 </div>
               </div>
