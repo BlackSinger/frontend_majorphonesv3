@@ -24,15 +24,15 @@ import API from './components/API';
 import PaymentReturn from './components/PaymentReturn';
 import PaymentReview from './components/PaymentReview';
 /**/
-import MajorDashboard from './components/MajorDashboard';
 import MajorDashboardLayout from './components/MajorDashboardLayout';
 import MajorHistory from './components/MajorHistory';
 import MajorHistoryUser from './components/MajorHistoryUser';
 import MajorTransactions from './components/MajorTransactions';
 import MajorTransactionsUser from './components/MajorTransactionsUser';
 import MajorUser from './components/MajorUser';
-import MajorExtra from './components/MajorExtra';
 import MajorTickets from './components/MajorTickets';
+import MajorVccStock from './components/MajorVccStock';
+import MajorExtra from './components/MajorExtra';
 import './App.css';
 
 
@@ -71,13 +71,13 @@ function App() {
             <Route path="/payment-review" element={<PrivateRoute><DashboardLayout><PaymentReview /></DashboardLayout></PrivateRoute>} />
             <Route path="/payment-return" element={<PrivateRoute><DashboardLayout><PaymentReturn /></DashboardLayout></PrivateRoute>} />
 
-            <Route path="/major-dashboard" element={<PrivateRoute><MajorDashboardLayout><MajorDashboard /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-history" element={<PrivateRoute><MajorDashboardLayout><MajorHistory /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-user-history" element={<PrivateRoute><MajorDashboardLayout><MajorHistoryUser /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-transactions" element={<PrivateRoute><MajorDashboardLayout><MajorTransactions /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-user-transactions" element={<PrivateRoute><MajorDashboardLayout><MajorTransactionsUser /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-user" element={<PrivateRoute><MajorDashboardLayout><MajorUser /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-tickets" element={<PrivateRoute><MajorDashboardLayout><MajorTickets /></MajorDashboardLayout></PrivateRoute>} />
+            <Route path="/major-vcc" element={<PrivateRoute><MajorDashboardLayout><MajorVccStock /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-extra" element={<PrivateRoute><MajorDashboardLayout><MajorExtra /></MajorDashboardLayout></PrivateRoute>} />
           </Routes>
         </div>
