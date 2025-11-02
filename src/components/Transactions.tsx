@@ -349,7 +349,9 @@ const Transactions: React.FC = () => {
                           </span>
                         </td>
                         <td className="py-4 px-6">
-                          <span className="text-emerald-400 font-semibold">${record.amount.toFixed(2)}</span>
+                          <span className="text-emerald-400 font-semibold">
+                            {record.amount < 0 ? '-' : ''}${Math.abs(record.amount).toFixed(2)}
+                          </span>
                         </td>
                         <td className="py-4 px-6">
                           <span className="font-mono text-blue-500 font-semibold">{record.transactionId}</span>
