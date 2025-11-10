@@ -14,8 +14,8 @@ export interface ProxyRecord {
 
 export interface ProxyOrderDocument {
   orderId: string;
-  createdAt: any;
-  expiry: any;
+  createdAt: any; // Can be Firestore Timestamp or {_seconds: number, _nanoseconds: number}
+  expiry: any; // Can be Firestore Timestamp or {_seconds: number, _nanoseconds: number}
   state: string;
   price: any;
   ip: string;
@@ -148,8 +148,24 @@ export const calculateProxyDuration = (createdAt: Date, expiry: Date): string =>
 };
 
 export const convertProxyDocumentToRecord = (doc: ProxyOrderDocument): ProxyRecord => {
-  const createdAt = doc.createdAt?.toDate ? doc.createdAt.toDate() : new Date(doc.createdAt);
-  const expiry = doc.expiry?.toDate ? doc.expiry.toDate() : new Date(doc.expiry);
+  // Handle Firestore timestamp format {_seconds, _nanoseconds}
+  let createdAt: Date;
+  if (doc.createdAt && typeof doc.createdAt === 'object' && '_seconds' in doc.createdAt) {
+    createdAt = new Date(doc.createdAt._seconds * 1000);
+  } else if (doc.createdAt?.toDate) {
+    createdAt = doc.createdAt.toDate();
+  } else {
+    createdAt = new Date(doc.createdAt);
+  }
+
+  let expiry: Date;
+  if (doc.expiry && typeof doc.expiry === 'object' && '_seconds' in doc.expiry) {
+    expiry = new Date(doc.expiry._seconds * 1000);
+  } else if (doc.expiry?.toDate) {
+    expiry = doc.expiry.toDate();
+  } else {
+    expiry = new Date(doc.expiry);
+  }
 
   let priceNum = typeof doc.price === 'number' ? doc.price : parseFloat(doc.price);
   if (isNaN(priceNum)) priceNum = 0;

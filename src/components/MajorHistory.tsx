@@ -48,6 +48,15 @@ import {
   formatPrice as formatVCCPrice
 } from './VirtualCardLogic';
 
+import {
+  type ProxyRecord,
+  type ProxyOrderDocument,
+  handleCopyProxyId,
+  handleCopyProxyField,
+  convertProxyDocumentToRecord,
+  formatProxyPrice
+} from './ProxyLogic';
+
 
 interface HistoryRecord {
   id: string;
@@ -358,7 +367,7 @@ const MajorHistory: React.FC = () => {
   const [proxiesDataFetched, setProxiesDataFetched] = useState(false);
   const [cachedNumbersData, setCachedNumbersData] = useState<HistoryRecord[]>([]);
   const [cachedVccData, setCachedVccData] = useState<VirtualCardRecord[]>([]);
-  const [cachedProxiesData, setCachedProxiesData] = useState<any>(null);
+  const [cachedProxiesData, setCachedProxiesData] = useState<ProxyRecord[]>([]);
 
   // VCC filters and pagination
   const [cardNumberSearch, setCardNumberSearch] = useState('');
@@ -367,6 +376,13 @@ const MajorHistory: React.FC = () => {
   const [currentVirtualCardPage, setCurrentVirtualCardPage] = useState(1);
   const [copiedCardNumbers, setCopiedCardNumbers] = useState<{[key: string]: boolean}>({});
   const fundsDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Proxy states and pagination
+  const [currentProxyPage, setCurrentProxyPage] = useState(1);
+  const [showProxyInfoModal, setShowProxyInfoModal] = useState(false);
+  const [selectedProxyRecord, setSelectedProxyRecord] = useState<ProxyRecord | null>(null);
+  const [isProxyIdCopied, setIsProxyIdCopied] = useState(false);
+  const [copiedProxyFields, setCopiedProxyFields] = useState<{[key: string]: boolean}>({});
 
   const [, setForceUpdate] = useState(0);
 
@@ -641,6 +657,12 @@ const MajorHistory: React.FC = () => {
   const virtualCardStartIndex = (currentVirtualCardPage - 1) * itemsPerPage;
   const virtualCardEndIndex = virtualCardStartIndex + itemsPerPage;
   const paginatedVirtualCardData = filteredVirtualCardData.slice(virtualCardStartIndex, virtualCardEndIndex);
+
+  // Proxy pagination
+  const totalProxyPages = Math.ceil(cachedProxiesData.length / itemsPerPage);
+  const proxyStartIndex = (currentProxyPage - 1) * itemsPerPage;
+  const proxyEndIndex = proxyStartIndex + itemsPerPage;
+  const paginatedProxyData = cachedProxiesData.slice(proxyStartIndex, proxyEndIndex);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -940,7 +962,7 @@ const MajorHistory: React.FC = () => {
         // Check if we already fetched proxies data
         if (proxiesDataFetched) {
           // Only log if we have actual data (not empty state)
-          if (!cachedProxiesData?.isEmpty) {
+          if (cachedProxiesData.length > 0) {
             console.log('Using cached Proxies data:', cachedProxiesData);
           }
           setIsLoading(false);
@@ -986,15 +1008,39 @@ const MajorHistory: React.FC = () => {
           // Check if no proxies were found
           if (data.message === 'No proxy orders found') {
             // Cache empty state
-            setCachedProxiesData({ isEmpty: true });
+            setCachedProxiesData([]);
             setProxiesDataFetched(true);
             setIsLoading(false);
             return;
           }
 
-          // Success - print to console and cache data
+          // Success - process and convert proxy data
           console.log('Backend response (Proxies):', data);
-          setCachedProxiesData(data);
+
+          // Handle different possible response formats
+          let proxyOrdersArray: any[] = [];
+          if (Array.isArray(data)) {
+            proxyOrdersArray = data;
+          } else if (data.proxy && Array.isArray(data.proxy)) {
+            proxyOrdersArray = data.proxy;
+          } else if (data.proxyOrders && Array.isArray(data.proxyOrders)) {
+            proxyOrdersArray = data.proxyOrders;
+          } else if (data.orders && Array.isArray(data.orders)) {
+            proxyOrdersArray = data.orders;
+          } else {
+            console.error('Expected Proxy array but got:', data);
+            setCachedProxiesData([]);
+            setProxiesDataFetched(true);
+            setIsLoading(false);
+            return;
+          }
+
+          // Convert proxy documents to ProxyRecord format
+          const formattedProxyData: ProxyRecord[] = proxyOrdersArray.map((item: any) =>
+            convertProxyDocumentToRecord(item as ProxyOrderDocument)
+          );
+
+          setCachedProxiesData(formattedProxyData);
           setProxiesDataFetched(true);
           setIsLoading(false);
         } catch (error) {
@@ -1104,6 +1150,21 @@ const MajorHistory: React.FC = () => {
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
     }
+  };
+
+  // Proxy handlers
+  const handleProxyInfoClickWrapper = (record: ProxyRecord) => {
+    setSelectedProxyRecord(record);
+    setShowProxyInfoModal(true);
+    setIsProxyIdCopied(false);
+  };
+
+  const handleCopyProxyIdWrapper = async () => {
+    await handleCopyProxyId(selectedProxyRecord, setIsProxyIdCopied);
+  };
+
+  const handleCopyProxyFieldWrapper = async (fieldValue: string, fieldKey: string) => {
+    await handleCopyProxyField(fieldValue, fieldKey, setCopiedProxyFields);
   };
 
   const getAvailableActions = (record: HistoryRecord) => {
@@ -1862,7 +1923,151 @@ const MajorHistory: React.FC = () => {
                     </svg>
                     <p className="text-slate-400 mt-4">Loading proxies...</p>
                   </div>
-                ) : cachedProxiesData?.isEmpty ? (
+                ) : cachedProxiesData.length > 0 ? (
+                  <>
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-slate-700/50">
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Duration</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">IP</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">HTTPS/Port</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">SOCKS5/Port</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Password</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedProxyData.map((record, index) => (
+                          <tr
+                            key={record.id}
+                            className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${
+                              index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
+                            }`}
+                          >
+                            <td className="py-4 px-6">
+                              <div className="flex items-center justify-center">
+                                <button
+                                  onClick={() => handleProxyInfoClickWrapper(record)}
+                                  className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
+                                  title="View Information"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              <span className="text-emerald-400 font-semibold">${formatProxyPrice(record.price)}</span>
+                            </td>
+                            <td className="py-4 px-6 text-white text-center">{record.duration}</td>
+                            <td className="py-4 px-6">
+                              <div className="font-mono text-white text-center">
+                                {record.ip}
+                                <button
+                                  onClick={() => handleCopyProxyFieldWrapper(record.ip, `ip-${record.id}`)}
+                                  className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                                  title={copiedProxyFields[`ip-${record.id}`] ? "Copied!" : "Copy IP"}
+                                >
+                                  {copiedProxyFields[`ip-${record.id}`] ? (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  ) : (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                  )}
+                                </button>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="font-mono text-white text-center">
+                                {record.httpsPort}
+                              </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="font-mono text-white text-center">
+                                {record.socks5Port}
+                              </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="font-mono text-white text-center">
+                                {record.user}
+                              </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="font-mono text-white text-center">
+                                {record.password}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    {/* Proxies Pagination */}
+                    {totalProxyPages > 1 && (
+                      <div className="mt-6">
+                        {/* Results info - shown above pagination on small screens */}
+                        <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
+                          Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, cachedProxiesData.length)} of {cachedProxiesData.length} results
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          {/* Results info - shown on left side on larger screens */}
+                          <div className="hidden md:block text-sm text-slate-400">
+                            Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, cachedProxiesData.length)} of {cachedProxiesData.length} results
+                          </div>
+
+                          <div className="flex items-center space-x-2 mx-auto md:mx-0">
+                            {/* Previous Button */}
+                            <button
+                              onClick={() => setCurrentProxyPage(prev => Math.max(prev - 1, 1))}
+                              disabled={currentProxyPage === 1}
+                              className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+
+                            {/* Page Numbers */}
+                            <div className="flex space-x-1">
+                              {Array.from({ length: totalProxyPages }, (_, i) => i + 1).map((page) => (
+                                <button
+                                  key={page}
+                                  onClick={() => setCurrentProxyPage(page)}
+                                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                                    currentProxyPage === page
+                                      ? 'bg-emerald-500 text-white'
+                                      : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                                  }`}
+                                >
+                                  {page}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Next Button */}
+                            <button
+                              onClick={() => setCurrentProxyPage(prev => Math.min(prev + 1, totalProxyPages))}
+                              disabled={currentProxyPage === totalProxyPages}
+                              className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
                   /* Empty State for Proxies */
                   <div className="text-center py-16">
                     <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
@@ -1872,17 +2077,6 @@ const MajorHistory: React.FC = () => {
                     </div>
                     <h1 className="text-xl font-bold text-slate-300 mb-3">No Proxies Found</h1>
                     <p className="text-slate-400 text-lg">No proxies have been purchased</p>
-                  </div>
-                ) : (
-                  /* Success State */
-                  <div className="text-center py-16">
-                    <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-700 rounded-2xl mb-5">
-                      <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <h1 className="text-xl font-bold text-slate-300 mb-3">Proxies Loaded Successfully</h1>
-                    <p className="text-slate-400 text-lg">Check the browser console for the response data</p>
                   </div>
                 )}
               </div>
@@ -1984,6 +2178,68 @@ const MajorHistory: React.FC = () => {
                 <div className="flex justify-center mt-6">
                   <button
                     onClick={() => setShowInfoModal(false)}
+                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Proxy Information Modal */}
+        {showProxyInfoModal && selectedProxyRecord && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto flex items-center justify-center">
+                    <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Proxy Information</h3>
+                <div className="space-y-4 text-left">
+                  <div>
+                    <span className="text-slate-300">Order ID: </span>
+                    <span className="text-emerald-400 break-all">{selectedProxyRecord.id}
+                      <button
+                        onClick={handleCopyProxyIdWrapper}
+                        className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                        title={isProxyIdCopied ? "Copied!" : "Copy Order ID"}
+                      >
+                        {isProxyIdCopied ? (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                      </button>
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-300">Purchase Date: </span>
+                    <span className="text-emerald-400">{selectedProxyRecord.purchaseDate}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-300">Expiration Date: </span>
+                    <span className="text-emerald-400">{selectedProxyRecord.expirationDate}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-300">Duration: </span>
+                    <span className="text-emerald-400">{selectedProxyRecord.duration}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-300">USA State: </span>
+                    <span className="text-emerald-400">Random State</span>
+                  </div>
+                </div>
+                <div className="flex justify-center mt-6">
+                  <button
+                    onClick={() => setShowProxyInfoModal(false)}
                     className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
                   >
                     Close

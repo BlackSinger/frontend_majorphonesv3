@@ -2323,7 +2323,7 @@ const History: React.FC = () => {
                   </div>
                   <div>
                     <span className="text-slate-300">USA State: </span>
-                    <span className="text-emerald-400">{selectedProxyRecord.usaState}</span>
+                    <span className="text-emerald-400">Random State</span>
                   </div>
                 </div>
                 <div className="flex justify-center mt-6">
