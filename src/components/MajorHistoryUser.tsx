@@ -30,6 +30,14 @@ import {
   getEmptySimCountdownTime,
 } from './EmptySimLogic';
 
+import {
+  type ProxyRecord,
+  handleCopyProxyField,
+  formatProxyPrice,
+  convertProxyDocumentToRecord,
+  handleCopyProxyId
+} from './ProxyLogic';
+
 interface HistoryRecord {
   id: string;
   date: string;
@@ -98,6 +106,12 @@ const MajorHistoryUser: React.FC = () => {
   const [selectedUuid, setSelectedUuid] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [copiedCardNumbers, setCopiedCardNumbers] = useState<{[key: string]: boolean}>({});
+
+  // Proxy states
+  const [copiedProxyFields, setCopiedProxyFields] = useState<{[key: string]: boolean}>({});
+  const [showProxyInfoModal, setShowProxyInfoModal] = useState(false);
+  const [selectedProxyRecord, setSelectedProxyRecord] = useState<ProxyRecord | null>(null);
+  const [isProxyIdCopied, setIsProxyIdCopied] = useState(false);
 
   const itemsPerPage = 10;
 
@@ -469,7 +483,10 @@ const MajorHistoryUser: React.FC = () => {
 
         console.log('Backend response (Proxies):', data);
 
-        setCachedProxiesData(data);
+        // Convert proxy documents to ProxyRecords
+        const proxyRecords = (data.orders || []).map((doc: any) => convertProxyDocumentToRecord(doc));
+
+        setCachedProxiesData(proxyRecords);
         setProxiesDataFetched(true);
         setLoading(false);
       } catch (error) {
@@ -712,6 +729,16 @@ const MajorHistoryUser: React.FC = () => {
       }, 2000);
     } catch (err) {
     }
+  };
+
+  const handleProxyInfoClick = (record: ProxyRecord) => {
+    setSelectedProxyRecord(record);
+    setShowProxyInfoModal(true);
+    setIsProxyIdCopied(false);
+  };
+
+  const handleCopyProxyIdWrapper = async () => {
+    await handleCopyProxyId(selectedProxyRecord, setIsProxyIdCopied);
   };
 
   return (
@@ -1232,15 +1259,101 @@ const MajorHistoryUser: React.FC = () => {
                       <h1 className="text-xl font-bold text-slate-300 mb-3">No Proxies Found</h1>
                       <p className="text-slate-400 text-lg">This user has not purchased proxies</p>
                     </div>
+                  ) : cachedProxiesData && cachedProxiesData.length > 0 ? (
+                    <div className="overflow-x-auto overflow-y-visible">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-700/50">
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Duration</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">IP</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">HTTPS/Port</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">SOCKS5/Port</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
+                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Password</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cachedProxiesData.map((record: ProxyRecord, index: number) => (
+                            <tr
+                              key={record.id}
+                              className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${
+                                index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
+                              }`}
+                            >
+                              <td className="py-4 px-6">
+                                <div className="flex items-center justify-center">
+                                  <button
+                                    onClick={() => handleProxyInfoClick(record)}
+                                    className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
+                                    title="View Information"
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <span className="text-emerald-400 font-semibold">${formatProxyPrice(record.price)}</span>
+                              </td>
+                              <td className="py-4 px-6 text-white text-center">{record.duration}</td>
+                              <td className="py-4 px-6">
+                                <div className="font-mono text-white text-center">
+                                  {record.ip}
+                                  <button
+                                    onClick={() => handleCopyProxyField(record.ip, `ip-${record.id}`, setCopiedProxyFields)}
+                                    className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                                    title={copiedProxyFields[`ip-${record.id}`] ? "Copied!" : "Copy IP"}
+                                  >
+                                    {copiedProxyFields[`ip-${record.id}`] ? (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    ) : (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                      </svg>
+                                    )}
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="font-mono text-white text-center">
+                                  {record.httpsPort}
+                                </div>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="font-mono text-white text-center">
+                                  {record.socks5Port}
+                                </div>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="font-mono text-white text-center">
+                                  {record.user}
+                                </div>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="font-mono text-white text-center">
+                                  {record.password}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   ) : (
                     <div className="text-center py-16">
-                      <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-700 rounded-2xl mb-5">
-                        <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                      <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
+                        <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                         </svg>
                       </div>
-                      <h1 className="text-xl font-bold text-slate-300 mb-3">Proxies Loaded Successfully</h1>
-                      <p className="text-slate-400 text-lg">Check the browser console for the response data</p>
+                      <h1 className="text-xl font-bold text-slate-300 mb-3">No Proxies Found</h1>
+                      <p className="text-slate-400 text-lg">This user has not purchased proxies</p>
                     </div>
                   )}
                 </>
@@ -1346,6 +1459,68 @@ const MajorHistoryUser: React.FC = () => {
                     className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
                   >
                     OK
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Proxy Information Modal */}
+        {showProxyInfoModal && selectedProxyRecord && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto flex items-center justify-center">
+                    <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Proxy Information</h3>
+                <div className="space-y-4 text-left">
+                  <div>
+                    <span className="text-slate-300">Order ID: </span>
+                    <span className="text-emerald-400 break-all">{selectedProxyRecord.id}
+                      <button
+                        onClick={handleCopyProxyIdWrapper}
+                        className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                        title={isProxyIdCopied ? "Copied!" : "Copy Order ID"}
+                      >
+                        {isProxyIdCopied ? (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                      </button>
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-300">Purchase Date: </span>
+                    <span className="text-emerald-400">{selectedProxyRecord.purchaseDate}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-300">Expiration Date: </span>
+                    <span className="text-emerald-400">{selectedProxyRecord.expirationDate}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-300">Duration: </span>
+                    <span className="text-emerald-400">{selectedProxyRecord.duration}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-300">USA State: </span>
+                    <span className="text-emerald-400">Random State</span>
+                  </div>
+                </div>
+                <div className="flex justify-center mt-6">
+                  <button
+                    onClick={() => setShowProxyInfoModal(false)}
+                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
+                  >
+                    Close
                   </button>
                 </div>
               </div>

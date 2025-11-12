@@ -10,6 +10,7 @@ export interface ProxyRecord {
   socks5Port: string;
   user: string;
   password: string;
+  email: string;
 }
 
 export interface ProxyOrderDocument {
@@ -24,6 +25,7 @@ export interface ProxyOrderDocument {
   userProxy: string;
   passProxy: string;
   uid: string;
+  email?: string;
 }
 
 export const usaStates = [
@@ -201,6 +203,7 @@ export const convertProxyDocumentToRecord = (doc: ProxyOrderDocument): ProxyReco
     httpsPort: doc.httpsPort,
     socks5Port: doc.socks5Port,
     user: doc.userProxy,
-    password: doc.passProxy
+    password: doc.passProxy,
+    email: doc.email || 'N/A'
   };
 };

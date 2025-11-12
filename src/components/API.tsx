@@ -372,6 +372,23 @@ const API: React.FC = () => {
                       <div className="border-l-4 border-green-500 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-semibold">POST</span>
+                          <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/short/reply</code>
+                        </div>
+                        <p className="text-slate-400 text-xs sm:text-sm mb-2">Send SMS to a short number</p>
+                        <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
+                          <p className="text-xs text-slate-400 mb-1">Request Body:</p>
+                          <pre className="text-xs text-slate-300 overflow-x-auto text-left">
+                            <code>{`{
+  "orderId": string // The orderId of the number to send SMS to
+  "message": string // The content of the SMS you want to send
+}`}</code>
+                          </pre>
+                        </div>
+                      </div>
+
+                      <div className="border-l-4 border-green-500 pl-3 sm:pl-4">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-semibold">POST</span>
                           <code className="text-slate-300 text-xs sm:text-sm break-all">/sms/middle/buy</code>
                         </div>
                         <p className="text-slate-400 text-xs sm:text-sm mb-2">Purchase a middle-term SMS number</p>

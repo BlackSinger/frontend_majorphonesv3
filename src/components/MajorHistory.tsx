@@ -80,6 +80,7 @@ interface HistoryRecord {
   codeAwakeAt?: Date;
   orderId?: string;
   email?: string;
+  fullsms?: string;
 }
 
 const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: string; onTimeout?: () => void; /* updatedAt?: Date */ }> = React.memo(({ createdAt, recordId, status, onTimeout, /* updatedAt */ }) => {
@@ -346,8 +347,10 @@ const MajorHistory: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showUuidModal, setShowUuidModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showFullSmsModal, setShowFullSmsModal] = useState(false);
   const [selectedUuid, setSelectedUuid] = useState('');
   const [selectedRecord, setSelectedRecord] = useState<HistoryRecord | null>(null);
+  const [selectedFullSms, setSelectedFullSms] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
   const [openActionMenus, setOpenActionMenus] = useState<{[key: string]: boolean}>({});
@@ -836,7 +839,8 @@ const MajorHistory: React.FC = () => {
               awakeIn: awakeInDate,
               codeAwakeAt: codeAwakeAtDate,
               orderId: item.orderId || 'N/A',
-              email: item.email || 'N/A'
+              email: item.email || 'N/A',
+              fullsms: item.fullsms || ''
             };
           });
 
@@ -1129,6 +1133,11 @@ const MajorHistory: React.FC = () => {
     setSelectedRecord(record);
     setShowInfoModal(true);
     setIsInfoIdCopied(false);
+  };
+
+  const handleFullSmsClick = (fullsms: string) => {
+    setSelectedFullSms(fullsms);
+    setShowFullSmsModal(true);
   };
 
   const handleCopyInfoId = async () => {
@@ -1464,6 +1473,7 @@ const MajorHistory: React.FC = () => {
                       <th className="text-center py-4 px-10 text-slate-300 font-semibold">Service</th>
                       <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
                       <th className="text-center py-4 px-6 text-slate-300 font-semibold">Code</th>
+                      <th className="text-center py-4 px-4 text-slate-300 font-semibold">Full SMS</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1603,6 +1613,29 @@ const MajorHistory: React.FC = () => {
                             return <span className="font-mono text-slate-400">-</span>;
                           })()
                           }
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center justify-center">
+                            <button
+                              onClick={() => {
+                                if (record.fullsms && record.fullsms.trim() !== '') {
+                                  handleFullSmsClick(record.fullsms);
+                                }
+                              }}
+                              disabled={!record.fullsms || record.fullsms.trim() === ''}
+                              className={`p-2 transition-colors duration-200 rounded-lg ${
+                                record.fullsms && record.fullsms.trim() !== ''
+                                  ? 'text-slate-400 hover:text-green-500 hover:bg-slate-700/30 cursor-pointer'
+                                  : 'text-slate-600 cursor-not-allowed opacity-50'
+                              }`}
+                              title={record.fullsms && record.fullsms.trim() !== '' ? "View Full SMS" : "No Full SMS available"}
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1929,6 +1962,7 @@ const MajorHistory: React.FC = () => {
                       <thead>
                         <tr className="border-b border-slate-700/50">
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Email</th>
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">Duration</th>
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">IP</th>
@@ -1960,6 +1994,7 @@ const MajorHistory: React.FC = () => {
                                 </button>
                               </div>
                             </td>
+                            <td className="py-4 px-6 text-white text-center">{record.email}</td>
                             <td className="py-4 px-6 text-center">
                               <span className="text-emerald-400 font-semibold">${formatProxyPrice(record.price)}</span>
                             </td>
@@ -2181,6 +2216,33 @@ const MajorHistory: React.FC = () => {
                     className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
                   >
                     Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Full SMS Modal */}
+        {showFullSmsModal && selectedFullSms && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto flex items-center justify-center">
+                    <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-4">Full SMS</h3>
+                <div className="bg-slate-800/50 rounded-lg p-4 mb-6 max-h-60 overflow-y-auto">
+                  <p className="text-white whitespace-pre-wrap break-words" style={{ textAlign: 'justify' }}>{selectedFullSms}</p>
+                </div>
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => setShowFullSmsModal(false)}
+                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
+                  >
+                    Ok
                   </button>
                 </div>
               </div>
