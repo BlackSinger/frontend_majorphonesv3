@@ -737,8 +737,11 @@ const ShortNumbers: React.FC = () => {
 
         allNumbers.sort((a, b) => a.price - b.price);
       } else if (selectedCountry === 'United Kingdom') {
-        // For United Kingdom, only search opt2 (single use, receive only)
-        const searchPromises = ['opt2'].map(async (optDoc) => {
+        const optionsToSearch = globalSearchData.serviceName.toLowerCase() === 'telegram'
+          ? ['opt2']
+          : ['opt2', 'opt5'];
+
+        const searchPromises = optionsToSearch.map(async (optDoc) => {
           const servicesRef = collection(db, 'stnUK', optDoc, 'services');
           const querySnapshot = await getDocs(servicesRef);
 
