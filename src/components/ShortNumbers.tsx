@@ -891,6 +891,8 @@ const ShortNumbers: React.FC = () => {
       } else {
         setSearchResults([]);
         setHasSearched(false);
+        setErrorMessage('No service available');
+        setShowErrorModal(true);
       }
     } catch (error) {
 
