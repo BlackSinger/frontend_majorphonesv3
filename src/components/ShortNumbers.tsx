@@ -636,8 +636,11 @@ const ShortNumbers: React.FC = () => {
         case 'opt2':
           globalPurchaseData.option = 2;
           break;
-        case 'opt3':
+        /*case 'opt3':
           globalPurchaseData.option = 3;
+          break;*/
+        case 'opt10':
+          globalPurchaseData.option = 10;
           break;
         /*case 'opt6':
           globalPurchaseData.option = 6;
@@ -697,7 +700,8 @@ const ShortNumbers: React.FC = () => {
 
       if (selectedCountry === 'United States') {
         // opt6 (reusable numbers) is commented out: const searchPromises = ['opt1', 'opt2', 'opt3', 'opt6'].map(async (optDoc) => {
-        const searchPromises = ['opt1', 'opt2', 'opt3'].map(async (optDoc) => {
+        //const searchPromises = ['opt1', 'opt2', 'opt3'].map(async (optDoc) => {
+        const searchPromises = ['opt1', 'opt2', 'opt10'].map(async (optDoc) => {
           const servicesRef = collection(db, 'stnUSA', optDoc, 'services');
           const querySnapshot = await getDocs(servicesRef);
 
@@ -710,7 +714,8 @@ const ShortNumbers: React.FC = () => {
               const countryCode = selectedCountryData?.code || 'US';
               const countryPrefix = selectedCountryData?.prefix || '+1';
 
-              const isOpt3 = optDoc === 'opt3';
+              //const isOpt3 = optDoc === 'opt3';
+              const isOpt10 = optDoc === 'opt10';
               // const isOpt6 = optDoc === 'opt6';
 
               results.push({
@@ -722,7 +727,9 @@ const ShortNumbers: React.FC = () => {
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 // isReusable: isOpt6, // Only opt6 is reusable
-                receiveSend: isOpt3,
+                //receiveSend: isOpt3,
+                //receiveSend: isOpt10,
+                receiveSend: false,
                 opt: optDoc
               });
             }
@@ -1029,8 +1036,8 @@ const ShortNumbers: React.FC = () => {
                         <div
                           onClick={() => !isLoadingServices && !hasError && !isSearching && setIsCountryDropdownOpen(!isCountryDropdownOpen)}
                           className={`w-full pl-12 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${isLoadingServices || hasError || isSearching
-                              ? 'opacity-50 cursor-not-allowed'
-                              : 'cursor-pointer hover:border-slate-500/50'
+                            ? 'opacity-50 cursor-not-allowed'
+                            : 'cursor-pointer hover:border-slate-500/50'
                             }`}
                         >
                           <div className="flex items-center">

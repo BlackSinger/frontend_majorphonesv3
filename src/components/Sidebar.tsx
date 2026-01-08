@@ -110,7 +110,7 @@ const Sidebar: React.FC = () => {
       ),
       path: '/virtualcard'
     },
-    {
+    /*{
       name: 'Proxies',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,7 +118,7 @@ const Sidebar: React.FC = () => {
         </svg>
       ),
       path: '/proxies'
-    },
+    },*/
     {
       name: 'History',
       icon: (
@@ -172,7 +172,7 @@ const Sidebar: React.FC = () => {
       `}</style>
 
       {/* Mobile Overlay */}
-      <div 
+      <div
         data-overlay
         className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden hidden"
         onClick={() => {
@@ -185,12 +185,12 @@ const Sidebar: React.FC = () => {
       />
 
       {/* Sidebar */}
-      <div 
+      <div
         data-sidebar
-        className="fixed inset-y-0 left-0 z-40 w-72 border-r border-slate-600 shadow-2xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 -translate-x-full lg:-translate-x-0" 
-        style={{backgroundColor: '#1e293b'}}
+        className="fixed inset-y-0 left-0 z-40 w-72 border-r border-slate-600 shadow-2xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 -translate-x-full lg:-translate-x-0"
+        style={{ backgroundColor: '#1e293b' }}
       >
-        
+
 
         <div className="flex flex-col h-full relative z-10">
           {/* Header */}
@@ -202,31 +202,29 @@ const Sidebar: React.FC = () => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-5 overflow-y-auto sidebar-scrollbar" 
-               style={{
-                 scrollbarWidth: 'thin',
-                 scrollbarColor: 'rgba(71, 85, 105, 0.6) rgba(30, 41, 59, 0.3)'
-               }}>
+          <nav className="flex-1 px-4 py-6 space-y-5 overflow-y-auto sidebar-scrollbar"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'rgba(71, 85, 105, 0.6) rgba(30, 41, 59, 0.3)'
+            }}>
             {menuItems.map((item) => {
               const isActive = currentPath === item.path;
               return (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300 relative overflow-hidden ${
-                    isActive
-                      ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg transform scale-105'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-700/50 hover:scale-102'
-                  }`}
+                  className={`group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300 relative overflow-hidden ${isActive
+                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg transform scale-105'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50 hover:scale-102'
+                    }`}
                 >
                   {/* Active item glow effect */}
                   {isActive && (
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 to-cyan-500/30 blur-sm"></div>
                   )}
 
-                  <div className={`mr-3 transition-all duration-300 relative z-10 ${
-                    isActive ? 'text-blue-100 drop-shadow-sm' : 'text-slate-400 group-hover:text-blue-400'
-                  }`}>
+                  <div className={`mr-3 transition-all duration-300 relative z-10 ${isActive ? 'text-blue-100 drop-shadow-sm' : 'text-slate-400 group-hover:text-blue-400'
+                    }`}>
                     {item.icon}
                   </div>
 

@@ -110,9 +110,9 @@ const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: stri
       const remaining = calculateTimeLeft();
       setTimeLeft(remaining);
 
-      if (status !== "Pending"){
-            clearInterval(interval);
-            setTimeLeft(0);
+      if (status !== "Pending") {
+        clearInterval(interval);
+        setTimeLeft(0);
       }
       if (remaining <= 0) {
         clearInterval(interval);
@@ -336,7 +336,7 @@ const MajorHistory: React.FC = () => {
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const tabFromUrl = searchParams.get('tab');
-  
+
   const [activeTab, setActiveTab] = useState<'numbers' | 'vcc' | 'proxies'>('numbers');
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -353,11 +353,11 @@ const MajorHistory: React.FC = () => {
   const [selectedFullSms, setSelectedFullSms] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
-  const [openActionMenus, setOpenActionMenus] = useState<{[key: string]: boolean}>({});
+  const [openActionMenus, setOpenActionMenus] = useState<{ [key: string]: boolean }>({});
   const serviceTypeDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const numberTypeDropdownRef = useRef<HTMLDivElement>(null);
-  const actionMenuRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
+  const actionMenuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const [firestoreData, setFirestoreData] = useState<HistoryRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -377,7 +377,7 @@ const MajorHistory: React.FC = () => {
   const [fundsFilter, setFundsFilter] = useState<string>('All');
   const [isFundsDropdownOpen, setIsFundsDropdownOpen] = useState(false);
   const [currentVirtualCardPage, setCurrentVirtualCardPage] = useState(1);
-  const [copiedCardNumbers, setCopiedCardNumbers] = useState<{[key: string]: boolean}>({});
+  const [copiedCardNumbers, setCopiedCardNumbers] = useState<{ [key: string]: boolean }>({});
   const fundsDropdownRef = useRef<HTMLDivElement>(null);
 
   // Proxy states and pagination
@@ -385,7 +385,7 @@ const MajorHistory: React.FC = () => {
   const [showProxyInfoModal, setShowProxyInfoModal] = useState(false);
   const [selectedProxyRecord, setSelectedProxyRecord] = useState<ProxyRecord | null>(null);
   const [isProxyIdCopied, setIsProxyIdCopied] = useState(false);
-  const [copiedProxyFields, setCopiedProxyFields] = useState<{[key: string]: boolean}>({});
+  const [copiedProxyFields, setCopiedProxyFields] = useState<{ [key: string]: boolean }>({});
 
   const [, setForceUpdate] = useState(0);
 
@@ -1243,46 +1243,45 @@ const MajorHistory: React.FC = () => {
 
   return (
     <div className="space-y-6">
-        {/* Header */}
-        <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
-          <div className="relative z-10">
-            <div className="flex items-center space-x-4">
-              <div>
-                <h1 className="text-left text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent">
-                  History
-                </h1>
-                <p className="text-slate-300 text-md text-left">View all purchases</p>
-              </div>
+      {/* Header */}
+      <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="flex items-center space-x-4">
+            <div>
+              <h1 className="text-left text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent">
+                History
+              </h1>
+              <p className="text-slate-300 text-md text-left">View all purchases</p>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Tabs and Table */}
-        <div className="rounded-3xl shadow-2xl border border-slate-700/50 relative">
-          <div className="p-6">
-            {/* Tab Navigation */}
-            <div className="mb-6">
-              <div className="flex space-x-4 border-b border-slate-700/50">
-                <button
-                  onClick={() => setActiveTab('numbers')}
-                  className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${
-                    activeTab === 'numbers'
-                      ? 'text-emerald-400 border-emerald-400'
-                      : 'text-slate-400 border-transparent hover:text-slate-300'
+      {/* Tabs and Table */}
+      <div className="rounded-3xl shadow-2xl border border-slate-700/50 relative">
+        <div className="p-6">
+          {/* Tab Navigation */}
+          <div className="mb-6">
+            <div className="flex space-x-4 border-b border-slate-700/50">
+              <button
+                onClick={() => setActiveTab('numbers')}
+                className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${activeTab === 'numbers'
+                    ? 'text-emerald-400 border-emerald-400'
+                    : 'text-slate-400 border-transparent hover:text-slate-300'
                   }`}
-                >
-                  Numbers
-                </button>
-                <button
-                  onClick={() => setActiveTab('vcc')}
-                  className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${
-                    activeTab === 'vcc'
-                      ? 'text-emerald-400 border-emerald-400'
-                      : 'text-slate-400 border-transparent hover:text-slate-300'
+              >
+                Numbers
+              </button>
+              <button
+                onClick={() => setActiveTab('vcc')}
+                className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${activeTab === 'vcc'
+                    ? 'text-emerald-400 border-emerald-400'
+                    : 'text-slate-400 border-transparent hover:text-slate-300'
                   }`}
-                >
-                  Virtual Debit Cards
-                </button>
+              >
+                Virtual Debit Cards
+              </button>
+              {/*
                 <button
                   onClick={() => setActiveTab('proxies')}
                   className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${
@@ -1293,660 +1292,499 @@ const MajorHistory: React.FC = () => {
                 >
                   Proxies
                 </button>
-              </div>
+                */}
             </div>
+          </div>
 
-            {/* Numbers Tab Content */}
-            {activeTab === 'numbers' && (
+          {/* Numbers Tab Content */}
+          {activeTab === 'numbers' && (
             <>
-                {/* Check if any operation is in progress */}
-                {(() => {
-                  const isProcessing = cancellingOrderId !== null || /* reusingOrderId !== null || */ activatingOrderId !== null;
-                  
-                  return (
-                    <>
-                {/* Filters */}
-                <div className="mb-6">
-                  <div className="flex flex-col lg:flex-row gap-6">
-                    {/* Service Type Filter */}
-                    <div className="flex-1">
-                      <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
-                        Service Type
-                      </label>
-                      <div className="relative group" ref={serviceTypeDropdownRef}>
-                        <div
-                          onClick={() => !isProcessing && setIsServiceTypeDropdownOpen(!isServiceTypeDropdownOpen)}
-                          className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${
-                            isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-slate-500/50'
-                          }`}
-                        >
-                          <span>{serviceTypeFilter === 'All' ? 'All Services' : serviceTypeFilter}</span>
-                        </div>
+              {/* Check if any operation is in progress */}
+              {(() => {
+                const isProcessing = cancellingOrderId !== null || /* reusingOrderId !== null || */ activatingOrderId !== null;
 
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                          <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isServiceTypeDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
+                return (
+                  <>
+                    {/* Filters */}
+                    <div className="mb-6">
+                      <div className="flex flex-col lg:flex-row gap-6">
+                        {/* Service Type Filter */}
+                        <div className="flex-1">
+                          <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                            Service Type
+                          </label>
+                          <div className="relative group" ref={serviceTypeDropdownRef}>
+                            <div
+                              onClick={() => !isProcessing && setIsServiceTypeDropdownOpen(!isServiceTypeDropdownOpen)}
+                              className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-slate-500/50'
+                                }`}
+                            >
+                              <span>{serviceTypeFilter === 'All' ? 'All Services' : serviceTypeFilter}</span>
+                            </div>
 
-                        {/* Custom Dropdown Options */}
-                        {isServiceTypeDropdownOpen && !isProcessing && (
-                          <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
-                            {serviceTypeOptions.map((option) => (
-                              <div
-                                key={option}
-                                onClick={() => {
-                                  setServiceTypeFilter(option);
-                                  setStatusFilter('All');
-                                  setNumberTypeFilter('All types');
-                                  setIsServiceTypeDropdownOpen(false);
-                                }}
-                                className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-                              >
-                                <span className="text-white">{option === 'All' ? 'All Services' : option}</span>
+                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                              <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isServiceTypeDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+
+                            {/* Custom Dropdown Options */}
+                            {isServiceTypeDropdownOpen && !isProcessing && (
+                              <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
+                                {serviceTypeOptions.map((option) => (
+                                  <div
+                                    key={option}
+                                    onClick={() => {
+                                      setServiceTypeFilter(option);
+                                      setStatusFilter('All');
+                                      setNumberTypeFilter('All types');
+                                      setIsServiceTypeDropdownOpen(false);
+                                    }}
+                                    className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                                  >
+                                    <span className="text-white">{option === 'All' ? 'All Services' : option}</span>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Number Type Filter - Conditional for Short, Middle, Long Numbers */}
+                        {(serviceTypeFilter === 'Short Numbers' || serviceTypeFilter === 'Middle Numbers' || serviceTypeFilter === 'Long Numbers') && (
+                          <div className="flex-1">
+                            <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                              Number Type
+                            </label>
+                            <div className="relative group" ref={numberTypeDropdownRef}>
+                              <div
+                                onClick={() => !isProcessing && setIsNumberTypeDropdownOpen(!isNumberTypeDropdownOpen)}
+                                className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-slate-500/50'
+                                  }`}
+                              >
+                                <span>{numberTypeFilter === 'All types' ? 'All Types' : numberTypeFilter}</span>
+                              </div>
+
+                              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isNumberTypeDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
+
+                              {/* Custom Dropdown Options */}
+                              {isNumberTypeDropdownOpen && !isProcessing && (
+                                <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
+                                  {getNumberTypeOptions(serviceTypeFilter).map((option) => (
+                                    <div
+                                      key={option}
+                                      onClick={() => {
+                                        setNumberTypeFilter(option);
+                                        setIsNumberTypeDropdownOpen(false);
+                                      }}
+                                      className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                                    >
+                                      <span className="text-white">{option === 'All types' ? 'All Types' : option}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
-                      </div>
-                    </div>
 
-                    {/* Number Type Filter - Conditional for Short, Middle, Long Numbers */}
-                    {(serviceTypeFilter === 'Short Numbers' || serviceTypeFilter === 'Middle Numbers' || serviceTypeFilter === 'Long Numbers') && (
-                      <div className="flex-1">
-                        <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
-                          Number Type
-                        </label>
-                        <div className="relative group" ref={numberTypeDropdownRef}>
-                          <div
-                            onClick={() => !isProcessing && setIsNumberTypeDropdownOpen(!isNumberTypeDropdownOpen)}
-                            className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${
-                              isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-slate-500/50'
-                            }`}
-                          >
-                            <span>{numberTypeFilter === 'All types' ? 'All Types' : numberTypeFilter}</span>
-                          </div>
+                        {/* Status Filter */}
+                        <div className="flex-1">
+                          <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                            Status
+                          </label>
+                          <div className="relative group" ref={statusDropdownRef}>
+                            <div
+                              onClick={() => !isProcessing && setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                              className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-slate-500/50'
+                                }`}
+                            >
+                              <span>{statusFilter === 'All' ? 'All Statuses' : statusFilter}</span>
+                            </div>
 
-                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                            <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isNumberTypeDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
+                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                              <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isStatusDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
 
-                          {/* Custom Dropdown Options */}
-                          {isNumberTypeDropdownOpen && !isProcessing && (
-                            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
-                              {getNumberTypeOptions(serviceTypeFilter).map((option) => (
+                            {/* Custom Dropdown Options */}
+                            {isStatusDropdownOpen && !isProcessing && (
+                              <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
                                 <div
-                                  key={option}
+                                  key="All"
                                   onClick={() => {
-                                    setNumberTypeFilter(option);
-                                    setIsNumberTypeDropdownOpen(false);
+                                    setStatusFilter('All');
+                                    setIsStatusDropdownOpen(false);
                                   }}
                                   className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
                                 >
-                                  <span className="text-white">{option === 'All types' ? 'All Types' : option}</span>
+                                  <span className="text-white">All Statuses</span>
                                 </div>
+                                {getAvailableStatuses(serviceTypeFilter).map((status) => (
+                                  <div
+                                    key={status}
+                                    onClick={() => {
+                                      setStatusFilter(status);
+                                      setIsStatusDropdownOpen(false);
+                                    }}
+                                    className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                                  >
+                                    <span className="text-white">{status}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+
+                    {/* Table */}
+                    <div className="overflow-x-auto overflow-y-visible">
+                      {isLoading ? (
+                        <div className="flex flex-col items-center justify-center py-16">
+                          <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <p className="text-slate-400 mt-4">Loading numbers...</p>
+                        </div>
+                      ) : showErrorModal ? (
+                        <></>
+                      ) : filteredData.length > 0 ? (
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-slate-700/50">
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">Country</th>
+                              <th className="text-center py-4 px-6 text-slate-300 font-semibold">Number</th>
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">Type</th>
+                              <th className="text-center py-4 px-5 text-slate-300 font-semibold">Status</th>
+                              <th className="text-center py-4 px-10 text-slate-300 font-semibold">Service</th>
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
+                              <th className="text-center py-4 px-6 text-slate-300 font-semibold">Code</th>
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">Full SMS</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paginatedData.map((record, index) => (
+                              <tr
+                                key={record.id}
+                                className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
+                                  }`}
+                              >
+                                <td className="py-4 px-6">
+                                  <div className="flex items-center justify-center">
+                                    <button
+                                      onClick={() => handleInfoClick(record)}
+                                      className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
+                                      title="View Information"
+                                    >
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-6 text-white">{record.email || 'N/A'}</td>
+                                <td className="py-4 px-6">
+                                  <div className="text-center">
+                                    <span className="inline-block bg-slate-700/50 text-white font-normal text-sm px-3 py-1 rounded-lg border border-slate-600/50">
+                                      {getCountryInitials(record.country)}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-6">
+                                  <div className="font-mono text-white">{record.number.startsWith('+') ? record.number : '+' + record.number}</div>
+                                </td>
+                                <td className="py-4 px-6 text-white">{getServiceTypeDisplayName(record.serviceType)}</td>
+                                <td className="py-4 px-6">
+                                  <span className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold border w-24 ${getStatusColor(getDisplayStatus(record), record.serviceType)}`}>
+                                    {getDisplayStatus(record)}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-6 text-white">{record.service}</td>
+                                <td className="py-4 px-6">
+                                  <span className="text-emerald-400 font-semibold">${formatPrice(record.price)}</span>
+                                </td>
+                                <td className="py-4 px-6">
+                                  {(() => {
+                                    const normalizedType = record.serviceType.toLowerCase();
+                                    if (normalizedType === 'short') {
+                                      if (record.awakeIn) {
+                                        const now = new Date().getTime();
+                                        const wakeTime = record.awakeIn.getTime();
+                                        if (now < wakeTime) {
+                                          return <span className="font-mono text-orange-500 font-semibold animate-pulse">Activating...</span>;
+                                        }
+                                      }
+
+                                      if (record.codeAwakeAt) {
+                                        const now = new Date().getTime();
+                                        const startTime = record.codeAwakeAt.getTime();
+                                        const fiveMinutes = 5 * 60 * 1000;
+                                        const expiryTime = startTime + fiveMinutes;
+
+                                        if (now < expiryTime) {
+                                          return <CodeAwakeTimer
+                                            codeAwakeAt={record.codeAwakeAt}
+                                            recordId={record.id}
+                                            onTimeout={() => {
+                                              setFirestoreData(currentData =>
+                                                currentData.map(r =>
+                                                  r.id === record.id
+                                                    ? { ...r, codeAwakeAt: undefined }
+                                                    : r
+                                                )
+                                              );
+                                              setForceUpdate(prev => prev + 1);
+                                            }}
+                                          />;
+                                        }
+                                      }
+
+                                      if (record.status === 'Completed') {
+                                        return <span className="font-mono text-blue-500 font-semibold">{record.code || ''}</span>;
+                                      } else if (record.status === 'Pending' && record.createdAt) {
+                                        return <CountdownTimer
+                                          createdAt={record.createdAt}
+                                          recordId={record.id}
+                                          status={record.status}
+                                          onTimeout={() => setForceUpdate(prev => prev + 1)}
+                                        />;
+                                      } else {
+                                        return <span className="font-mono text-slate-400">-</span>;
+                                      }
+                                    } else if (normalizedType === 'middle') {
+                                      if (record.status === 'Active') {
+                                        return <MiddleCountdownTimer
+                                          record={record}
+                                          onTimeout={() => setForceUpdate(prev => prev + 1)}
+                                        />;
+                                      }
+
+                                      const hasSms = record.code && record.code.trim() !== '';
+                                      if (hasSms) {
+                                        return <span className="font-mono text-blue-500 font-semibold">{record.code}</span>;
+                                      } else {
+                                        return <span className="font-mono text-slate-400">-</span>;
+                                      }
+                                    } else if (normalizedType === 'long') {
+                                      if (record.status === 'Active') {
+                                        return <LongCountdownTimer
+                                          record={record}
+                                          onTimeout={() => setForceUpdate(prev => prev + 1)}
+                                        />;
+                                      }
+
+                                      const hasSms = record.code && record.code.trim() !== '';
+                                      if (hasSms) {
+                                        return <span className="font-mono text-blue-500 font-semibold">{record.code}</span>;
+                                      } else {
+                                        return <span className="font-mono text-slate-400">-</span>;
+                                      }
+                                    } else if (normalizedType === 'empty simcard') {
+                                      if (record.status === 'Active') {
+                                        return <EmptySimCountdownTimer
+                                          record={record}
+                                          onTimeout={() => setForceUpdate(prev => prev + 1)}
+                                        />;
+                                      }
+
+                                      const hasSms = record.code && record.code.trim() !== '';
+                                      if (hasSms) {
+                                        return <span className="font-mono text-blue-500 font-semibold">{record.code}</span>;
+                                      } else {
+                                        return <span className="font-mono text-slate-400">-</span>;
+                                      }
+                                    }
+                                    return <span className="font-mono text-slate-400">-</span>;
+                                  })()
+                                  }
+                                </td>
+                                <td className="py-4 px-6">
+                                  <div className="flex items-center justify-center">
+                                    <button
+                                      onClick={() => {
+                                        if (record.fullsms && record.fullsms.trim() !== '') {
+                                          handleFullSmsClick(record.fullsms);
+                                        }
+                                      }}
+                                      disabled={!record.fullsms || record.fullsms.trim() === ''}
+                                      className={`p-2 transition-colors duration-200 rounded-lg ${record.fullsms && record.fullsms.trim() !== ''
+                                          ? 'text-slate-400 hover:text-green-500 hover:bg-slate-700/30 cursor-pointer'
+                                          : 'text-slate-600 cursor-not-allowed opacity-50'
+                                        }`}
+                                      title={record.fullsms && record.fullsms.trim() !== '' ? "View Full SMS" : "No Full SMS available"}
+                                    >
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        /* Empty State */
+                        <div className="text-center py-16">
+                          <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
+                            <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                            </svg>
+                          </div>
+                          <h1 className="text-xl font-bold text-slate-300 mb-3">No Records Found</h1>
+                          <p className="text-slate-400 text-lg">No purchase history matches your current filters</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pagination */}
+                    {filteredData.length > 0 && totalPages > 1 && (
+                      <div className="mt-6">
+                        {/* Results info - shown above pagination on small screens */}
+                        <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
+                          Showing {startIndex + 1} to {Math.min(endIndex, filteredData.length)} of {filteredData.length} results
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          {/* Results info - shown on left side on larger screens */}
+                          <div className="hidden md:block text-sm text-slate-400">
+                            Showing {startIndex + 1} to {Math.min(endIndex, filteredData.length)} of {filteredData.length} results
+                          </div>
+
+                          <div className="flex items-center space-x-2 mx-auto md:mx-0">
+                            {/* Previous Button */}
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                              disabled={currentPage === 1}
+                              className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+
+                            {/* Page Numbers - Show current and next page only */}
+                            <div className="flex space-x-1">
+                              {[currentPage, currentPage + 1].filter(page => page <= totalPages).map((page) => (
+                                <button
+                                  key={page}
+                                  onClick={() => setCurrentPage(page)}
+                                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentPage === page
+                                      ? 'bg-emerald-500 text-white'
+                                      : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                                    }`}
+                                >
+                                  {page}
+                                </button>
                               ))}
                             </div>
-                          )}
+
+                            {/* Next Button */}
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                              disabled={currentPage === totalPages}
+                              className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}
+                  </>
+                )
+              })()}
+            </>
+          )}
 
-                    {/* Status Filter */}
-                    <div className="flex-1">
-                      <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
-                        Status
-                      </label>
-                      <div className="relative group" ref={statusDropdownRef}>
-                        <div
-                          onClick={() => !isProcessing && setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                          className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${
-                            isProcessing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-slate-500/50'
-                          }`}
-                        >
-                          <span>{statusFilter === 'All' ? 'All Statuses' : statusFilter}</span>
-                        </div>
-
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                          <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isStatusDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-
-                        {/* Custom Dropdown Options */}
-                        {isStatusDropdownOpen && !isProcessing && (
-                          <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
-                            <div
-                              key="All"
-                              onClick={() => {
-                                setStatusFilter('All');
-                                setIsStatusDropdownOpen(false);
-                              }}
-                              className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-                            >
-                              <span className="text-white">All Statuses</span>
-                            </div>
-                            {getAvailableStatuses(serviceTypeFilter).map((status) => (
-                              <div
-                                key={status}
-                                onClick={() => {
-                                  setStatusFilter(status);
-                                  setIsStatusDropdownOpen(false);
-                                }}
-                                className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-                              >
-                                <span className="text-white">{status}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+          {/* VCC Tab Content */}
+          {activeTab === 'vcc' && (
+            <>
+              {/* Virtual Cards Filters */}
+              <div className="mb-6">
+                <div className="flex flex-col lg:flex-row gap-6">
+                  {/* Card Number Search */}
+                  <div className="flex-1">
+                    <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                      Card Number Search
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={cardNumberSearch}
+                        onChange={(e) => {
+                          setCardNumberSearch(e.target.value);
+                          setCurrentVirtualCardPage(1);
+                        }}
+                        placeholder="Enter card number"
+                        className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
                       </div>
                     </div>
-
                   </div>
-                </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto overflow-y-visible">
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-16">
-                  <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <p className="text-slate-400 mt-4">Loading numbers...</p>
-                </div>
-              ) : showErrorModal ? (
-                <></>
-              ) : filteredData.length > 0 ? (
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-slate-700/50">
-                      <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
-                      <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
-                      <th className="text-center py-4 px-4 text-slate-300 font-semibold">Country</th>
-                      <th className="text-center py-4 px-6 text-slate-300 font-semibold">Number</th>
-                      <th className="text-center py-4 px-4 text-slate-300 font-semibold">Type</th>
-                      <th className="text-center py-4 px-5 text-slate-300 font-semibold">Status</th>
-                      <th className="text-center py-4 px-10 text-slate-300 font-semibold">Service</th>
-                      <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
-                      <th className="text-center py-4 px-6 text-slate-300 font-semibold">Code</th>
-                      <th className="text-center py-4 px-4 text-slate-300 font-semibold">Full SMS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedData.map((record, index) => (
-                      <tr 
-                        key={record.id} 
-                        className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${
-                          index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
-                        }`}
+                  {/* Funds Filter */}
+                  <div className="flex-1">
+                    <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                      Initial Funds
+                    </label>
+                    <div className="relative group" ref={fundsDropdownRef}>
+                      <div
+                        onClick={() => setIsFundsDropdownOpen(!isFundsDropdownOpen)}
+                        className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
                       >
-                        <td className="py-4 px-6">
-                          <div className="flex items-center justify-center">
-                            <button
-                              onClick={() => handleInfoClick(record)}
-                              className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
-                              title="View Information"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            </button>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-white">{record.email || 'N/A'}</td>
-                        <td className="py-4 px-6">
-                          <div className="text-center">
-                            <span className="inline-block bg-slate-700/50 text-white font-normal text-sm px-3 py-1 rounded-lg border border-slate-600/50">
-                              {getCountryInitials(record.country)}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="font-mono text-white">{record.number.startsWith('+') ? record.number : '+' + record.number}</div>
-                        </td>
-                        <td className="py-4 px-6 text-white">{getServiceTypeDisplayName(record.serviceType)}</td>
-                        <td className="py-4 px-6">
-                          <span className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold border w-24 ${getStatusColor(getDisplayStatus(record), record.serviceType)}`}>
-                            {getDisplayStatus(record)}
-                          </span>
-                        </td>
-                        <td className="py-4 px-6 text-white">{record.service}</td>
-                        <td className="py-4 px-6">
-                          <span className="text-emerald-400 font-semibold">${formatPrice(record.price)}</span>
-                        </td>
-                        <td className="py-4 px-6">
-                          {(() => {
-                            const normalizedType = record.serviceType.toLowerCase();
-                            if (normalizedType === 'short') {
-                              if (record.awakeIn) {
-                                const now = new Date().getTime();
-                                const wakeTime = record.awakeIn.getTime();
-                                if (now < wakeTime) {
-                                  return <span className="font-mono text-orange-500 font-semibold animate-pulse">Activating...</span>;
-                                }
-                              }
+                        <span>{fundsFilter === 'All' ? 'All Funds' : fundsFilter}</span>
+                      </div>
 
-                              if (record.codeAwakeAt) {
-                                const now = new Date().getTime();
-                                const startTime = record.codeAwakeAt.getTime();
-                                const fiveMinutes = 5 * 60 * 1000;
-                                const expiryTime = startTime + fiveMinutes;
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isFundsDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
 
-                                if (now < expiryTime) {
-                                  return <CodeAwakeTimer
-                                    codeAwakeAt={record.codeAwakeAt}
-                                    recordId={record.id}
-                                    onTimeout={() => {
-                                      setFirestoreData(currentData =>
-                                        currentData.map(r =>
-                                          r.id === record.id
-                                            ? { ...r, codeAwakeAt: undefined }
-                                            : r
-                                        )
-                                      );
-                                      setForceUpdate(prev => prev + 1);
-                                    }}
-                                  />;
-                                }
-                              }
-
-                              if (record.status === 'Completed') {
-                                return <span className="font-mono text-blue-500 font-semibold">{record.code || ''}</span>;
-                              } else if (record.status === 'Pending' && record.createdAt) {
-                                return <CountdownTimer
-                                  createdAt={record.createdAt}
-                                  recordId={record.id}
-                                  status={record.status}
-                                  onTimeout={() => setForceUpdate(prev => prev + 1)}
-                                />;
-                              } else {
-                                return <span className="font-mono text-slate-400">-</span>;
-                              }
-                            } else if (normalizedType === 'middle') {
-                              if (record.status === 'Active') {
-                                return <MiddleCountdownTimer
-                                  record={record}
-                                  onTimeout={() => setForceUpdate(prev => prev + 1)}
-                                />;
-                              }
-
-                              const hasSms = record.code && record.code.trim() !== '';
-                              if (hasSms) {
-                                return <span className="font-mono text-blue-500 font-semibold">{record.code}</span>;
-                              } else {
-                                return <span className="font-mono text-slate-400">-</span>;
-                              }
-                            } else if (normalizedType === 'long') {
-                              if (record.status === 'Active') {
-                                return <LongCountdownTimer
-                                  record={record}
-                                  onTimeout={() => setForceUpdate(prev => prev + 1)}
-                                />;
-                              }
-
-                              const hasSms = record.code && record.code.trim() !== '';
-                              if (hasSms) {
-                                return <span className="font-mono text-blue-500 font-semibold">{record.code}</span>;
-                              } else {
-                                return <span className="font-mono text-slate-400">-</span>;
-                              }
-                            } else if (normalizedType === 'empty simcard') {
-                              if (record.status === 'Active') {
-                                return <EmptySimCountdownTimer
-                                  record={record}
-                                  onTimeout={() => setForceUpdate(prev => prev + 1)}
-                                />;
-                              }
-
-                              const hasSms = record.code && record.code.trim() !== '';
-                              if (hasSms) {
-                                return <span className="font-mono text-blue-500 font-semibold">{record.code}</span>;
-                              } else {
-                                return <span className="font-mono text-slate-400">-</span>;
-                              }
-                            }
-                            return <span className="font-mono text-slate-400">-</span>;
-                          })()
-                          }
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center justify-center">
-                            <button
+                      {/* Custom Dropdown Options */}
+                      {isFundsDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
+                          {['All', '$0', '$3'].map((option) => (
+                            <div
+                              key={option}
                               onClick={() => {
-                                if (record.fullsms && record.fullsms.trim() !== '') {
-                                  handleFullSmsClick(record.fullsms);
-                                }
+                                setFundsFilter(option);
+                                setIsFundsDropdownOpen(false);
+                                setCurrentVirtualCardPage(1);
                               }}
-                              disabled={!record.fullsms || record.fullsms.trim() === ''}
-                              className={`p-2 transition-colors duration-200 rounded-lg ${
-                                record.fullsms && record.fullsms.trim() !== ''
-                                  ? 'text-slate-400 hover:text-green-500 hover:bg-slate-700/30 cursor-pointer'
-                                  : 'text-slate-600 cursor-not-allowed opacity-50'
-                              }`}
-                              title={record.fullsms && record.fullsms.trim() !== '' ? "View Full SMS" : "No Full SMS available"}
+                              className="px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 text-white first:rounded-t-2xl last:rounded-b-2xl text-left"
                             >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                /* Empty State */
-                <div className="text-center py-16">
-                  <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
-                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                    </svg>
-                  </div>
-                  <h1 className="text-xl font-bold text-slate-300 mb-3">No Records Found</h1>
-                  <p className="text-slate-400 text-lg">No purchase history matches your current filters</p>
-                </div>
-              )}
-            </div>
-
-            {/* Pagination */}
-            {filteredData.length > 0 && totalPages > 1 && (
-              <div className="mt-6">
-                {/* Results info - shown above pagination on small screens */}
-                <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
-                  Showing {startIndex + 1} to {Math.min(endIndex, filteredData.length)} of {filteredData.length} results
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  {/* Results info - shown on left side on larger screens */}
-                  <div className="hidden md:block text-sm text-slate-400">
-                    Showing {startIndex + 1} to {Math.min(endIndex, filteredData.length)} of {filteredData.length} results
-                  </div>
-                  
-                  <div className="flex items-center space-x-2 mx-auto md:mx-0">
-                    {/* Previous Button */}
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                      </svg>
-                    </button>
-
-                    {/* Page Numbers - Show current and next page only */}
-                    <div className="flex space-x-1">
-                      {[currentPage, currentPage + 1].filter(page => page <= totalPages).map((page) => (
-                        <button
-                          key={page}
-                          onClick={() => setCurrentPage(page)}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                            currentPage === page
-                              ? 'bg-emerald-500 text-white'
-                              : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      ))}
+                              {option === 'All' ? 'All Funds' : option}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-
-                    {/* Next Button */}
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
                   </div>
                 </div>
               </div>
-            )}
-            </>
-          )})()}
-            </>
-            )}
 
-            {/* VCC Tab Content */}
-            {activeTab === 'vcc' && (
-              <>
-                {/* Virtual Cards Filters */}
-                <div className="mb-6">
-                  <div className="flex flex-col lg:flex-row gap-6">
-                    {/* Card Number Search */}
-                    <div className="flex-1">
-                      <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
-                        Card Number Search
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={cardNumberSearch}
-                          onChange={(e) => {
-                            setCardNumberSearch(e.target.value);
-                            setCurrentVirtualCardPage(1);
-                          }}
-                          placeholder="Enter card number"
-                          className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300"
-                        />
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                          <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Funds Filter */}
-                    <div className="flex-1">
-                      <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
-                        Initial Funds
-                      </label>
-                      <div className="relative group" ref={fundsDropdownRef}>
-                        <div
-                          onClick={() => setIsFundsDropdownOpen(!isFundsDropdownOpen)}
-                          className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
-                        >
-                          <span>{fundsFilter === 'All' ? 'All Funds' : fundsFilter}</span>
-                        </div>
-
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                          <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isFundsDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-
-                        {/* Custom Dropdown Options */}
-                        {isFundsDropdownOpen && (
-                          <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
-                            {['All', '$0', '$3'].map((option) => (
-                              <div
-                                key={option}
-                                onClick={() => {
-                                  setFundsFilter(option);
-                                  setIsFundsDropdownOpen(false);
-                                  setCurrentVirtualCardPage(1);
-                                }}
-                                className="px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 text-white first:rounded-t-2xl last:rounded-b-2xl text-left"
-                              >
-                                {option === 'All' ? 'All Funds' : option}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Virtual Cards Table */}
-                <div className="overflow-x-auto overflow-y-visible">
-                  {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-16">
-                      <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <p className="text-slate-400 mt-4">Loading cards...</p>
-                    </div>
-                  ) : filteredVirtualCardData.length > 0 ? (
-                    <>
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-slate-700/50">
-                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">ID</th>
-                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
-                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Purchase Date</th>
-                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
-                            <th className="text-center py-4 px-6 text-slate-300 font-semibold">Card Number</th>
-                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Expiration Date</th>
-                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">CVV</th>
-                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Initial Funds</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {paginatedVirtualCardData.map((record, index) => (
-                            <tr
-                              key={record.id}
-                              className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${
-                                index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
-                              }`}
-                            >
-                              <td className="py-4 px-6">
-                                <div className="flex items-center justify-center">
-                                  <button
-                                    onClick={() => handleUuidClick(record.id)}
-                                    className="p-2 text-slate-400 hover:text-blue-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
-                                    title="View UUID"
-                                  >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                  </button>
-                                </div>
-                              </td>
-                              <td className="py-4 px-6 text-white text-center">{record.email}</td>
-                              <td className="py-4 px-6 text-white text-center">{record.purchaseDate}</td>
-                              <td className="py-4 px-6 text-center">
-                                <span className="text-emerald-400 font-semibold">${formatPrice(record.price)}</span>
-                              </td>
-                              <td className="py-4 px-6">
-                                <div className="font-mono text-white text-center">
-                                  {record.cardNumber}
-                                  <button
-                                    onClick={() => handleCopyCardNumberVC(record.cardNumber, record.id, setCopiedCardNumbers)}
-                                    className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
-                                    title={copiedCardNumbers[record.id] ? "Copied!" : "Copy Card Number"}
-                                  >
-                                    {copiedCardNumbers[record.id] ? (
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                      </svg>
-                                    ) : (
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                      </svg>
-                                    )}
-                                  </button>
-                                </div>
-                              </td>
-                              <td className="py-4 px-6 text-white text-center">{record.expirationDate}</td>
-                              <td className="py-4 px-6 text-white text-center font-mono">{record.cvv}</td>
-                              <td className="py-4 px-6 text-center">
-                                <span className="text-emerald-400 font-semibold">${record.funds}</span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-
-                      {/* Virtual Cards Pagination */}
-                      {totalVirtualCardPages > 1 && (
-                        <div className="mt-6">
-                          {/* Results info - shown above pagination on small screens */}
-                          <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
-                            Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, filteredVirtualCardData.length)} of {filteredVirtualCardData.length} results
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            {/* Results info - shown on left side on larger screens */}
-                            <div className="hidden md:block text-sm text-slate-400">
-                              Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, filteredVirtualCardData.length)} of {filteredVirtualCardData.length} results
-                            </div>
-
-                            <div className="flex items-center space-x-2 mx-auto md:mx-0">
-                              {/* Previous Button */}
-                              <button
-                                onClick={() => setCurrentVirtualCardPage(prev => Math.max(prev - 1, 1))}
-                                disabled={currentVirtualCardPage === 1}
-                                className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                                </svg>
-                              </button>
-
-                              {/* Page Numbers */}
-                              <div className="flex space-x-1">
-                                {Array.from({ length: totalVirtualCardPages }, (_, i) => i + 1).map((page) => (
-                                  <button
-                                    key={page}
-                                    onClick={() => setCurrentVirtualCardPage(page)}
-                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                                      currentVirtualCardPage === page
-                                        ? 'bg-emerald-500 text-white'
-                                        : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
-                                    }`}
-                                  >
-                                    {page}
-                                  </button>
-                                ))}
-                              </div>
-
-                              {/* Next Button */}
-                              <button
-                                onClick={() => setCurrentVirtualCardPage(prev => Math.min(prev + 1, totalVirtualCardPages))}
-                                disabled={currentVirtualCardPage === totalVirtualCardPages}
-                                className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    /* Empty State for Virtual Cards */
-                    <div className="text-center py-16">
-                      <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
-                        <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                        </svg>
-                      </div>
-                      <h1 className="text-xl font-bold text-slate-300 mb-3">No Virtual Cards Found</h1>
-                      <p className="text-slate-400 text-lg">No virtual debit cards match your current filters</p>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-            {/* Proxies Tab Content */}
-            {activeTab === 'proxies' && (
+              {/* Virtual Cards Table */}
               <div className="overflow-x-auto overflow-y-visible">
                 {isLoading ? (
                   <div className="flex flex-col items-center justify-center py-16">
@@ -1954,38 +1792,36 @@ const MajorHistory: React.FC = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <p className="text-slate-400 mt-4">Loading proxies...</p>
+                    <p className="text-slate-400 mt-4">Loading cards...</p>
                   </div>
-                ) : cachedProxiesData.length > 0 ? (
+                ) : filteredVirtualCardData.length > 0 ? (
                   <>
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-slate-700/50">
-                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
-                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Email</th>
-                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
-                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Duration</th>
-                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">IP</th>
-                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">HTTPS/Port</th>
-                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">SOCKS5/Port</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">ID</th>
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
-                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Password</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Purchase Date</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
+                          <th className="text-center py-4 px-6 text-slate-300 font-semibold">Card Number</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Expiration Date</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">CVV</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Initial Funds</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {paginatedProxyData.map((record, index) => (
+                        {paginatedVirtualCardData.map((record, index) => (
                           <tr
                             key={record.id}
-                            className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${
-                              index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
-                            }`}
+                            className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
+                              }`}
                           >
                             <td className="py-4 px-6">
                               <div className="flex items-center justify-center">
                                 <button
-                                  onClick={() => handleProxyInfoClickWrapper(record)}
-                                  className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
-                                  title="View Information"
+                                  onClick={() => handleUuidClick(record.id)}
+                                  className="p-2 text-slate-400 hover:text-blue-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
+                                  title="View UUID"
                                 >
                                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -1995,19 +1831,19 @@ const MajorHistory: React.FC = () => {
                               </div>
                             </td>
                             <td className="py-4 px-6 text-white text-center">{record.email}</td>
+                            <td className="py-4 px-6 text-white text-center">{record.purchaseDate}</td>
                             <td className="py-4 px-6 text-center">
-                              <span className="text-emerald-400 font-semibold">${formatProxyPrice(record.price)}</span>
+                              <span className="text-emerald-400 font-semibold">${formatPrice(record.price)}</span>
                             </td>
-                            <td className="py-4 px-6 text-white text-center">{record.duration}</td>
                             <td className="py-4 px-6">
                               <div className="font-mono text-white text-center">
-                                {record.ip}
+                                {record.cardNumber}
                                 <button
-                                  onClick={() => handleCopyProxyFieldWrapper(record.ip, `ip-${record.id}`)}
+                                  onClick={() => handleCopyCardNumberVC(record.cardNumber, record.id, setCopiedCardNumbers)}
                                   className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
-                                  title={copiedProxyFields[`ip-${record.id}`] ? "Copied!" : "Copy IP"}
+                                  title={copiedCardNumbers[record.id] ? "Copied!" : "Copy Card Number"}
                                 >
-                                  {copiedProxyFields[`ip-${record.id}`] ? (
+                                  {copiedCardNumbers[record.id] ? (
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                                     </svg>
@@ -2019,50 +1855,35 @@ const MajorHistory: React.FC = () => {
                                 </button>
                               </div>
                             </td>
-                            <td className="py-4 px-6">
-                              <div className="font-mono text-white text-center">
-                                {record.httpsPort}
-                              </div>
-                            </td>
-                            <td className="py-4 px-6">
-                              <div className="font-mono text-white text-center">
-                                {record.socks5Port}
-                              </div>
-                            </td>
-                            <td className="py-4 px-6">
-                              <div className="font-mono text-white text-center">
-                                {record.user}
-                              </div>
-                            </td>
-                            <td className="py-4 px-6">
-                              <div className="font-mono text-white text-center">
-                                {record.password}
-                              </div>
+                            <td className="py-4 px-6 text-white text-center">{record.expirationDate}</td>
+                            <td className="py-4 px-6 text-white text-center font-mono">{record.cvv}</td>
+                            <td className="py-4 px-6 text-center">
+                              <span className="text-emerald-400 font-semibold">${record.funds}</span>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
 
-                    {/* Proxies Pagination */}
-                    {totalProxyPages > 1 && (
+                    {/* Virtual Cards Pagination */}
+                    {totalVirtualCardPages > 1 && (
                       <div className="mt-6">
                         {/* Results info - shown above pagination on small screens */}
                         <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
-                          Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, cachedProxiesData.length)} of {cachedProxiesData.length} results
+                          Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, filteredVirtualCardData.length)} of {filteredVirtualCardData.length} results
                         </div>
 
                         <div className="flex items-center justify-between">
                           {/* Results info - shown on left side on larger screens */}
                           <div className="hidden md:block text-sm text-slate-400">
-                            Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, cachedProxiesData.length)} of {cachedProxiesData.length} results
+                            Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, filteredVirtualCardData.length)} of {filteredVirtualCardData.length} results
                           </div>
 
                           <div className="flex items-center space-x-2 mx-auto md:mx-0">
                             {/* Previous Button */}
                             <button
-                              onClick={() => setCurrentProxyPage(prev => Math.max(prev - 1, 1))}
-                              disabled={currentProxyPage === 1}
+                              onClick={() => setCurrentVirtualCardPage(prev => Math.max(prev - 1, 1))}
+                              disabled={currentVirtualCardPage === 1}
                               className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2072,15 +1893,14 @@ const MajorHistory: React.FC = () => {
 
                             {/* Page Numbers */}
                             <div className="flex space-x-1">
-                              {Array.from({ length: totalProxyPages }, (_, i) => i + 1).map((page) => (
+                              {Array.from({ length: totalVirtualCardPages }, (_, i) => i + 1).map((page) => (
                                 <button
                                   key={page}
-                                  onClick={() => setCurrentProxyPage(page)}
-                                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                                    currentProxyPage === page
+                                  onClick={() => setCurrentVirtualCardPage(page)}
+                                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentVirtualCardPage === page
                                       ? 'bg-emerald-500 text-white'
                                       : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
-                                  }`}
+                                    }`}
                                 >
                                   {page}
                                 </button>
@@ -2089,8 +1909,8 @@ const MajorHistory: React.FC = () => {
 
                             {/* Next Button */}
                             <button
-                              onClick={() => setCurrentProxyPage(prev => Math.min(prev + 1, totalProxyPages))}
-                              disabled={currentProxyPage === totalProxyPages}
+                              onClick={() => setCurrentVirtualCardPage(prev => Math.min(prev + 1, totalVirtualCardPages))}
+                              disabled={currentVirtualCardPage === totalVirtualCardPages}
                               className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2103,245 +1923,415 @@ const MajorHistory: React.FC = () => {
                     )}
                   </>
                 ) : (
-                  /* Empty State for Proxies */
+                  /* Empty State for Virtual Cards */
                   <div className="text-center py-16">
                     <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
                       <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                       </svg>
                     </div>
-                    <h1 className="text-xl font-bold text-slate-300 mb-3">No Proxies Found</h1>
-                    <p className="text-slate-400 text-lg">No proxies have been purchased</p>
+                    <h1 className="text-xl font-bold text-slate-300 mb-3">No Virtual Cards Found</h1>
+                    <p className="text-slate-400 text-lg">No virtual debit cards match your current filters</p>
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        </div>
+            </>
+          )}
 
-        {/* UUID Modal */}
-        {showUuidModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-70 h-58">
-              <div className="text-center">
-                <div className="mb-4">
-                  <div className="w-12 h-12 mx-auto flex items-center justify-center">
-                    <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
-                  </div>
+          {/* Proxies Tab Content */}
+          {activeTab === 'proxies' && (
+            <div className="overflow-x-auto overflow-y-visible">
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p className="text-slate-400 mt-4">Loading proxies...</p>
                 </div>
-                <h3 className="text-lg font-medium text-white mb-2">Order ID</h3>
-                <p className="text-blue-200 mb-4 break-all">{selectedUuid}</p>
-                <div className="flex space-x-3 justify-center">
-                  <button
-                    onClick={handleCopyUuid}
-                    style={{ width: '5.5rem' }}
-                    className={`font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg flex items-center justify-center ${
-                      isCopied 
-                        ? 'bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600' 
-                        : 'bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600'
-                    } text-white`}
-                  >
-                    {isCopied ? (
-                      <span>Copied</span>
-                    ) : (
-                      <span>Copy</span>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setShowUuidModal(false)}
-                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
-                  >
-                    OK
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+              ) : cachedProxiesData.length > 0 ? (
+                <>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-700/50">
+                        <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
+                        <th className="text-center py-4 px-4 text-slate-300 font-semibold">Email</th>
+                        <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
+                        <th className="text-center py-4 px-4 text-slate-300 font-semibold">Duration</th>
+                        <th className="text-center py-4 px-4 text-slate-300 font-semibold">IP</th>
+                        <th className="text-center py-4 px-4 text-slate-300 font-semibold">HTTPS/Port</th>
+                        <th className="text-center py-4 px-4 text-slate-300 font-semibold">SOCKS5/Port</th>
+                        <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
+                        <th className="text-center py-4 px-4 text-slate-300 font-semibold">Password</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedProxyData.map((record, index) => (
+                        <tr
+                          key={record.id}
+                          className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
+                            }`}
+                        >
+                          <td className="py-4 px-6">
+                            <div className="flex items-center justify-center">
+                              <button
+                                onClick={() => handleProxyInfoClickWrapper(record)}
+                                className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
+                                title="View Information"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6 text-white text-center">{record.email}</td>
+                          <td className="py-4 px-6 text-center">
+                            <span className="text-emerald-400 font-semibold">${formatProxyPrice(record.price)}</span>
+                          </td>
+                          <td className="py-4 px-6 text-white text-center">{record.duration}</td>
+                          <td className="py-4 px-6">
+                            <div className="font-mono text-white text-center">
+                              {record.ip}
+                              <button
+                                onClick={() => handleCopyProxyFieldWrapper(record.ip, `ip-${record.id}`)}
+                                className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                                title={copiedProxyFields[`ip-${record.id}`] ? "Copied!" : "Copy IP"}
+                              >
+                                {copiedProxyFields[`ip-${record.id}`] ? (
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                  </svg>
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="font-mono text-white text-center">
+                              {record.httpsPort}
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="font-mono text-white text-center">
+                              {record.socks5Port}
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="font-mono text-white text-center">
+                              {record.user}
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="font-mono text-white text-center">
+                              {record.password}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
 
-        {/* Information Modal */}
-        {showInfoModal && selectedRecord && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
-              <div className="text-center">
-                <div className="mb-4">
-                  <div className="w-12 h-12 mx-auto flex items-center justify-center">
-                    <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
-                  </div>
-                </div>
-                <h3 className="text-lg font-medium text-white mb-2">Information</h3>
-                <div className="space-y-4 text-left">
-                  <div>
-                    <span className="text-slate-300">Order ID: </span>
-                    <span className="text-emerald-400 break-all">{selectedRecord.id}
-                      <button
-                        onClick={handleCopyInfoId}
-                        className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
-                        title={isInfoIdCopied ? "Copied!" : "Copy Order ID"}
-                      >
-                        {isInfoIdCopied ? (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                        )}
-                      </button>
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-300">Purchase Date: </span>
-                    <span className="text-emerald-400">{selectedRecord.date}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-300">Duration: </span>
-                    <span className="text-emerald-400">{selectedRecord.duration}</span>
-                  </div>
-                  {selectedRecord.reuse === false && selectedRecord.maySend === true && (
-                    <div>
-                      <span className="text-slate-300">Each sending: </span>
-                      <span className="text-emerald-400">$0.50</span>
+                  {/* Proxies Pagination */}
+                  {totalProxyPages > 1 && (
+                    <div className="mt-6">
+                      {/* Results info - shown above pagination on small screens */}
+                      <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
+                        Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, cachedProxiesData.length)} of {cachedProxiesData.length} results
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        {/* Results info - shown on left side on larger screens */}
+                        <div className="hidden md:block text-sm text-slate-400">
+                          Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, cachedProxiesData.length)} of {cachedProxiesData.length} results
+                        </div>
+
+                        <div className="flex items-center space-x-2 mx-auto md:mx-0">
+                          {/* Previous Button */}
+                          <button
+                            onClick={() => setCurrentProxyPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentProxyPage === 1}
+                            className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                            </svg>
+                          </button>
+
+                          {/* Page Numbers */}
+                          <div className="flex space-x-1">
+                            {Array.from({ length: totalProxyPages }, (_, i) => i + 1).map((page) => (
+                              <button
+                                key={page}
+                                onClick={() => setCurrentProxyPage(page)}
+                                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentProxyPage === page
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                                  }`}
+                              >
+                                {page}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Next Button */}
+                          <button
+                            onClick={() => setCurrentProxyPage(prev => Math.min(prev + 1, totalProxyPages))}
+                            disabled={currentProxyPage === totalProxyPages}
+                            className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
-                  <div>
-                    <span className="text-slate-300">Expiration Date: </span>
-                    <span className="text-emerald-400">{selectedRecord.expirationDate}</span>
-                  </div>
-                </div>
-                <div className="flex justify-center mt-6">
-                  <button
-                    onClick={() => setShowInfoModal(false)}
-                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Full SMS Modal */}
-        {showFullSmsModal && selectedFullSms && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
-              <div className="text-center">
-                <div className="mb-4">
-                  <div className="w-12 h-12 mx-auto flex items-center justify-center">
-                    <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
-                  </div>
-                </div>
-                <h3 className="text-lg font-medium text-white mb-4">Full SMS</h3>
-                <div className="bg-slate-800/50 rounded-lg p-4 mb-6 max-h-60 overflow-y-auto">
-                  <p className="text-white whitespace-pre-wrap break-words" style={{ textAlign: 'justify' }}>{selectedFullSms}</p>
-                </div>
-                <div className="flex justify-center">
-                  <button
-                    onClick={() => setShowFullSmsModal(false)}
-                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
-                  >
-                    Ok
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Proxy Information Modal */}
-        {showProxyInfoModal && selectedProxyRecord && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
-              <div className="text-center">
-                <div className="mb-4">
-                  <div className="w-12 h-12 mx-auto flex items-center justify-center">
-                    <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
-                  </div>
-                </div>
-                <h3 className="text-lg font-medium text-white mb-2">Proxy Information</h3>
-                <div className="space-y-4 text-left">
-                  <div>
-                    <span className="text-slate-300">Order ID: </span>
-                    <span className="text-emerald-400 break-all">{selectedProxyRecord.id}
-                      <button
-                        onClick={handleCopyProxyIdWrapper}
-                        className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
-                        title={isProxyIdCopied ? "Copied!" : "Copy Order ID"}
-                      >
-                        {isProxyIdCopied ? (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                        )}
-                      </button>
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-300">Purchase Date: </span>
-                    <span className="text-emerald-400">{selectedProxyRecord.purchaseDate}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-300">Expiration Date: </span>
-                    <span className="text-emerald-400">{selectedProxyRecord.expirationDate}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-300">Duration: </span>
-                    <span className="text-emerald-400">{selectedProxyRecord.duration}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-300">USA State: </span>
-                    <span className="text-emerald-400">Random State</span>
-                  </div>
-                </div>
-                <div className="flex justify-center mt-6">
-                  <button
-                    onClick={() => setShowProxyInfoModal(false)}
-                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Error Modal */}
-        {showErrorModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80 max-w-md">
-              <div className="text-center">
-                <div className="mb-4">
-                  <div className="w-12 h-12 mx-auto flex items-center justify-center bg-red-500/20 rounded-full">
-                    <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </>
+              ) : (
+                /* Empty State for Proxies */
+                <div className="text-center py-16">
+                  <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
+                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                     </svg>
                   </div>
+                  <h1 className="text-xl font-bold text-slate-300 mb-3">No Proxies Found</h1>
+                  <p className="text-slate-400 text-lg">No proxies have been purchased</p>
                 </div>
-                <h3 className="text-lg font-medium text-white mb-2">Error</h3>
-                <p className="text-blue-200 mb-4">{errorMessage}</p>
-                <div className="flex justify-center">
-                  <button
-                    onClick={() => {
-                      setShowErrorModal(false);
-                      setErrorMessage('');
-                    }}
-                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
-                  >
-                    Ok
-                  </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* UUID Modal */}
+      {showUuidModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-70 h-58">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto flex items-center justify-center">
+                  <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
                 </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Order ID</h3>
+              <p className="text-blue-200 mb-4 break-all">{selectedUuid}</p>
+              <div className="flex space-x-3 justify-center">
+                <button
+                  onClick={handleCopyUuid}
+                  style={{ width: '5.5rem' }}
+                  className={`font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg flex items-center justify-center ${isCopied
+                      ? 'bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600'
+                      : 'bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600'
+                    } text-white`}
+                >
+                  {isCopied ? (
+                    <span>Copied</span>
+                  ) : (
+                    <span>Copy</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowUuidModal(false)}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  OK
+                </button>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Information Modal */}
+      {showInfoModal && selectedRecord && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto flex items-center justify-center">
+                  <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Information</h3>
+              <div className="space-y-4 text-left">
+                <div>
+                  <span className="text-slate-300">Order ID: </span>
+                  <span className="text-emerald-400 break-all">{selectedRecord.id}
+                    <button
+                      onClick={handleCopyInfoId}
+                      className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                      title={isInfoIdCopied ? "Copied!" : "Copy Order ID"}
+                    >
+                      {isInfoIdCopied ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      )}
+                    </button>
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-300">Purchase Date: </span>
+                  <span className="text-emerald-400">{selectedRecord.date}</span>
+                </div>
+                <div>
+                  <span className="text-slate-300">Duration: </span>
+                  <span className="text-emerald-400">{selectedRecord.duration}</span>
+                </div>
+                {selectedRecord.reuse === false && selectedRecord.maySend === true && (
+                  <div>
+                    <span className="text-slate-300">Each sending: </span>
+                    <span className="text-emerald-400">$0.50</span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-slate-300">Expiration Date: </span>
+                  <span className="text-emerald-400">{selectedRecord.expirationDate}</span>
+                </div>
+              </div>
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={() => setShowInfoModal(false)}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full SMS Modal */}
+      {showFullSmsModal && selectedFullSms && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto flex items-center justify-center">
+                  <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-4">Full SMS</h3>
+              <div className="bg-slate-800/50 rounded-lg p-4 mb-6 max-h-60 overflow-y-auto">
+                <p className="text-white whitespace-pre-wrap break-words" style={{ textAlign: 'justify' }}>{selectedFullSms}</p>
+              </div>
+              <div className="flex justify-center">
+                <button
+                  onClick={() => setShowFullSmsModal(false)}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  Ok
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Proxy Information Modal */}
+      {showProxyInfoModal && selectedProxyRecord && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto flex items-center justify-center">
+                  <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Proxy Information</h3>
+              <div className="space-y-4 text-left">
+                <div>
+                  <span className="text-slate-300">Order ID: </span>
+                  <span className="text-emerald-400 break-all">{selectedProxyRecord.id}
+                    <button
+                      onClick={handleCopyProxyIdWrapper}
+                      className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                      title={isProxyIdCopied ? "Copied!" : "Copy Order ID"}
+                    >
+                      {isProxyIdCopied ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      )}
+                    </button>
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-300">Purchase Date: </span>
+                  <span className="text-emerald-400">{selectedProxyRecord.purchaseDate}</span>
+                </div>
+                <div>
+                  <span className="text-slate-300">Expiration Date: </span>
+                  <span className="text-emerald-400">{selectedProxyRecord.expirationDate}</span>
+                </div>
+                <div>
+                  <span className="text-slate-300">Duration: </span>
+                  <span className="text-emerald-400">{selectedProxyRecord.duration}</span>
+                </div>
+                <div>
+                  <span className="text-slate-300">USA State: </span>
+                  <span className="text-emerald-400">Random State</span>
+                </div>
+              </div>
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={() => setShowProxyInfoModal(false)}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80 max-w-md">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto flex items-center justify-center bg-red-500/20 rounded-full">
+                  <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+              <p className="text-blue-200 mb-4">{errorMessage}</p>
+              <div className="flex justify-center">
+                <button
+                  onClick={() => {
+                    setShowErrorModal(false);
+                    setErrorMessage('');
+                  }}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  Ok
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
