@@ -178,8 +178,17 @@ const ShortNumbers: React.FC = () => {
 
       servicesList.sort((a, b) => a.name.localeCompare(b.name));
 
-      setServices(servicesList);
-      setFilteredServices(servicesList);
+      // Filter restricted services based on country
+      let finalServicesList = servicesList;
+      if (selectedCountry === 'India') {
+        const restrictedServicesIndia = ['whatsapp'];
+        finalServicesList = servicesList.filter(service =>
+          !restrictedServicesIndia.includes(service.name.toLowerCase())
+        );
+      }
+
+      setServices(finalServicesList);
+      setFilteredServices(finalServicesList);
       setHasError(false);
     } catch (error) {
       setServices([]);
@@ -785,7 +794,11 @@ const ShortNumbers: React.FC = () => {
 
         allNumbers.sort((a, b) => a.price - b.price);
       } else if (selectedCountry === 'India') {
-        const searchPromises = ['opt2', 'opt5'].map(async (optDoc) => {
+        const restrictedServicesIndia = ['whatsapp'];
+        const optionsToSearch = restrictedServicesIndia.includes(globalSearchData.serviceName.toLowerCase())
+          ? []
+          : ['opt2', 'opt5'];
+        const searchPromises = optionsToSearch.map(async (optDoc) => {
           const servicesRef = collection(db, 'stnIndia', optDoc, 'services');
           const querySnapshot = await getDocs(servicesRef);
 
