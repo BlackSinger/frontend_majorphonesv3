@@ -35,20 +35,20 @@ const EmptySimcard: React.FC = () => {
   };
 
   const countries = [
-    { 
-      code: 'US', 
+    {
+      code: 'US',
       name: 'United States',
       prefix: '+1',
       flag: (
         <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
-          <rect width="60" height="40" fill="#B22234"/>
-          <rect width="60" height="3" y="3" fill="white"/>
-          <rect width="60" height="3" y="9" fill="white"/>
-          <rect width="60" height="3" y="15" fill="white"/>
-          <rect width="60" height="3" y="21" fill="white"/>
-          <rect width="60" height="3" y="27" fill="white"/>
-          <rect width="60" height="3" y="33" fill="white"/>
-          <rect width="24" height="21" fill="#3C3B6E"/>
+          <rect width="60" height="40" fill="#B22234" />
+          <rect width="60" height="3" y="3" fill="white" />
+          <rect width="60" height="3" y="9" fill="white" />
+          <rect width="60" height="3" y="15" fill="white" />
+          <rect width="60" height="3" y="21" fill="white" />
+          <rect width="60" height="3" y="27" fill="white" />
+          <rect width="60" height="3" y="33" fill="white" />
+          <rect width="24" height="21" fill="#3C3B6E" />
         </svg>
       )
     }
@@ -193,40 +193,39 @@ const EmptySimcard: React.FC = () => {
   };
 
   return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
-          <div className="relative z-10">
-            <div className="flex items-center space-x-4">
-              <div>
-                <h1 className="text-left text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent">
-                  Empty SIM cards
-                </h1>
-                <p className="text-slate-300 text-md text-left">30-day validity numbers for multiple verifications</p>
-              </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6 relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="flex items-center space-x-4">
+            <div>
+              <h1 className="text-left text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent">
+                Empty SIM cards
+              </h1>
+              <p className="text-slate-300 text-md text-left">30-day validity numbers for multiple verifications</p>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Information Section - Always on top */}
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4 mb-6">
-          <div className="flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
-              <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
-                <li>• They can be used to verify more than 1 service</li>
-                <li>• They are valid for 30 days</li>
-                <li>• Their duration can't be extended</li>
-                <li>• After purchased, some can be cancelled and some can't</li>
-                <li>• Users that deposit through Amazon Pay can't purchase them</li>
-              </ul>
-            </div>
+      {/* Information Section - Always on top */}
+      <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4 mb-6">
+        <div className="flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
+            <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
+              <li>• They can be used to verify more than 1 service</li>
+              <li>• They are valid for 30 days</li>
+              <li>• After purchased, some can be cancelled and some can't</li>
+              <li>• Users that deposit through Amazon Pay can't purchase them</li>
+            </ul>
           </div>
         </div>
+      </div>
 
-        {!hasSearched ? (
-          <>
-            {/* Main Content Section */}
+      {!hasSearched ? (
+        <>
+          {/* Main Content Section */}
           <div className={`rounded-3xl shadow-2xl border border-slate-700/50 relative ${isCountryDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
             <div className="p-6">
               <div className="relative z-10 mx-auto">
@@ -237,7 +236,7 @@ const EmptySimcard: React.FC = () => {
                   </h1>
                   <p className="text-slate-300 text-md">Find your multi-service SIM card</p>
                 </div>
-                
+
                 {/* Search Form */}
                 <div className="space-y-9">
                   {/* Form Elements Container */}
@@ -261,7 +260,7 @@ const EmptySimcard: React.FC = () => {
                               <span>{selectedCountry}</span>
                             </div>
                           </div>
-                          
+
                           <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                             <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -296,13 +295,13 @@ const EmptySimcard: React.FC = () => {
                         <div className="hidden md:block text-sm font-semibold text-transparent uppercase tracking-wider">
                           Search
                         </div>
-                        <button 
+                        <button
                           onClick={handleSearch}
                           disabled={isSearching}
                           className="group px-8 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[150px]"
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                          
+
                           <div className="relative z-10 flex items-center justify-center">
                             {isSearching ? (
                               <svg className="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -322,11 +321,11 @@ const EmptySimcard: React.FC = () => {
               </div>
             </div>
           </div>
-          </>
-        ) : (
-          <>
-            {/* Results Section */}
-            <div className="rounded-3xl shadow-2xl border border-slate-700/50 relative">
+        </>
+      ) : (
+        <>
+          {/* Results Section */}
+          <div className="rounded-3xl shadow-2xl border border-slate-700/50 relative">
             <div className="p-6">
               <div className="relative z-10">
                 {/* Back Button */}
@@ -350,23 +349,23 @@ const EmptySimcard: React.FC = () => {
                     Number options
                   </h1>
                   <p className="text-slate-300 text-md">
-                    {searchResults.length > 0 
+                    {searchResults.length > 0
                       ? (
-                          <span className="flex items-center flex-wrap">
-                            Found {searchResults.length} number from {selectedCountry}
-                            <span className="ml-2 hidden sm:inline">
-                              {countries.find(c => c.name === selectedCountry)?.flag}
-                            </span>
+                        <span className="flex items-center flex-wrap">
+                          Found {searchResults.length} number from {selectedCountry}
+                          <span className="ml-2 hidden sm:inline">
+                            {countries.find(c => c.name === selectedCountry)?.flag}
                           </span>
-                        )
+                        </span>
+                      )
                       : (
-                          <span className="flex items-center flex-wrap">
-                            No numbers found in {selectedCountry}
-                            <span className="ml-2 hidden sm:inline">
-                              {countries.find(c => c.name === selectedCountry)?.flag}
-                            </span>
+                        <span className="flex items-center flex-wrap">
+                          No numbers found in {selectedCountry}
+                          <span className="ml-2 hidden sm:inline">
+                            {countries.find(c => c.name === selectedCountry)?.flag}
                           </span>
-                        )
+                        </span>
+                      )
                     }
                   </p>
                 </div>
@@ -411,7 +410,7 @@ const EmptySimcard: React.FC = () => {
                               </div>
                               <div className="flex items-center justify-between text-md">
                                 <span className="text-slate-300 font-medium">Renewable:</span>
-                                <span className="text-red-400 font-semibold">No</span>
+                                <span className="text-emerald-400 font-semibold">Yes</span>
                               </div>
                             </div>
                             {/* Purchase Button - full width */}
@@ -449,7 +448,7 @@ const EmptySimcard: React.FC = () => {
 
                           <div className="hidden md:flex md:items-center md:space-x-2 text-md">
                             <span className="text-slate-300 font-medium">Renewable:</span>
-                            <span className="text-red-400 font-semibold">No</span>
+                            <span className="text-emerald-400 font-semibold">Yes</span>
                           </div>
 
                           <button
@@ -485,34 +484,34 @@ const EmptySimcard: React.FC = () => {
               </div>
             </div>
           </div>
-          </>
-        )}
+        </>
+      )}
 
-        {/* Error Modal */}
-        {showErrorModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
-              <div className="text-center">
-                <div className="mb-4">
-                  <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                  </div>
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
                 </div>
-                <h3 className="text-lg font-medium text-white mb-2">Error</h3>
-                <p className="text-blue-200 mb-4">{errorMessage}</p>
-                <button
-                  onClick={handleErrorModalClose}
-                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
-                >
-                  Close
-                </button>
               </div>
+              <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+              <p className="text-blue-200 mb-4">{errorMessage}</p>
+              <button
+                onClick={handleErrorModalClose}
+                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+              >
+                Close
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
   );
 };
 

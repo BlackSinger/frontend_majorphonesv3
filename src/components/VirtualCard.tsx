@@ -156,7 +156,7 @@ const VirtualCard: React.FC = () => {
                 <li>• They can be used with any name and in multiple sites, but may not work in some</li>
                 <li>• They can't be refunded once purchased</li>
                 <li>• Expiration date varies depending on the card assigned, it can't be chosen</li>
-                <li>• You can't add extra funds, have a physical card shipped or withdraw funds as cash</li>     
+                <li>• You can't have a physical card shipped or withdraw funds as cash</li>
               </ul>
             </div>
           </div>
@@ -175,7 +175,7 @@ const VirtualCard: React.FC = () => {
                     </h1>
                     <p className="text-slate-300 text-md">Find and configure your virtual debit card service</p>
                   </div>
-                  
+
                   {/* Search Form */}
                   <div className="space-y-9">
                     {/* Form Elements Container */}
@@ -190,21 +190,19 @@ const VirtualCard: React.FC = () => {
                           <div className="flex items-center bg-slate-700/50 rounded-full p-2 border border-slate-600/50 w-fit">
                             <button
                               onClick={() => setHasBalance(false)}
-                              className={`px-8 sm:px-8 lg:px-10 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[2.5rem] flex items-center ${
-                                !hasBalance 
-                                  ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg' 
+                              className={`px-8 sm:px-8 lg:px-10 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[2.5rem] flex items-center ${!hasBalance
+                                  ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg'
                                   : 'text-slate-400 hover:text-slate-300'
-                              }`}
+                                }`}
                             >
                               No Balance
                             </button>
                             <button
                               onClick={() => setHasBalance(true)}
-                              className={`px-8 sm:px-8 lg:px-10 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[2.5rem] flex items-center ${
-                                hasBalance 
-                                  ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg' 
+                              className={`px-8 sm:px-8 lg:px-10 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[2.5rem] flex items-center ${hasBalance
+                                  ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg'
                                   : 'text-slate-400 hover:text-slate-300'
-                              }`}
+                                }`}
                             >
                               Balance
                             </button>
@@ -213,11 +211,11 @@ const VirtualCard: React.FC = () => {
 
                         {/* Continue Button */}
                         <div className="space-y-3 flex flex-col justify-end mb-1">
-                          <button 
+                          <button
                             onClick={handleSearch}
                             disabled={isSearching}
                             className="group px-8 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[230px] max-w-[390px] md:max-w-none mx-auto md:mx-0"
-                          >                            
+                          >
                             <div className="relative z-10 flex items-center justify-center">
                               {isSearching ? (
                                 <svg className="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,7 +244,7 @@ const VirtualCard: React.FC = () => {
                 <div className="relative z-10">
                   {/* Back Button */}
                   <div className="mb-5">
-                    <button 
+                    <button
                       onClick={() => setHasSearched(false)}
                       className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
                     >
@@ -265,7 +263,7 @@ const VirtualCard: React.FC = () => {
                       Card options
                     </h1>
                     <p className="text-slate-300 text-md">
-                      {searchResults.length > 0 
+                      {searchResults.length > 0
                         ? `Found 1 virtual debit card`
                         : 'No cards available'
                       }
@@ -296,26 +294,26 @@ const VirtualCard: React.FC = () => {
                                     <div className="absolute bottom-8 left-8 w-8 h-8 rounded-full bg-white/5"></div>
                                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full bg-white/3"></div>
                                   </div>
-                                  
+
                                   <div className="relative z-10">
                                     {/* Card Header */}
                                     <div className="flex justify-center md:justify-between items-center mb-6">
                                       <div className="text-center md:text-left">
                                         <p className="text-md opacity-80 font-medium">Virtual Debit Card</p>
                                       </div>
-                                      <img 
-                                        src={MajorPhonesFavIc} 
-                                        alt="MajorPhones" 
+                                      <img
+                                        src={MajorPhonesFavIc}
+                                        alt="MajorPhones"
                                         className="w-12 h-10 object-contain hidden md:block"
                                       />
                                     </div>
-                                    
+
                                     {/* Card Number */}
                                     <div className="mb-6">
                                       <p className="text-sm opacity-60 mb-2 uppercase tracking-wider">Card Number</p>
                                       <p className="text-md font-mono font-light">**** **** **** ****</p>
                                     </div>
-                                    
+
                                     {/* Card Details Row */}
                                     <div className="grid grid-cols-2 gap-6">
                                       <div>
@@ -344,11 +342,10 @@ const VirtualCard: React.FC = () => {
                                   <div className="space-y-3">
                                     <div className="flex justify-between items-center py-2 border-b border-slate-600/30">
                                       <span className="text-slate-300 font-medium">Type:</span>
-                                      <span className={`font-semibold px-3 py-1 rounded-full text-xs md:text-sm ${
-                                        option.hasBalance 
-                                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                                      <span className={`font-semibold px-3 py-1 rounded-full text-xs md:text-sm ${option.hasBalance
+                                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                                           : 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
-                                      }`}>
+                                        }`}>
                                         {option.hasBalance ? 'With Balance' : 'No Balance'}
                                       </span>
                                     </div>

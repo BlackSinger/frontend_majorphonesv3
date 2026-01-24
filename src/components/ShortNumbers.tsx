@@ -753,7 +753,9 @@ const ShortNumbers: React.FC = () => {
 
         allNumbers.sort((a, b) => a.price - b.price);
       } else if (selectedCountry === 'United Kingdom') {
-        const restrictedServices = ['telegram', 'paypal'];
+        //const restrictedServices = ['telegram', 'paypal'];
+        const restrictedServices = ['telegram'];
+        //const restrictedServices: string[] = [];
         const optionsToSearch = restrictedServices.includes(globalSearchData.serviceName.toLowerCase())
           ? ['opt2']
           : ['opt2', 'opt5'];
