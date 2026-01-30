@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getAuth } from 'firebase/auth';
+//import AlipayLogo from '../AlipayLogo.svg';
+import AlipayLogo from '../AlipayLogoBlack.svg';
 import AmazonPay from './AmazonPay';
 import CryptomusLogo from '../CryptomusLogo.svg';
 import AmazonPayLogo from '../AmazonPayLogo.png';
@@ -18,7 +20,7 @@ import BtcLogo from '../BtcLogo.svg';
 
 interface PaymentMethod {
   id: string;
-  name: 'Cryptomus' | 'Amazon Pay' | 'Binance Pay' | 'Static Wallets';
+  name: 'Alipay' | 'Cryptomus' | 'Amazon Pay' | 'Binance Pay' | 'Static Wallets';
   icon: React.ReactNode;
   description: string;
   minAmount: number;
@@ -49,6 +51,9 @@ const AddFunds: React.FC = () => {
   const [showCryptomusErrorModal, setShowCryptomusErrorModal] = useState(false);
   const [cryptomusErrorMessage, setCryptomusErrorMessage] = useState('');
   const [isCryptomusProcessing, setIsCryptomusProcessing] = useState(false);
+  const [isAlipayProcessing, setIsAlipayProcessing] = useState(false);
+  const [showAlipayErrorModal, setShowAlipayErrorModal] = useState(false);
+  const [alipayErrorMessage, setAlipayErrorMessage] = useState('');
   const [isUnauthorized, setIsUnauthorized] = useState(false);
   const [isLoadingUsdtWallet, setIsLoadingUsdtWallet] = useState(false);
   const [usdtWalletAddress, setUsdtWalletAddress] = useState('');
@@ -87,6 +92,15 @@ const AddFunds: React.FC = () => {
   const walletAddressRef = useRef<HTMLDivElement>(null);
 
   const paymentMethods: PaymentMethod[] = [
+    {
+      id: 'alipay',
+      name: 'Alipay',
+      icon: (
+        <img src={AlipayLogo} alt="Alipay" className="w-8 h-8" />
+      ),
+      description: 'Chinese third-party mobile and online payment',
+      minAmount: 2
+    },
     {
       id: 'cryptomus',
       name: 'Cryptomus',
@@ -195,21 +209,6 @@ const AddFunds: React.FC = () => {
     }
   ];
 
-  const getMethodColor = (methodName: string) => {
-    switch (methodName) {
-      case 'Cryptomus':
-        return 'from-orange-500 to-amber-500';
-      case 'Amazon Pay':
-        return 'from-blue-500 to-indigo-500';
-      case 'Binance Pay':
-        return 'from-yellow-500 to-orange-500';
-      case 'Static Wallets':
-        return 'from-slate-500 to-gray-500';
-      default:
-        return 'from-gray-500 to-slate-500';
-    }
-  };
-
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoaded(true);
@@ -278,6 +277,11 @@ const AddFunds: React.FC = () => {
   const handleCryptomusErrorModalClose = () => {
     setShowCryptomusErrorModal(false);
     setCryptomusErrorMessage('');
+  };
+
+  const handleAlipayErrorModalClose = () => {
+    setShowAlipayErrorModal(false);
+    setAlipayErrorMessage('');
   };
 
   const handleStaticWalletErrorModalClose = () => {
@@ -725,6 +729,55 @@ const AddFunds: React.FC = () => {
     return data;
   };
 
+  const createAlipayOrder = async (amount: number) => {
+    const currentUser = getAuth().currentUser;
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+    const idToken = await currentUser.getIdToken();
+
+    const response = await fetch('https://createorderalipay-ezeznlhr5a-uc.a.run.app', {
+      method: 'POST',
+      headers: {
+        'Authorization': `${idToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount: amount
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = 'An error has occurred, please contact support';
+      let isAuthError = false;
+
+      if (response.status === 401) {
+        errorMessage = 'You are not authenticated or your token is invalid';
+        isAuthError = true;
+      } else if (errorText.includes('Missing amount in request body')) {
+        errorMessage = 'Please enter a valid amount';
+      } else if (errorText.includes('Amount must be at least $2')) {
+        errorMessage = 'Deposit amount must be at least $2';
+      } else if (errorText.includes('Payment method not available')) {
+        errorMessage = 'Payment method unavailable';
+      } else if (response.status === 503) {
+        errorMessage = 'Payment method unavailable';
+      } else if (response.status === 500) {
+        errorMessage = 'An error occurred, please contact our customer support.';
+      } else {
+        errorMessage = 'Service unavailable, please contact our customer support.';
+      }
+
+      const error = new Error(errorMessage);
+      (error as any).isAuthError = isAuthError;
+      throw error;
+    }
+
+    const data = await response.json();
+    return data;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMethod) return;
@@ -767,6 +820,16 @@ const AddFunds: React.FC = () => {
           window.location.href = orderData.url;
           return;
         }
+      } else if (selectedMethod === 'alipay') {
+        setIsAlipayProcessing(true);
+        setIsUnauthorized(false);
+        const numAmount = parseFloat(amount);
+        const orderData = await createAlipayOrder(numAmount);
+
+        if (orderData.success && orderData.url) {
+          window.location.href = orderData.url;
+          return;
+        }
       } else if (selectedMethod === 'static-wallets') {
         const selectedWalletData = staticWallets.find(wallet => wallet.id === selectedWallet);
         alert(`Your ${selectedWalletData?.name} wallet address is ready. Send any amount to the provided address and notify us with your transaction hash for verification.`);
@@ -784,6 +847,14 @@ const AddFunds: React.FC = () => {
         }
         setCryptomusErrorMessage(error.message);
         setShowCryptomusErrorModal(true);
+      } else if (selectedMethod === 'alipay' && error instanceof Error) {
+        setIsAlipayProcessing(false);
+        const isAuthError = (error as any).isAuthError;
+        if (isAuthError) {
+          setIsUnauthorized(true);
+        }
+        setAlipayErrorMessage(error.message);
+        setShowAlipayErrorModal(true);
       }
     }
 
@@ -798,6 +869,10 @@ const AddFunds: React.FC = () => {
 
     if (selectedMethod === 'cryptomus') {
       setIsCryptomusProcessing(false);
+    }
+
+    if (selectedMethod === 'alipay') {
+      setIsAlipayProcessing(false);
     }
   };
 
@@ -915,7 +990,7 @@ const AddFunds: React.FC = () => {
                             ) : (
                               <button
                                 type="button"
-                                disabled={isCryptomusProcessing || isUnauthorized || isAnyWalletLoading}
+                                disabled={isCryptomusProcessing || isAlipayProcessing || isUnauthorized || isAnyWalletLoading}
                                 onClick={() => {
                                   if (selectedMethod === method.id) {
                                     setSelectedMethod('');
@@ -923,7 +998,7 @@ const AddFunds: React.FC = () => {
                                     setSelectedMethod(method.id);
                                   }
                                 }}
-                                className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 w-20 sm:w-20 w-full ${isCryptomusProcessing || isUnauthorized || isAnyWalletLoading
+                                className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 w-20 sm:w-20 w-full ${isCryptomusProcessing || isAlipayProcessing || isUnauthorized || isAnyWalletLoading
                                   ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed border border-slate-700/30'
                                   : selectedMethod === method.id
                                     ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
@@ -956,6 +1031,9 @@ const AddFunds: React.FC = () => {
                             <span>Minimum: ${selectedPaymentMethod.minAmount}</span>
                             {selectedMethod === 'amazon' && (
                               <span className="ml-4">Fee: $0.3</span>
+                            )}
+                            {selectedMethod === 'alipay' && (
+                              <span className="ml-4">(Fees may be applied)</span>
                             )}
                           </div>
                         </div>
@@ -1312,17 +1390,17 @@ const AddFunds: React.FC = () => {
                   <div ref={submitButtonRef} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/section">
                     <button
                       type="submit"
-                      disabled={isProcessing || (selectedMethod === 'cryptomus' && isUnauthorized)}
-                      className={`w-full font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform shadow-xl ${isProcessing || (selectedMethod === 'cryptomus' && isUnauthorized)
+                      disabled={isProcessing || (selectedMethod === 'cryptomus' && isUnauthorized) || (selectedMethod === 'alipay' && isUnauthorized)}
+                      className={`w-full font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform shadow-xl ${isProcessing || (selectedMethod === 'cryptomus' && isUnauthorized) || (selectedMethod === 'alipay' && isUnauthorized)
                         ? 'bg-slate-700/50 text-slate-400 cursor-not-allowed'
                         : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white hover:scale-[1.02]'
                         }`}
                     >
-                      {isProcessing && selectedMethod !== 'cryptomus' ? (
+                      {isProcessing && selectedMethod !== 'cryptomus' && selectedMethod !== 'alipay' ? (
                         <div className="flex items-center justify-center space-x-2">
                           <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                         </div>
-                      ) : isProcessing && (selectedMethod === 'cryptomus') ? (
+                      ) : isProcessing && (selectedMethod === 'cryptomus' || selectedMethod === 'alipay') ? (
                         <div className="flex items-center justify-center space-x-2">
                           <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                         </div>
@@ -1459,6 +1537,31 @@ const AddFunds: React.FC = () => {
               <p className="text-blue-200 mb-4">{cryptomusErrorMessage}</p>
               <button
                 onClick={handleCryptomusErrorModalClose}
+                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alipay Error Modal */}
+      {showAlipayErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Payment Error</h3>
+              <p className="text-blue-200 mb-4">{alipayErrorMessage}</p>
+              <button
+                onClick={handleAlipayErrorModalClose}
                 className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
               >
                 OK

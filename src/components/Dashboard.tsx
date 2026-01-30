@@ -673,6 +673,14 @@ const Dashboard: React.FC = () => {
   const newsItems = [
     {
       id: 1,
+      title: "Alipay Now Available",
+      description: "Pay with Alipay - fast and secure payments from China",
+      time: "30/01/26",
+      type: "product",
+      urgent: true
+    },
+    {
+      id: 2,
       title: "Get 1 free number",
       description: "Deposit $10 or more through Crypto or Payeer",
       time: "10/07/25",
@@ -680,7 +688,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 2,
+      id: 3,
       title: "Extended Middle Term Duration",
       description: "Get middle term numbers for more than just 1 day",
       time: "10/07/25",
@@ -688,7 +696,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 3,
+      id: 4,
       title: "Reusable Option Coming Soon",
       description: "You will soon reuse short term numbers",
       time: "10/07/25",
@@ -696,7 +704,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 4,
+      id: 5,
       title: "API Available",
       description: "Integrate with our service using our new API endpoints",
       time: "10/07/25",
@@ -1021,8 +1029,8 @@ const Dashboard: React.FC = () => {
                           <div
                             key={item.id}
                             className={`group/item p-4 rounded-2xl border transition-all duration-300 hover:shadow-xl cursor-pointer hover:scale-[1] relative overflow-hidden ${item.urgent
-                                ? 'bg-gradient-to-r from-red-900/20 to-orange-900/20 border-red-500/30 hover:from-red-800/30 hover:to-orange-800/30 hover:border-red-400/50'
-                                : 'bg-slate-800/50 border-slate-600/30 hover:bg-slate-700/50 hover:border-slate-500/50'
+                              ? 'bg-gradient-to-r from-red-900/20 to-orange-900/20 border-red-500/30 hover:from-red-800/30 hover:to-orange-800/30 hover:border-red-400/50'
+                              : 'bg-slate-800/50 border-slate-600/30 hover:bg-slate-700/50 hover:border-slate-500/50'
                               }`}
                             style={{
                               animationDelay: `${itemIndex * 100}ms`
@@ -1072,8 +1080,8 @@ const Dashboard: React.FC = () => {
                     key={index}
                     onClick={() => setCurrentSlide(index)}
                     className={`w-2 h-2 rounded-full transition-all duration-300 ${index === currentSlide
-                        ? 'bg-blue-400 scale-125'
-                        : 'bg-slate-600 opacity-50 hover:opacity-75 hover:scale-110'
+                      ? 'bg-blue-400 scale-125'
+                      : 'bg-slate-600 opacity-50 hover:opacity-75 hover:scale-110'
                       }`}
                   />
                 ))}

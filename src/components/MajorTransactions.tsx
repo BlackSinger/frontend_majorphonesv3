@@ -250,7 +250,7 @@ const MajorTransactions: React.FC = () => {
                   {/* Custom Dropdown Options */}
                   {isPaymentMethodDropdownOpen && (
                     <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
-                      {['All', 'Admin Update', 'Amazon Pay', 'Cryptomus', 'Static Wallets'].map((method) => (
+                      {['All', 'Admin Update', 'Alipay', 'Amazon Pay', 'Cryptomus', 'Static Wallets'].map((method) => (
                         <div
                           key={method}
                           onClick={() => {
@@ -441,8 +441,8 @@ const MajorTransactions: React.FC = () => {
                         key={page}
                         onClick={() => setCurrentPage(page)}
                         className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentPage === page
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
                           }`}
                       >
                         {page}
