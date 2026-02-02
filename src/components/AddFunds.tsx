@@ -4,8 +4,25 @@ import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getAuth } from 'firebase/auth';
-//import AlipayLogo from '../AlipayLogo.svg';
+//import GlobalLogo from '../GloblLogo.svg';
+import AfricaLogo from '../AfricaLogo.svg';
+import KoreaLogo from '../KoreaLogo.svg';
 import AlipayLogo from '../AlipayLogoBlack.svg';
+import CreditCardsKoreaLogo from '../CreditCardsLogo.svg';
+import PaycoLogo from '../PAYCOLogo.svg';
+import SamsungPayKoreaLogo from '../SamsungPayKoreaLogo.svg';
+import KakaoPayKoreaLogo from '../KakaoPayKoreaLogo.svg';
+import PaynowSingaporeLogo from '../PaynowSingaporeLogo.svg';
+import VietQRLogo from '../VietQRLogo.svg';
+import CreditCardSouthAfricaLogo from '../CreditCardsLogo.svg';
+import BankCardNigeriaLogo from '../CreditCardsLogo.svg';
+import BankTransferNigeriaLogo from '../CreditCardsLogo.svg';
+import AirtelMoneyKenyaLogo from '../AirtelMoneyLogo.svg';
+import MtnRwandaLogo from '../MTNLogo.svg';
+import AirtelMoneyRwandaLogo from '../AirtelMoneyLogo.svg';
+import YasTanzaniaLogo from '../YasTanzaniaLogo.svg';
+import MtnUgandaLogo from '../MTNLogo.svg';
+import AirtelMoneyUgandaLogo from '../AirtelMoneyLogo.svg';
 import AmazonPay from './AmazonPay';
 import CryptomusLogo from '../CryptomusLogo.svg';
 import AmazonPayLogo from '../AmazonPayLogo.png';
@@ -20,7 +37,7 @@ import BtcLogo from '../BtcLogo.svg';
 
 interface PaymentMethod {
   id: string;
-  name: 'Alipay' | 'Cryptomus' | 'Amazon Pay' | 'Binance Pay' | 'Static Wallets';
+  name: 'Alipay' | 'PayNow' | 'VietQR' | 'Africa Payment Methods' | 'South Korea Payment Methods' | 'Cryptomus' | 'Amazon Pay' | 'Binance Pay' | 'Static Wallets';
   icon: React.ReactNode;
   description: string;
   minAmount: number;
@@ -51,9 +68,24 @@ const AddFunds: React.FC = () => {
   const [showCryptomusErrorModal, setShowCryptomusErrorModal] = useState(false);
   const [cryptomusErrorMessage, setCryptomusErrorMessage] = useState('');
   const [isCryptomusProcessing, setIsCryptomusProcessing] = useState(false);
+
   const [isAlipayProcessing, setIsAlipayProcessing] = useState(false);
   const [showAlipayErrorModal, setShowAlipayErrorModal] = useState(false);
   const [alipayErrorMessage, setAlipayErrorMessage] = useState('');
+  const [isPaynowProcessing, setIsPaynowProcessing] = useState(false);
+  const [showPaynowErrorModal, setShowPaynowErrorModal] = useState(false);
+  const [paynowErrorMessage, setPaynowErrorMessage] = useState('');
+  const [isVietqrProcessing, setIsVietqrProcessing] = useState(false);
+  const [showVietqrErrorModal, setShowVietqrErrorModal] = useState(false);
+  const [vietqrErrorMessage, setVietqrErrorMessage] = useState('');
+  const [isAfricaPaymentsProcessing, setIsAfricaPaymentsProcessing] = useState(false);
+  const [showAfricaPaymentsErrorModal, setShowAfricaPaymentsErrorModal] = useState(false);
+  const [africaPaymentsErrorMessage, setAfricaPaymentsErrorMessage] = useState('');
+  const [selectedAfricaPaymentsMethod, setSelectedAfricaPaymentsMethod] = useState<string>('');
+  const [isKoreaPaymentsProcessing, setIsKoreaPaymentsProcessing] = useState(false);
+  const [showKoreaPaymentsErrorModal, setShowKoreaPaymentsErrorModal] = useState(false);
+  const [koreaPaymentsErrorMessage, setKoreaPaymentsErrorMessage] = useState('');
+  const [selectedKoreaPaymentsMethod, setSelectedKoreaPaymentsMethod] = useState<string>('');
   const [isUnauthorized, setIsUnauthorized] = useState(false);
   const [isLoadingUsdtWallet, setIsLoadingUsdtWallet] = useState(false);
   const [usdtWalletAddress, setUsdtWalletAddress] = useState('');
@@ -90,15 +122,53 @@ const AddFunds: React.FC = () => {
   const staticWalletsSectionRef = useRef<HTMLDivElement>(null);
   const submitButtonRef = useRef<HTMLDivElement>(null);
   const walletAddressRef = useRef<HTMLDivElement>(null);
+  const africaPaymentsMethodsSectionRef = useRef<HTMLDivElement>(null);
+  const koreaPaymentsMethodsSectionRef = useRef<HTMLDivElement>(null);
 
   const paymentMethods: PaymentMethod[] = [
     {
-      id: 'alipay',
+      id: 'alipay_cn',
       name: 'Alipay',
       icon: (
         <img src={AlipayLogo} alt="Alipay" className="w-8 h-8" />
       ),
-      description: 'Chinese third-party mobile and online payment',
+      description: 'Chinese third-party mobile and online payment platform',
+      minAmount: 2
+    },
+    {
+      id: 'paynow_sg',
+      name: 'PayNow',
+      icon: (
+        <img src={PaynowSingaporeLogo} alt="PayNow" className="w-10 h-10" />
+      ),
+      description: 'Singapore instant peer-to-peer and merchant funds transfer service',
+      minAmount: 2
+    },
+    {
+      id: 'vietqr_vn',
+      name: 'VietQR',
+      icon: (
+        <img src={VietQRLogo} alt="VietQR" className="w-9 h-9" />
+      ),
+      description: 'Vietnam standardized QR payment system',
+      minAmount: 2
+    },
+    {
+      id: 'africaPayments',
+      name: 'Africa Payment Methods',
+      icon: (
+        <img src={AfricaLogo} alt="Africa Payments" className="w-9 h-9" />
+      ),
+      description: 'A variety of African payment methods',
+      minAmount: 2
+    },
+    {
+      id: 'koreaPayments',
+      name: 'South Korea Payment Methods',
+      icon: (
+        <img src={KoreaLogo} alt="South Korea Payments" className="w-10 h-10" />
+      ),
+      description: 'A variety of South Korean payment methods',
       minAmount: 2
     },
     {
@@ -209,6 +279,104 @@ const AddFunds: React.FC = () => {
     }
   ];
 
+  interface AfricaPaymentMethods {
+    id: string;
+    name: string;
+    description: string;
+    icon: React.ReactNode;
+  }
+
+  const africaPaymentMethods: AfricaPaymentMethods[] = [
+    {
+      id: 'creditcard_za',
+      name: 'Credit Card (South Africa)',
+      description: 'VISA/Mastercard and more',
+      icon: <img src={CreditCardSouthAfricaLogo} alt="Credit Card (South Africa)" className="w-7 h-7" />
+    },
+    {
+      id: 'bankcard_ng',
+      name: 'Bank Card (Nigeria)',
+      description: 'Local and international transactions',
+      icon: <img src={BankCardNigeriaLogo} alt="Bank Card (Nigeria)" className="w-7 h-7" />
+    },
+    {
+      id: 'banktransfer_ng',
+      name: 'Bank Transfer (Nigeria)',
+      description: 'Banking and money transfer',
+      icon: <img src={BankTransferNigeriaLogo} alt="Bank Transfer (Nigeria)" className="w-7 h-7" />
+    },
+    {
+      id: 'airtel_ke',
+      name: 'Airtel Money (Kenya)',
+      description: 'A mobile financial service',
+      icon: <img src={AirtelMoneyKenyaLogo} alt="Airtel Money (Kenya)" className="w-7 h-7" />
+    },
+    {
+      id: 'mtn_rw',
+      name: 'MTN (Rwanda)',
+      description: 'Mobile Money (MoMo)',
+      icon: <img src={MtnRwandaLogo} alt="MTN (Rwanda)" className="w-8 h-8" />
+    },
+    {
+      id: 'airtel_rw',
+      name: 'Airtel Money (Rwanda)',
+      description: 'A mobile financial service',
+      icon: <img src={AirtelMoneyRwandaLogo} alt="Airtel Money (Rwanda)" className="w-7 h-7" />
+    },
+    {
+      id: 'tigo_tz',
+      name: 'Yas Tanzania (former Tigo)',
+      description: 'Mobile financial solutions',
+      icon: <img src={YasTanzaniaLogo} alt="Yas Tanzania (former Tigo)" className="w-7 h-7" />
+    },
+    {
+      id: 'mtn_ug',
+      name: 'MTN (Uganda)',
+      description: 'Mobile Money (MoMo)',
+      icon: <img src={MtnUgandaLogo} alt="MTN (Uganda)" className="w-8 h-8" />
+    },
+    {
+      id: 'airtel_ug',
+      name: 'Airtel Money (Uganda)',
+      description: 'A mobile financial service',
+      icon: <img src={AirtelMoneyUgandaLogo} alt="Airtel Money (Uganda)" className="w-7 h-7" />
+    }
+  ];
+
+  interface KoreaPaymentMethods {
+    id: string;
+    name: string;
+    description: string;
+    icon: React.ReactNode;
+  }
+
+  const koreaPaymentMethods: KoreaPaymentMethods[] = [
+    {
+      id: 'creditcard_kr',
+      name: 'Credit Card (South Korea)',
+      description: 'VISA/Mastercard and more',
+      icon: <img src={CreditCardsKoreaLogo} alt="Credit Card (South Korea)" className="w-7 h-7" />
+    },
+    {
+      id: 'payco_kr',
+      name: 'PAYCO',
+      description: 'South Korean digital wallet and payment method',
+      icon: <img src={PaycoLogo} alt="PAYCO" className="w-6 h-6" />
+    },
+    {
+      id: 'samsungpay_kr',
+      name: 'Samsung Pay (South Korea)',
+      description: 'South Korea\'s leading eWallet and payments app',
+      icon: <img src={SamsungPayKoreaLogo} alt="Samsung Pay (South Korea)" className="w-7 h-7" />
+    },
+    {
+      id: 'kakaopay_kr',
+      name: 'KakaoPay',
+      description: 'South Korean mobile payment and digital wallet service',
+      icon: <img src={KakaoPayKoreaLogo} alt="KakaoPay" className="w-8 h-8" />
+    }
+  ];
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoaded(true);
@@ -224,7 +392,17 @@ const AddFunds: React.FC = () => {
             behavior: 'smooth',
             block: 'start'
           });
-        } else if (selectedMethod !== 'static-wallets' && amountSectionRef.current) {
+        } else if (selectedMethod === 'africaPayments' && africaPaymentsMethodsSectionRef.current) {
+          africaPaymentsMethodsSectionRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        } else if (selectedMethod === 'koreaPayments' && koreaPaymentsMethodsSectionRef.current) {
+          koreaPaymentsMethodsSectionRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        } else if (selectedMethod !== 'static-wallets' && selectedMethod !== 'africaPayments' && selectedMethod !== 'koreaPayments' && amountSectionRef.current) {
           amountSectionRef.current.scrollIntoView({
             behavior: 'smooth',
             block: 'start'
@@ -263,6 +441,28 @@ const AddFunds: React.FC = () => {
     }
   }, [selectedWallet]);
 
+  useEffect(() => {
+    if (selectedAfricaPaymentsMethod && amountSectionRef.current) {
+      setTimeout(() => {
+        amountSectionRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }, 100);
+    }
+  }, [selectedAfricaPaymentsMethod]);
+
+  useEffect(() => {
+    if (selectedKoreaPaymentsMethod && amountSectionRef.current) {
+      setTimeout(() => {
+        amountSectionRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }, 100);
+    }
+  }, [selectedKoreaPaymentsMethod]);
+
   const handleAmazonPaySuccess = () => {
     setShowAmazonModal(false);
     setAmount('');
@@ -279,9 +479,29 @@ const AddFunds: React.FC = () => {
     setCryptomusErrorMessage('');
   };
 
+  const handleAfricaPaymentsErrorModalClose = () => {
+    setShowAfricaPaymentsErrorModal(false);
+    setAfricaPaymentsErrorMessage('');
+  };
+
+  const handleKoreaPaymentsErrorModalClose = () => {
+    setShowKoreaPaymentsErrorModal(false);
+    setKoreaPaymentsErrorMessage('');
+  };
+
   const handleAlipayErrorModalClose = () => {
     setShowAlipayErrorModal(false);
     setAlipayErrorMessage('');
+  };
+
+  const handlePaynowErrorModalClose = () => {
+    setShowPaynowErrorModal(false);
+    setPaynowErrorMessage('');
+  };
+
+  const handleVietqrErrorModalClose = () => {
+    setShowVietqrErrorModal(false);
+    setVietqrErrorMessage('');
   };
 
   const handleStaticWalletErrorModalClose = () => {
@@ -729,21 +949,22 @@ const AddFunds: React.FC = () => {
     return data;
   };
 
-  const createAlipayOrder = async (amount: number) => {
+  const createOrderPayssion = async (amount: number, paymentName: string) => {
     const currentUser = getAuth().currentUser;
     if (!currentUser) {
       throw new Error('User not authenticated');
     }
     const idToken = await currentUser.getIdToken();
 
-    const response = await fetch('https://createorderalipay-ezeznlhr5a-uc.a.run.app', {
+    const response = await fetch('https://createorderpayssion-ezeznlhr5a-uc.a.run.app', {
       method: 'POST',
       headers: {
         'Authorization': `${idToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        amount: amount
+        amount: amount,
+        paymentName: paymentName
       })
     });
 
@@ -757,6 +978,10 @@ const AddFunds: React.FC = () => {
         isAuthError = true;
       } else if (errorText.includes('Missing amount in request body')) {
         errorMessage = 'Please enter a valid amount';
+      } else if (errorText.includes('Invalid payment method')) {
+        errorMessage = 'Invalid payment method, please contact our customer support';
+      } else if (errorText.includes('Missing amount or payment method in request body')) {
+        errorMessage = 'An error occurred, please contact our customer support';
       } else if (errorText.includes('Amount must be at least $2')) {
         errorMessage = 'Deposit amount must be at least $2';
       } else if (errorText.includes('Payment method not available')) {
@@ -764,9 +989,9 @@ const AddFunds: React.FC = () => {
       } else if (response.status === 503) {
         errorMessage = 'Payment method unavailable';
       } else if (response.status === 500) {
-        errorMessage = 'An error occurred, please contact our customer support.';
+        errorMessage = 'An error occurred, please contact our customer support';
       } else {
-        errorMessage = 'Service unavailable, please contact our customer support.';
+        errorMessage = 'Service unavailable, please contact our customer support';
       }
 
       const error = new Error(errorMessage);
@@ -791,7 +1016,13 @@ const AddFunds: React.FC = () => {
     if (selectedMethod !== 'static-wallets') {
       const numAmount = parseFloat(amount);
       if (numAmount < selectedPaymentMethod.minAmount) {
-        setModalMessage(`The minimum amount for ${selectedPaymentMethod.name} is $${selectedPaymentMethod.minAmount}.`);
+        let paymentName: string = selectedPaymentMethod.name;
+        if (selectedMethod === 'africaPayments') {
+          paymentName = africaPaymentMethods.find(m => m.id === selectedAfricaPaymentsMethod)?.name || selectedPaymentMethod.name;
+        } else if (selectedMethod === 'koreaPayments') {
+          paymentName = koreaPaymentMethods.find(m => m.id === selectedKoreaPaymentsMethod)?.name || selectedPaymentMethod.name;
+        }
+        setModalMessage(`The minimum amount for ${paymentName} is $${selectedPaymentMethod.minAmount}.`);
         setShowModal(true);
         return;
       }
@@ -820,12 +1051,47 @@ const AddFunds: React.FC = () => {
           window.location.href = orderData.url;
           return;
         }
-      } else if (selectedMethod === 'alipay') {
+      } else if (selectedMethod === 'alipay_cn') {
         setIsAlipayProcessing(true);
         setIsUnauthorized(false);
         const numAmount = parseFloat(amount);
-        const orderData = await createAlipayOrder(numAmount);
-
+        const orderData = await createOrderPayssion(numAmount, 'alipay_cn');
+        if (orderData.success && orderData.url) {
+          window.location.href = orderData.url;
+          return;
+        }
+      } else if (selectedMethod === 'paynow_sg') {
+        setIsPaynowProcessing(true);
+        setIsUnauthorized(false);
+        const numAmount = parseFloat(amount);
+        const orderData = await createOrderPayssion(numAmount, 'paynow_sg');
+        if (orderData.success && orderData.url) {
+          window.location.href = orderData.url;
+          return;
+        }
+      } else if (selectedMethod === 'vietqr_vn') {
+        setIsVietqrProcessing(true);
+        setIsUnauthorized(false);
+        const numAmount = parseFloat(amount);
+        const orderData = await createOrderPayssion(numAmount, 'vietqr_vn');
+        if (orderData.success && orderData.url) {
+          window.location.href = orderData.url;
+          return;
+        }
+      } else if (selectedMethod === 'africaPayments') {
+        setIsAfricaPaymentsProcessing(true);
+        setIsUnauthorized(false);
+        const numAmount = parseFloat(amount);
+        const orderData = await createOrderPayssion(numAmount, selectedAfricaPaymentsMethod);
+        if (orderData.success && orderData.url) {
+          window.location.href = orderData.url;
+          return;
+        }
+      } else if (selectedMethod === 'koreaPayments') {
+        setIsKoreaPaymentsProcessing(true);
+        setIsUnauthorized(false);
+        const numAmount = parseFloat(amount);
+        const orderData = await createOrderPayssion(numAmount, selectedKoreaPaymentsMethod);
         if (orderData.success && orderData.url) {
           window.location.href = orderData.url;
           return;
@@ -847,7 +1113,7 @@ const AddFunds: React.FC = () => {
         }
         setCryptomusErrorMessage(error.message);
         setShowCryptomusErrorModal(true);
-      } else if (selectedMethod === 'alipay' && error instanceof Error) {
+      } else if (selectedMethod === 'alipay_cn' && error instanceof Error) {
         setIsAlipayProcessing(false);
         const isAuthError = (error as any).isAuthError;
         if (isAuthError) {
@@ -855,6 +1121,38 @@ const AddFunds: React.FC = () => {
         }
         setAlipayErrorMessage(error.message);
         setShowAlipayErrorModal(true);
+      } else if (selectedMethod === 'paynow_sg' && error instanceof Error) {
+        setIsPaynowProcessing(false);
+        const isAuthError = (error as any).isAuthError;
+        if (isAuthError) {
+          setIsUnauthorized(true);
+        }
+        setPaynowErrorMessage(error.message);
+        setShowPaynowErrorModal(true);
+      } else if (selectedMethod === 'vietqr_vn' && error instanceof Error) {
+        setIsVietqrProcessing(false);
+        const isAuthError = (error as any).isAuthError;
+        if (isAuthError) {
+          setIsUnauthorized(true);
+        }
+        setVietqrErrorMessage(error.message);
+        setShowVietqrErrorModal(true);
+      } else if (selectedMethod === 'africaPayments' && error instanceof Error) {
+        setIsAfricaPaymentsProcessing(false);
+        const isAuthError = (error as any).isAuthError;
+        if (isAuthError) {
+          setIsUnauthorized(true);
+        }
+        setAfricaPaymentsErrorMessage(error.message);
+        setShowAfricaPaymentsErrorModal(true);
+      } else if (selectedMethod === 'koreaPayments' && error instanceof Error) {
+        setIsKoreaPaymentsProcessing(false);
+        const isAuthError = (error as any).isAuthError;
+        if (isAuthError) {
+          setIsUnauthorized(true);
+        }
+        setKoreaPaymentsErrorMessage(error.message);
+        setShowKoreaPaymentsErrorModal(true);
       }
     }
 
@@ -871,8 +1169,22 @@ const AddFunds: React.FC = () => {
       setIsCryptomusProcessing(false);
     }
 
-    if (selectedMethod === 'alipay') {
+    if (selectedMethod === 'alipay_cn') {
       setIsAlipayProcessing(false);
+    }
+    if (selectedMethod === 'paynow_sg') {
+      setIsPaynowProcessing(false);
+    }
+    if (selectedMethod === 'vietqr_vn') {
+      setIsVietqrProcessing(false);
+    }
+
+    if (selectedMethod === 'africaPayments') {
+      setIsAfricaPaymentsProcessing(false);
+    }
+
+    if (selectedMethod === 'koreaPayments') {
+      setIsKoreaPaymentsProcessing(false);
     }
   };
 
@@ -990,15 +1302,27 @@ const AddFunds: React.FC = () => {
                             ) : (
                               <button
                                 type="button"
-                                disabled={isCryptomusProcessing || isAlipayProcessing || isUnauthorized || isAnyWalletLoading}
+                                disabled={isCryptomusProcessing || isAlipayProcessing || isPaynowProcessing || isVietqrProcessing || isAfricaPaymentsProcessing || isKoreaPaymentsProcessing || isUnauthorized || isAnyWalletLoading}
                                 onClick={() => {
                                   if (selectedMethod === method.id) {
                                     setSelectedMethod('');
+                                    if (method.id === 'africaPayments') {
+                                      setSelectedAfricaPaymentsMethod('');
+                                    }
+                                    if (method.id === 'koreaPayments') {
+                                      setSelectedKoreaPaymentsMethod('');
+                                    }
                                   } else {
                                     setSelectedMethod(method.id);
+                                    if (method.id !== 'africaPayments') {
+                                      setSelectedAfricaPaymentsMethod('');
+                                    }
+                                    if (method.id !== 'koreaPayments') {
+                                      setSelectedKoreaPaymentsMethod('');
+                                    }
                                   }
                                 }}
-                                className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 w-20 sm:w-20 w-full ${isCryptomusProcessing || isAlipayProcessing || isUnauthorized || isAnyWalletLoading
+                                className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 w-20 sm:w-20 w-full ${isCryptomusProcessing || isAlipayProcessing || isPaynowProcessing || isVietqrProcessing || isAfricaPaymentsProcessing || isKoreaPaymentsProcessing || isUnauthorized || isAnyWalletLoading
                                   ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed border border-slate-700/30'
                                   : selectedMethod === method.id
                                     ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
@@ -1018,7 +1342,7 @@ const AddFunds: React.FC = () => {
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Amount Input Section */}
-                {selectedMethod && selectedMethod !== 'static-wallets' && (
+                {selectedMethod && selectedMethod !== 'static-wallets' && selectedMethod !== 'africaPayments' && selectedMethod !== 'koreaPayments' && (
                   <div ref={amountSectionRef} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/section">
                     <div className="flex items-center space-x-3 mb-4 group-hover/section:transform group-hover/section:translate-y-1 transition-transform duration-300">
                       <p className="font-bold bg-gradient-to-r from-white via-blue-100 to-cyan-100 bg-clip-text text-transparent group-hover/section:from-cyan-300 group-hover/section:to-blue-300 transition-all duration-500" style={{ fontSize: '1.2rem' }}>Amount to Add</p>
@@ -1032,7 +1356,7 @@ const AddFunds: React.FC = () => {
                             {selectedMethod === 'amazon' && (
                               <span className="ml-4">Fee: $0.3</span>
                             )}
-                            {selectedMethod === 'alipay' && (
+                            {(selectedMethod === 'alipay_cn' || selectedMethod === 'paynow_sg' || selectedMethod === 'vietqr_vn' || selectedMethod === 'africaPayments' || selectedMethod === 'koreaPayments') && (
                               <span className="ml-4">(Fees may be applied)</span>
                             )}
                           </div>
@@ -1385,29 +1709,302 @@ const AddFunds: React.FC = () => {
                   </div>
                 )}
 
+                {/* Alipay Error Modal */}
+                {showAlipayErrorModal && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+                    <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+                      <div className="text-center">
+                        <div className="mb-4">
+                          <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-medium text-white mb-2">Payment Error</h3>
+                        <p className="text-blue-200 mb-4">{alipayErrorMessage}</p>
+                        <button
+                          onClick={handleAlipayErrorModalClose}
+                          className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                        >
+                          OK
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* PayNow Error Modal */}
+                {showPaynowErrorModal && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+                    <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+                      <div className="text-center">
+                        <div className="mb-4">
+                          <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-medium text-white mb-2">Payment Error</h3>
+                        <p className="text-blue-200 mb-4">{paynowErrorMessage}</p>
+                        <button
+                          onClick={handlePaynowErrorModalClose}
+                          className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                        >
+                          OK
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* VietQR Error Modal */}
+                {showVietqrErrorModal && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+                    <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+                      <div className="text-center">
+                        <div className="mb-4">
+                          <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-medium text-white mb-2">Payment Error</h3>
+                        <p className="text-blue-200 mb-4">{vietqrErrorMessage}</p>
+                        <button
+                          onClick={handleVietqrErrorModalClose}
+                          className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                        >
+                          OK
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Africa Payments Methods Selection */}
+                {selectedMethod === 'africaPayments' && (
+                  <div ref={africaPaymentsMethodsSectionRef} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/section">
+                    <div className="flex items-center space-x-3 mb-4 group-hover/section:transform group-hover/section:translate-y-1 transition-transform duration-300">
+                      <p className="font-bold bg-gradient-to-r from-white via-blue-100 to-cyan-100 bg-clip-text text-transparent group-hover/section:from-cyan-300 group-hover/section:to-blue-300 transition-all duration-500" style={{ fontSize: '1.2rem' }}>Select Payment Method</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {africaPaymentMethods.map((method) => (
+                        <div key={method.id} className="p-6 rounded-xl border transition-all duration-300 group/item bg-slate-700/30 border-slate-600/30 hover:border-slate-500/50 cursor-pointer">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex flex-col sm:flex-row items-center sm:space-x-4 space-y-2 sm:space-y-0 transition-transform duration-500 flex-1 min-w-0 group-hover/item:transform group-hover/item:translate-x-2">
+                              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
+                                {method.icon}
+                              </div>
+                              <div className="min-w-0 flex-1 text-center sm:text-left">
+                                <h4 className="font-bold transition-colors duration-300 text-white group-hover/item:text-blue-100" style={{ fontSize: '1rem' }}>{method.name}</h4>
+                                <p className="transition-colors duration-300 text-slate-400 group-hover/item:text-slate-300">{method.description}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between sm:justify-end space-x-2 sm:space-x-4 flex-shrink-0 min-w-0">
+                              <button
+                                type="button"
+                                disabled={isAfricaPaymentsProcessing || isUnauthorized}
+                                onClick={() => {
+                                  if (selectedAfricaPaymentsMethod === method.id) {
+                                    setSelectedAfricaPaymentsMethod('');
+                                  } else {
+                                    setSelectedAfricaPaymentsMethod(method.id);
+                                  }
+                                }}
+                                style={{ width: '80px' }}
+                                className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 ${isAfricaPaymentsProcessing || isUnauthorized
+                                  ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed border border-slate-700/30'
+                                  : selectedAfricaPaymentsMethod === method.id
+                                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
+                                    : 'bg-slate-600/50 hover:bg-slate-500/50 text-slate-300 hover:text-white border border-slate-500/30 hover:border-slate-400/50'
+                                  }`}
+                              >
+                                {selectedAfricaPaymentsMethod === method.id ? 'Selected' : 'Select'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Korea Payments Methods Selection */}
+                {selectedMethod === 'koreaPayments' && (
+                  <div ref={koreaPaymentsMethodsSectionRef} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/section">
+                    <div className="flex items-center space-x-3 mb-4 group-hover/section:transform group-hover/section:translate-y-1 transition-transform duration-300">
+                      <p className="font-bold bg-gradient-to-r from-white via-blue-100 to-cyan-100 bg-clip-text text-transparent group-hover/section:from-cyan-300 group-hover/section:to-blue-300 transition-all duration-500" style={{ fontSize: '1.2rem' }}>Select Payment Method</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {koreaPaymentMethods.map((method) => (
+                        <div key={method.id} className="p-6 rounded-xl border transition-all duration-300 group/item bg-slate-700/30 border-slate-600/30 hover:border-slate-500/50 cursor-pointer">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex flex-col sm:flex-row items-center sm:space-x-4 space-y-2 sm:space-y-0 transition-transform duration-500 flex-1 min-w-0 group-hover/item:transform group-hover/item:translate-x-2">
+                              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
+                                {method.icon}
+                              </div>
+                              <div className="min-w-0 flex-1 text-center sm:text-left">
+                                <h4 className="font-bold transition-colors duration-300 text-white group-hover/item:text-blue-100" style={{ fontSize: '1rem' }}>{method.name}</h4>
+                                <p className="transition-colors duration-300 text-slate-400 group-hover/item:text-slate-300">{method.description}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between sm:justify-end space-x-2 sm:space-x-4 flex-shrink-0 min-w-0">
+                              <button
+                                type="button"
+                                disabled={isKoreaPaymentsProcessing || isUnauthorized}
+                                onClick={() => {
+                                  if (selectedKoreaPaymentsMethod === method.id) {
+                                    setSelectedKoreaPaymentsMethod('');
+                                  } else {
+                                    setSelectedKoreaPaymentsMethod(method.id);
+                                  }
+                                }}
+                                style={{ width: '80px' }}
+                                className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 ${isKoreaPaymentsProcessing || isUnauthorized
+                                  ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed border border-slate-700/30'
+                                  : selectedKoreaPaymentsMethod === method.id
+                                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
+                                    : 'bg-slate-600/50 hover:bg-slate-500/50 text-slate-300 hover:text-white border border-slate-500/30 hover:border-slate-400/50'
+                                  }`}
+                              >
+                                {selectedKoreaPaymentsMethod === method.id ? 'Selected' : 'Select'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Amount Input Section for Africa/Korea Payments */}
+                {((selectedMethod === 'africaPayments' && selectedAfricaPaymentsMethod) || (selectedMethod === 'koreaPayments' && selectedKoreaPaymentsMethod)) && (
+                  <div ref={amountSectionRef} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/section">
+                    <div className="flex items-center space-x-3 mb-4 group-hover/section:transform group-hover/section:translate-y-1 transition-transform duration-300">
+                      <p className="font-bold bg-gradient-to-r from-white via-blue-100 to-cyan-100 bg-clip-text text-transparent group-hover/section:from-cyan-300 group-hover/section:to-blue-300 transition-all duration-500" style={{ fontSize: '1.2rem' }}>Amount to Add</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="bg-slate-700/50 rounded-xl p-4 border border-slate-600/50">
+                        <div className="text-sm text-slate-400">
+                          <span>Minimum: $2</span>
+                          <span className="ml-4">(Fees may be applied)</span>
+                        </div>
+                      </div>
+
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <span className="text-slate-400 text-md font-bold">$</span>
+                        </div>
+                        <input
+                          type="number"
+                          value={amount}
+                          onChange={(e) => {
+                            let newValue = e.target.value;
+                            newValue = newValue.replace(/-/g, '');
+                            const decimalParts = newValue.split('.');
+                            if (decimalParts.length > 1 && decimalParts[1].length <= 2) {
+                              const numValue = parseFloat(newValue);
+                              if (numValue <= 10000) {
+                                setAmount(newValue);
+                              }
+                            } else if (decimalParts.length === 1) {
+                              const numValue = parseFloat(newValue);
+                              if (newValue === '' || numValue <= 10000) {
+                                setAmount(newValue);
+                              }
+                            }
+                          }}
+                          onWheel={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onFocus={(e) => {
+                            const handleWheel = (event: Event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                            };
+                            e.target.addEventListener('wheel', handleWheel, { passive: false });
+                            e.target.addEventListener('mousewheel', handleWheel, { passive: false });
+                          }}
+                          onBlur={(e) => {
+                            const handleWheel = (event: Event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                            };
+                            e.target.removeEventListener('wheel', handleWheel);
+                            e.target.removeEventListener('mousewheel', handleWheel);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                              e.preventDefault();
+                            }
+                          }}
+                          placeholder="0"
+                          className="w-full pl-10 pr-4 py-3 border-2 rounded-xl text-md font-semibold transition-all duration-300 backdrop-blur-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-slate-800/50 border-slate-600/50 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500/50"
+                          required
+                        />
+                      </div>
+
+                      {/* Quick Amount Buttons */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[10, 25, 50, 100].map((quickAmount) => (
+                          <button
+                            key={quickAmount}
+                            type="button"
+                            onClick={() => {
+                              setAmount(quickAmount.toString());
+                              setTimeout(() => {
+                                if (submitButtonRef.current) {
+                                  submitButtonRef.current.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'start'
+                                  });
+                                }
+                              }, 150);
+                            }}
+                            className="px-4 py-2 rounded-lg transition-all duration-300 text-sm font-medium bg-slate-700/50 hover:bg-blue-600/20 text-slate-300 hover:text-blue-400 border border-slate-600/30 hover:border-blue-500/50"
+                          >
+                            ${quickAmount}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Submit Button */}
-                {selectedMethod && selectedMethod !== 'static-wallets' && amount && parseFloat(amount) > 0 && !(amount.startsWith('0') && amount.length > 1 && !amount.includes('.')) && !(selectedMethod === 'binance' && showBinanceInstructions) && (
+                {selectedMethod && selectedMethod !== 'static-wallets' && (selectedMethod !== 'africaPayments' || selectedAfricaPaymentsMethod) && (selectedMethod !== 'koreaPayments' || selectedKoreaPaymentsMethod) && amount && parseFloat(amount) > 0 && !(amount.startsWith('0') && amount.length > 1 && !amount.includes('.')) && !(selectedMethod === 'binance' && showBinanceInstructions) && (
                   <div ref={submitButtonRef} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/section">
                     <button
                       type="submit"
-                      disabled={isProcessing || (selectedMethod === 'cryptomus' && isUnauthorized) || (selectedMethod === 'alipay' && isUnauthorized)}
-                      className={`w-full font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform shadow-xl ${isProcessing || (selectedMethod === 'cryptomus' && isUnauthorized) || (selectedMethod === 'alipay' && isUnauthorized)
+                      disabled={isProcessing || (selectedMethod === 'cryptomus' && isUnauthorized) || (selectedMethod === 'africaPayments' && isUnauthorized) || (selectedMethod === 'koreaPayments' && isUnauthorized) || (selectedMethod === 'alipay_cn' && isUnauthorized) || (selectedMethod === 'paynow_sg' && isUnauthorized) || (selectedMethod === 'vietqr_vn' && isUnauthorized)}
+                      className={`w-full font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform shadow-xl ${isProcessing || (selectedMethod === 'cryptomus' && isUnauthorized) || (selectedMethod === 'africaPayments' && isUnauthorized) || (selectedMethod === 'koreaPayments' && isUnauthorized) || (selectedMethod === 'alipay_cn' && isUnauthorized) || (selectedMethod === 'paynow_sg' && isUnauthorized) || (selectedMethod === 'vietqr_vn' && isUnauthorized)
                         ? 'bg-slate-700/50 text-slate-400 cursor-not-allowed'
                         : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white hover:scale-[1.02]'
                         }`}
                     >
-                      {isProcessing && selectedMethod !== 'cryptomus' && selectedMethod !== 'alipay' ? (
+                      {isProcessing && selectedMethod !== 'cryptomus' && selectedMethod !== 'africaPayments' && selectedMethod !== 'koreaPayments' ? (
                         <div className="flex items-center justify-center space-x-2">
                           <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                         </div>
-                      ) : isProcessing && (selectedMethod === 'cryptomus' || selectedMethod === 'alipay') ? (
+                      ) : isProcessing && (selectedMethod === 'cryptomus' || selectedMethod === 'africaPayments' || selectedMethod === 'koreaPayments') ? (
                         <div className="flex items-center justify-center space-x-2">
                           <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                         </div>
                       ) : (
                         selectedMethod === 'amazon'
                           ? `Add $${(parseFloat(amount) + 0.3).toFixed(2)} via ${selectedPaymentMethod?.name}`
-                          : `Add $${amount} via ${selectedPaymentMethod?.name}`
+                          : selectedMethod === 'africaPayments'
+                            ? `Add $${amount} via ${africaPaymentMethods.find(m => m.id === selectedAfricaPaymentsMethod)?.name}`
+                            : selectedMethod === 'koreaPayments'
+                              ? `Add $${amount} via ${koreaPaymentMethods.find(m => m.id === selectedKoreaPaymentsMethod)?.name}`
+                              : `Add $${amount} via ${selectedPaymentMethod?.name}`
                       )}
                     </button>
                   </div>
@@ -1546,8 +2143,8 @@ const AddFunds: React.FC = () => {
         </div>
       )}
 
-      {/* Alipay Error Modal */}
-      {showAlipayErrorModal && (
+      {/* Africa Payments Error Modal */}
+      {showAfricaPaymentsErrorModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
           <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
             <div className="text-center">
@@ -1559,9 +2156,34 @@ const AddFunds: React.FC = () => {
                 </div>
               </div>
               <h3 className="text-lg font-medium text-white mb-2">Payment Error</h3>
-              <p className="text-blue-200 mb-4">{alipayErrorMessage}</p>
+              <p className="text-blue-200 mb-4">{africaPaymentsErrorMessage}</p>
               <button
-                onClick={handleAlipayErrorModalClose}
+                onClick={handleAfricaPaymentsErrorModalClose}
+                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Korea Payments Error Modal */}
+      {showKoreaPaymentsErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Payment Error</h3>
+              <p className="text-blue-200 mb-4">{koreaPaymentsErrorMessage}</p>
+              <button
+                onClick={handleKoreaPaymentsErrorModalClose}
                 className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
               >
                 OK

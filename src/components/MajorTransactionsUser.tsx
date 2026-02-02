@@ -311,7 +311,7 @@ const MajorTransactionsUser: React.FC = () => {
                     {/* Custom Dropdown Options */}
                     {isPaymentMethodDropdownOpen && (
                       <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
-                        {['All', 'Admin Update', 'Alipay', 'Amazon Pay', 'Cryptomus', 'Static Wallets'].map((method) => (
+                        {['All', 'Admin Update', 'Amazon Pay', 'Cryptomus', 'Static Wallets', 'Alipay (China)', 'PayNow (Singapore)', 'VietQR (Vietnam)', 'Credit Card (South Africa)', 'Bank Card (Nigeria)', 'Bank Transfer (Nigeria)', 'Airtel Money (Kenya)', 'MTN Mobile Money (Rwanda)', 'Airtel Money (Rwanda)', 'Tigo Pesa (Tanzania)', 'MTN Mobile Money (Uganda)', 'Airtel Money (Uganda)', 'Credit Card (South Korea)', 'PAYCO (South Korea)', 'Samsung Pay (South Korea)', 'KakaoPay (South Korea)'].map((method) => (
                           <div
                             key={method}
                             onClick={() => {

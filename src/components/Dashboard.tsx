@@ -673,8 +673,8 @@ const Dashboard: React.FC = () => {
   const newsItems = [
     {
       id: 1,
-      title: "Alipay Now Available",
-      description: "Pay with Alipay - fast and secure payments from China",
+      title: "New Payment Methods",
+      description: "From China and Africa",
       time: "30/01/26",
       type: "product",
       urgent: true
