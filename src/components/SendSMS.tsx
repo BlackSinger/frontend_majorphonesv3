@@ -66,6 +66,8 @@ const SendSMS: React.FC = () => {
     const [smsMessage, setSmsMessage] = useState('');
     const [smsCountryResults, setSmsCountryResults] = useState<CountryData[]>([]);
     const [smsSearching, setSmsSearching] = useState(false);
+    const [pricesChecked, setPricesChecked] = useState(false);
+    const [smsCurrentPage, setSmsCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
     useEffect(() => {
@@ -444,6 +446,28 @@ const SendSMS: React.FC = () => {
         }
     };
 
+    // Lógica de paginación para resultados de SMS
+    const smsTotalPages = Math.ceil(smsCountryResults.length / itemsPerPage);
+    const smsStartIndex = (smsCurrentPage - 1) * itemsPerPage;
+    const smsEndIndex = smsStartIndex + itemsPerPage;
+    const smsPaginatedResults = useMemo(() => {
+        return smsCountryResults.slice(smsStartIndex, smsEndIndex);
+    }, [smsCountryResults, smsStartIndex, smsEndIndex]);
+
+    const handleCheckFares = async () => {
+        setSmsCurrentPage(1);
+        const validOnly = phoneNumbers.filter(isNumberValid);
+
+        if (validOnly.length > 0) {
+            // 1. Mostramos el spinner EN EL BOTÓN (porque smsSearching será true)
+            // pero NO activamos pricesChecked todavía, así que la tabla sigue oculta.
+            await detectCountriesFromNumbers(validOnly);
+
+            // 2. Solo cuando Firestore responde, activamos la vista de resultados.
+            setPricesChecked(true);
+        }
+    };
+
     // Agregar número como chip al presionar Enter
     const handlePhoneKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && phoneInput.trim()) {
@@ -459,7 +483,8 @@ const SendSMS: React.FC = () => {
             if (!phoneNumbers.includes(newNumber)) {
                 const updatedNumbers = [...phoneNumbers, newNumber];
                 setPhoneNumbers(updatedNumbers);
-                detectCountriesFromNumbers(updatedNumbers);
+                setPricesChecked(false);
+                //detectCountriesFromNumbers(updatedNumbers);
             }
             setPhoneInput('');
         }
@@ -469,7 +494,8 @@ const SendSMS: React.FC = () => {
     const removePhoneNumber = (numberToRemove: string) => {
         const updatedNumbers = phoneNumbers.filter(n => n !== numberToRemove);
         setPhoneNumbers(updatedNumbers);
-        detectCountriesFromNumbers(updatedNumbers);
+        //detectCountriesFromNumbers(updatedNumbers);
+        setPricesChecked(false);
     };
 
     // Calcular precio total
@@ -508,6 +534,14 @@ const SendSMS: React.FC = () => {
                             JERSEY_PREFIXES.some(p => next4.startsWith(p));
                         if (!isIsland && !['1', '2', '3', '5', '8'].includes(next1) && next2 !== '70') matches = true;
                     }
+                } else if (result.areaCode === '47') {
+                    const next1 = num.charAt(2);
+                    const next2 = num.substring(2, 4);
+                    if (!['2', '3', '5', '6', '8'].includes(next1) && next2 !== '79') matches = true;
+                } else if (result.areaCode === '61') {
+                    if (['4', '5'].includes(num.charAt(2))) matches = true;
+                } else if (result.areaCode === '212') {
+                    if (['6', '7'].includes(num.charAt(3))) matches = true;
                 } else if (result.areaCode === '262') {
                     const next3 = num.substring(3, 6);
                     if (result.isoCountry === 'YT' && MAYOTTE_PREFIXES.includes(next3)) matches = true;
@@ -569,7 +603,7 @@ const SendSMS: React.FC = () => {
 
     const isNumberValid = (num: string) => {
         const clean = num.replace(/[^0-9]/g, '');
-        if (clean.length === 0) return false;
+        if (clean.length === 0 || clean.startsWith('0')) return false;
 
         // Buscamos en countriesData (estático) para validación instantánea y sin parpadeos
         const sortedCountries = [...countriesData].sort((a, b) => b.areaCode.length - a.areaCode.length);
@@ -1012,10 +1046,35 @@ const SendSMS: React.FC = () => {
                                         scrollbarColor: 'rgba(71, 85, 105, 0.6) rgba(30, 41, 59, 0.3)'
                                     }}
                                 />
+
+                                {/* NUEVO BOTÓN: Check Fares */}
+                                {(!pricesChecked && phoneNumbers.some(n => isNumberValid(n))) && (
+                                    <div className="flex justify-center mt-4">
+                                        <button
+                                            onClick={handleCheckFares}
+                                            disabled={smsSearching}
+                                            className="group px-6 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-sm rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-[1.02] border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[140px]"
+                                        >
+                                            <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                            <div className="relative z-10 flex items-center justify-center">
+                                                {smsSearching ? (
+                                                    <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                ) : (
+                                                    <span className="group-hover:tracking-wide transition-all duration-300">
+                                                        Check Fares
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* 3) Price Table (solo si hay números) */}
-                            {(smsCountryResults.length > 0 || smsSearching) && (
+                            {(pricesChecked && !smsSearching && smsCountryResults.length > 0) && (
                                 <div className="overflow-x-auto">
                                     <table className="w-full">
                                         <thead>
@@ -1026,53 +1085,25 @@ const SendSMS: React.FC = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {smsSearching ? (
-                                                <tr>
-                                                    <td colSpan={3} className="px-6 py-10">
-                                                        <div className="flex flex-col items-center justify-center">
-                                                            <svg className="animate-spin h-8 w-8 text-white" fill="none" viewBox="0 0 24 24">
-                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                            </svg>
-                                                            <p className="text-slate-400 mt-3 text-sm">Loading prices...</p>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ) : smsCountryResults.length > 0 ? (
-                                                smsCountryResults.map((result) => {
-                                                    // CONTEO INTELIGENTE: Diferencia entre USA, Canadá y el Caribe usando el código de área
+                                            {smsCountryResults.length > 0 ? (
+                                                smsPaginatedResults.map((result) => {
                                                     const count = phoneNumbers.filter(n => {
                                                         const clean = n.replace(/[^0-9]/g, '');
 
-                                                        // 1. Diferenciación para +1 (USA / Canadá / Caribe)
                                                         if (result.areaCode === '1') {
                                                             const next3 = clean.substring(1, 4);
                                                             const isCanada = CANADA_AREA_CODES.has(next3);
                                                             const isCaribbean = CARIBBEAN_PREFIXES.includes(next3);
-
-                                                            // Si la fila es de Canadá, solo contamos los que sean de Canadá
                                                             if (result.isoCountry === 'CA') return isCanada;
-
-                                                            // Si la fila es de un país del Caribe (ej: Bahamas), el sistema lo 
-                                                            // contará automáticamente por su areaCode de 4 dígitos (1242).
-
-                                                            // Si la fila es de USA, contamos solo si empieza con 1, NO es Canadá y NO es Caribe
                                                             if (result.isoCountry === 'US') {
                                                                 return clean.startsWith('1') && !isCanada && !isCaribbean;
                                                             }
-
-                                                            // Si es Puerto Rico, lo contamos por su código de país
                                                             if (result.isoCountry === 'PR') return next3 === '787' || next3 === '939';
                                                         } else if (result.areaCode === '7') {
                                                             const next1 = clean.charAt(1);
                                                             const next3 = clean.substring(1, 4);
-                                                            if (result.isoCountry === 'RU') {
-                                                                return next1 === '9'; // Solo cuenta si es móvil de Rusia (+7 9...)
-                                                            }
-                                                            if (result.isoCountry === 'KZ') {
-                                                                // Cuenta si es móvil de Kazakhstan (+7 6... o la lista de móviles 7xx)
-                                                                return next1 === '6' || KAZAKHSTAN_VALID_3DIGIT.includes(next3);
-                                                            }
+                                                            if (result.isoCountry === 'RU') return next1 === '9';
+                                                            if (result.isoCountry === 'KZ') return next1 === '6' || KAZAKHSTAN_VALID_3DIGIT.includes(next3);
                                                         } else if (result.areaCode === '44') {
                                                             const next4 = clean.substring(2, 6);
                                                             if (result.isoCountry === 'IM') return ISLE_OF_MAN_PREFIXES.some(p => next4.startsWith(p));
@@ -1086,6 +1117,16 @@ const SendSMS: React.FC = () => {
                                                                     JERSEY_PREFIXES.some(p => next4.startsWith(p));
                                                                 return !isIsland && !['1', '2', '3', '5', '8'].includes(next1) && next2 !== '70';
                                                             }
+                                                        } else if (result.areaCode === '47') {
+                                                            const next1 = clean.charAt(2);
+                                                            const next2 = clean.substring(2, 4);
+                                                            if (result.isoCountry === 'NO') return !['2', '3', '5', '6', '8'].includes(next1) && next2 !== '79';
+                                                        } else if (result.areaCode === '61') {
+                                                            const next1 = clean.charAt(2);
+                                                            if (result.isoCountry === 'AU') return ['4', '5'].includes(next1);
+                                                        } else if (result.areaCode === '212') {
+                                                            const next1 = clean.charAt(3);
+                                                            if (result.isoCountry === 'MA') return ['6', '7'].includes(next1);
                                                         } else if (result.areaCode === '262') {
                                                             const next3 = clean.substring(3, 6);
                                                             if (result.isoCountry === 'YT') return MAYOTTE_PREFIXES.includes(next3);
@@ -1099,15 +1140,11 @@ const SendSMS: React.FC = () => {
                                                         } else if (result.areaCode === '672') {
                                                             if (result.isoCountry === 'NF') return clean.substring(3, 5) === '38';
                                                         }
-
-                                                        // Para el resto de países (Bahamas +1242, Barbados +1246, etc.) 
-                                                        // el sistema los cuenta bien porque su areaCode es de 4 dígitos.
                                                         return clean.startsWith(result.areaCode);
                                                     }).length;
 
                                                     return (
                                                         <tr key={result.id} className="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
-                                                            {/* Cambiamos text-center por text-left y justify-center por justify-start */}
                                                             <td className="px-6 py-4 text-left">
                                                                 <div className="flex items-center justify-start gap-3">
                                                                     {getFlagEmoji(result.isoCountry)}
@@ -1137,8 +1174,60 @@ const SendSMS: React.FC = () => {
                                 </div>
                             )}
 
+                            {/* Pagination for SMS Results */}
+                            {pricesChecked && !smsSearching && smsCountryResults.length > 0 && smsTotalPages > 1 && (
+                                <div className="mt-6 mb-6">
+                                    <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
+                                        Showing {smsStartIndex + 1} to {Math.min(smsEndIndex, smsCountryResults.length)} of {smsCountryResults.length} results
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                        <div className="hidden md:block text-sm text-slate-400">
+                                            Showing {smsStartIndex + 1} to {Math.min(smsEndIndex, smsCountryResults.length)} of {smsCountryResults.length} results
+                                        </div>
+
+                                        <div className="flex items-center space-x-2 mx-auto md:mx-0">
+                                            <button
+                                                onClick={() => setSmsCurrentPage(prev => Math.max(prev - 1, 1))}
+                                                disabled={smsCurrentPage === 1}
+                                                className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                                </svg>
+                                            </button>
+
+                                            <div className="flex space-x-1">
+                                                {Array.from({ length: Math.min(2, smsTotalPages - (smsCurrentPage - 1)) }, (_, i) => smsCurrentPage + i).map((page) => (
+                                                    <button
+                                                        key={page}
+                                                        onClick={() => setSmsCurrentPage(page)}
+                                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${smsCurrentPage === page
+                                                            ? 'bg-emerald-500 text-white'
+                                                            : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                                                            }`}
+                                                    >
+                                                        {page}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            <button
+                                                onClick={() => setSmsCurrentPage(prev => Math.min(prev + 1, smsTotalPages))}
+                                                disabled={smsCurrentPage === smsTotalPages}
+                                                className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* 4) Total Price + Send Button */}
-                            {phoneNumbers.length > 0 && smsCountryResults.length > 0 && (
+                            {(pricesChecked && !smsSearching && smsCountryResults.length > 0) && (
                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-slate-800/30 rounded-2xl border border-slate-700/50">
                                     <div className="text-center sm:text-left">
                                         <p className="text-sm text-slate-400 tracking-wider font-semibold">Total price</p>
