@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { db } from '../firebase/config';
+import { db, auth } from '../firebase/config';
 import { doc, getDoc } from 'firebase/firestore';
 import countriesData from '../countries_export.json';
 import countriesSimple from '../countries_simple.json';
@@ -68,6 +68,12 @@ const SendSMS: React.FC = () => {
     const [smsSearching, setSmsSearching] = useState(false);
     const [pricesChecked, setPricesChecked] = useState(false);
     const [smsCurrentPage, setSmsCurrentPage] = useState(1);
+    const [sending, setSending] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [errorModalTitle, setErrorModalTitle] = useState('Error');
+    const [errorModalBody, setErrorModalBody] = useState('');
+    const [failedNumbers, setFailedNumbers] = useState<string[]>([]);
+    const [showPartialSuccessModal, setShowPartialSuccessModal] = useState(false);
     const itemsPerPage = 10;
 
     useEffect(() => {
@@ -454,7 +460,7 @@ const SendSMS: React.FC = () => {
         return smsCountryResults.slice(smsStartIndex, smsEndIndex);
     }, [smsCountryResults, smsStartIndex, smsEndIndex]);
 
-    const handleCheckFares = async () => {
+    const handleCheckPrices = async () => {
         setSmsCurrentPage(1);
         const validOnly = phoneNumbers.filter(isNumberValid);
 
@@ -681,6 +687,91 @@ const SendSMS: React.FC = () => {
             }
         }
         return false;
+    };
+
+    const handleSendSMS = async () => {
+        if (!auth.currentUser) {
+            setErrorModalTitle('Error');
+            setErrorModalBody('You are not authenticated or your token is invalid');
+            setShowErrorModal(true);
+            return;
+        }
+
+        setSending(true);
+        // Al poner sending=true, la UI se deshabilita automáticamente (ver paso 4)
+
+        try {
+            const idToken = await auth.currentUser.getIdToken();
+            console.log(idToken);
+
+            const payload = {
+                numbers: phoneNumbers.map(n => n.replace('+', '')), // Array sin el +
+                message: smsMessage,
+                country: smsCountryResults.map(c => c.country) // Array solo nombres
+            };
+
+            console.log(payload);
+
+            const response = await fetch('https://sendsms-ezeznlhr5a-uc.a.run.app', {
+                method: 'POST',
+                headers: {
+                    'authorization': idToken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data: any = await response.json();
+            console.log('Respuesta del Backend:', data);
+
+            if (response.ok) {
+                // Éxito 200
+                setSending(false);
+
+                if (data.failedNumbers && Array.isArray(data.failedNumbers) && data.failedNumbers.length > 0) {
+                    setFailedNumbers(data.failedNumbers);
+                    setShowPartialSuccessModal(true);
+                } else {
+                    setShowSuccessModal(true);
+                }
+            } else {
+                // Errores
+                setSending(false);
+
+                if (response.status === 400) {
+                    if (data.error === 'Missing parameters') {
+                        setErrorModalTitle('Error');
+                        setErrorModalBody('Please refresh the page and try again');
+                    } else if (data.error === 'Message flagged for moderation') {
+                        setErrorModalTitle('SMS not sent');
+                        setErrorModalBody('Your message has been flagged for moderation');
+                    } else if (data.error === 'Country not found') {
+                        setErrorModalTitle('SMS not sent');
+                        setErrorModalBody('One or more numbers don\'t belong to the allowed countries');
+                    } else if (data.error === 'Insufficient balance') {
+                        setErrorModalTitle('Insufficient balance');
+                        setErrorModalBody('Your message cannot be sent, please recharge your account');
+                    } else {
+                        // Fallback
+                        setErrorModalTitle('Error');
+                        setErrorModalBody(data.error || 'An error occurred');
+                    }
+                } else if (response.status === 500) {
+                    setErrorModalTitle('Internal server error');
+                    setErrorModalBody('Please contact our customer support');
+                } else {
+                    setErrorModalTitle('Error');
+                    setErrorModalBody('An unexpected error occurred');
+                }
+                setShowErrorModal(true); // Usamos el estado existente para mostrar, pero con título/cuerpo dinámicos
+            }
+        } catch (error) {
+            console.error(error);
+            setSending(false);
+            setErrorModalTitle('Internal server error');
+            setErrorModalBody('Please contact our customer support');
+            setShowErrorModal(true);
+        }
     };
 
     return (
@@ -977,7 +1068,7 @@ const SendSMS: React.FC = () => {
                                     Recipient phone numbers
                                 </label>
                                 <div
-                                    className={`flex flex-wrap items-center gap-2 w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl shadow-inner hover:border-slate-500/50 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500/50 transition-all duration-300 min-h-[48px] max-h-[120px] overflow-y-auto dashboard-scrollbar ${smsSearching ? 'pointer-events-none opacity-60' : ''}`}
+                                    className={`flex flex-wrap items-center gap-2 w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl shadow-inner hover:border-slate-500/50 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500/50 transition-all duration-300 min-h-[48px] max-h-[120px] overflow-y-auto dashboard-scrollbar ${smsSearching || sending ? 'pointer-events-none opacity-60' : ''}`}
                                     style={{
                                         scrollbarWidth: 'thin',
                                         scrollbarColor: 'rgba(71, 85, 105, 0.6) rgba(30, 41, 59, 0.3)'
@@ -996,8 +1087,8 @@ const SendSMS: React.FC = () => {
                                                 {number}
                                                 <button
                                                     onClick={() => removePhoneNumber(number)}
-                                                    className={`ml-0.5 transition-colors duration-200 ${valid ? 'text-emerald-400' : 'text-red-400'
-                                                        } hover:text-red-400`}
+                                                    disabled={sending}
+                                                    className={`ml-0.5 transition-colors duration-200 ${valid ? 'text-emerald-400' : 'text-red-400'} hover:text-red-400 ${sending ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                 >
                                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -1007,6 +1098,7 @@ const SendSMS: React.FC = () => {
                                         );
                                     })}
                                     <input
+                                        disabled={sending}
                                         type="text"
                                         value={phoneInput}
                                         onChange={(e) => setPhoneInput(e.target.value.replace(/[^0-9]/g, ''))}
@@ -1031,6 +1123,7 @@ const SendSMS: React.FC = () => {
                                     Message ({smsMessage.length}/160)
                                 </label>
                                 <textarea
+                                    disabled={sending}
                                     value={smsMessage}
                                     onChange={(e) => {
                                         if (e.target.value.length <= 160) {
@@ -1040,18 +1133,18 @@ const SendSMS: React.FC = () => {
                                     maxLength={160}
                                     rows={4}
                                     placeholder="Type your message here..."
-                                    className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 placeholder-slate-400 resize-none dashboard-scrollbar"
+                                    className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 placeholder-slate-400 resize-none dashboard-scrollbar disabled:opacity-50 disabled:cursor-not-allowed"
                                     style={{
                                         scrollbarWidth: 'thin',
                                         scrollbarColor: 'rgba(71, 85, 105, 0.6) rgba(30, 41, 59, 0.3)'
                                     }}
                                 />
 
-                                {/* NUEVO BOTÓN: Check Fares */}
+                                {/* NUEVO BOTÓN: Check Price */}
                                 {(!pricesChecked && phoneNumbers.some(n => isNumberValid(n))) && (
                                     <div className="flex justify-center mt-4">
                                         <button
-                                            onClick={handleCheckFares}
+                                            onClick={handleCheckPrices}
                                             disabled={smsSearching}
                                             className="group px-6 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-sm rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-[1.02] border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[140px]"
                                         >
@@ -1064,7 +1157,7 @@ const SendSMS: React.FC = () => {
                                                     </svg>
                                                 ) : (
                                                     <span className="group-hover:tracking-wide transition-all duration-300">
-                                                        Check Fares
+                                                        Check Price
                                                     </span>
                                                 )}
                                             </div>
@@ -1234,14 +1327,22 @@ const SendSMS: React.FC = () => {
                                         <p className="text-lg font-bold text-emerald-400">${calculateTotalPrice().toFixed(2)}</p>
                                     </div>
                                     <button
-                                        disabled={phoneNumbers.length === 0 || smsMessage.trim() === '' || phoneInput.trim() !== '' || phoneNumbers.some(n => !isNumberValid(n))}
-                                        className="group px-6 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-sm rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-[1.02] border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                                        onClick={handleSendSMS}
+                                        disabled={sending || phoneNumbers.length === 0 || smsMessage.trim() === '' || phoneInput.trim() !== '' || phoneNumbers.some(n => !isNumberValid(n))}
+                                        className="group px-6 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-sm rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-[1.02] border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[140px]"
                                     >
                                         <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                         <div className="relative z-10 flex items-center justify-center">
-                                            <span className="group-hover:tracking-wide transition-all duration-300">
-                                                Send SMS
-                                            </span>
+                                            {sending ? (
+                                                <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            ) : (
+                                                <span className="group-hover:tracking-wide transition-all duration-300">
+                                                    Send SMS
+                                                </span>
+                                            )}
                                         </div>
                                     </button>
                                 </div>
@@ -1251,28 +1352,125 @@ const SendSMS: React.FC = () => {
                 )}
 
                 {/* Error Modal - Firestore Connection Error */}
-                {showErrorModal && error && (
+                {showErrorModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
                         <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
                             <div className="text-center">
                                 <div className="mb-4">
                                     <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
-                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                         </svg>
                                     </div>
                                 </div>
-                                <h3 className="text-lg font-medium text-white mb-2">Search Error</h3>
-                                <p className="text-blue-200 mb-4">{error}</p>
+                                <h3 className="text-lg font-medium text-white mb-2">{errorModalTitle || 'Search Error'}</h3>
+                                {/* Usa errorModalBody si existe, si no usa error (para compatibilidad con búsqueda) */}
+                                <p className="text-blue-200 mb-4">{errorModalBody || error}</p>
                                 <button
                                     onClick={() => {
                                         setShowErrorModal(false);
                                         setError(null);
+                                        setErrorModalBody(''); // Limpiar
+                                        setErrorModalTitle('Error'); // Reset
                                     }}
                                     className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
                                 >
                                     OK
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Success Modal*/}
+                {showSuccessModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+                        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+                            <div className="text-center">
+                                <div className="mb-4">
+                                    <div className="w-12 h-12 mx-auto bg-emerald-500 rounded-full flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-medium text-white mb-2">Success</h3>
+                                <p className="text-blue-200 mb-4">Your SMS has been sent correctly</p>
+                                <button
+                                    onClick={() => setShowSuccessModal(false)}
+                                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                                >
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Partial Success Modal */}
+                {showPartialSuccessModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+                        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+                            <div className="text-center">
+                                <div className="mb-4">
+                                    <div className="w-12 h-12 mx-auto bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-medium text-white mb-2">SMS partially sent</h3>
+
+                                <div className="text-left mb-4">
+                                    <p className="text-blue-200 text-sm mb-2 text-center">Your message could not be sent to these numbers:</p>
+
+                                    {/* Lista con scroll y altura fija */}
+                                    <div className="bg-slate-800/50 rounded-lg p-3 h-32 overflow-y-auto dashboard-scrollbar mb-2 border border-slate-600/30">
+                                        <ul className="space-y-1">
+                                            {failedNumbers.map((num, idx) => (
+                                                <li key={idx} className="text-slate-300 text-sm flex items-center">
+                                                    <span className="mr-2">•</span> {num}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+
+                                    <p className="text-blue-200 text-sm mt-2 text-center">
+                                        You were not charged for these numbers
+                                    </p>
+                                </div>
+
+                                <div className="flex gap-3 justify-center">
+                                    <button
+                                        onClick={() => {
+                                            // 1. Ponemos los números fallidos como chips activos en el input
+                                            setPhoneNumbers(failedNumbers);
+
+                                            // 2. Reseteamos la UI para que desaparezca la tabla y aparezca el botón "Check Price"
+                                            setPricesChecked(false);
+                                            setSmsCountryResults([]);
+                                            setSmsCurrentPage(1);
+                                            setPhoneInput(''); // Limpiamos el input de texto
+
+                                            // 3. Cerramos la modal y limpiamos la lista de fallos
+                                            setShowPartialSuccessModal(false);
+                                            setFailedNumbers([]);
+                                        }}
+                                        className="bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg text-sm min-w-[100px]"
+                                    >
+                                        Try again
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            setShowPartialSuccessModal(false);
+                                            setFailedNumbers([]); // Limpiar estado
+                                        }}
+                                        className="bg-gradient-to-br from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg text-sm"
+                                    >
+                                        OK
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
