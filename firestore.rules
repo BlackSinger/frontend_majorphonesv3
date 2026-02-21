@@ -20,6 +20,12 @@ service cloud.firestore {
       allow write: if false; // No write access
     }
 
+    // Users can only read their own VoIP orders
+    match /voipOrders/{voipOrderId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
+      allow write: if false; // No write access
+    }
+
     // Users can only read their own VCC orders
     match /vccOrders/{vccOrderId} {
       allow read: if request.auth != null && request.auth.uid == resource.data.uid;

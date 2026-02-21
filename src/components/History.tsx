@@ -1049,6 +1049,7 @@ const History: React.FC = () => {
   };
 
   const getCountryInitials = (countryName: string) => {
+    if (!countryName || typeof countryName !== 'string') return 'No country detected';
     switch (countryName) {
       case 'United States':
         return 'US';

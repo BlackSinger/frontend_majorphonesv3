@@ -463,13 +463,8 @@ const SendSMS: React.FC = () => {
     const handleCheckPrices = async () => {
         setSmsCurrentPage(1);
         const validOnly = phoneNumbers.filter(isNumberValid);
-
         if (validOnly.length > 0) {
-            // 1. Mostramos el spinner EN EL BOTÓN (porque smsSearching será true)
-            // pero NO activamos pricesChecked todavía, así que la tabla sigue oculta.
             await detectCountriesFromNumbers(validOnly);
-
-            // 2. Solo cuando Firestore responde, activamos la vista de resultados.
             setPricesChecked(true);
         }
     };
@@ -607,9 +602,13 @@ const SendSMS: React.FC = () => {
         setCurrentPage(1);
     }, [countryFilter]);
 
+    const BLOCKED_AREA_CODES = ['93', '994', '880', '992', '216', '234', '213', '92', '972'];
+
     const isNumberValid = (num: string) => {
         const clean = num.replace(/[^0-9]/g, '');
         if (clean.length === 0 || clean.startsWith('0')) return false;
+
+        if (BLOCKED_AREA_CODES.some(code => clean.startsWith(code))) return false;
 
         // Buscamos en countriesData (estático) para validación instantánea y sin parpadeos
         const sortedCountries = [...countriesData].sort((a, b) => b.areaCode.length - a.areaCode.length);
@@ -697,6 +696,18 @@ const SendSMS: React.FC = () => {
             return;
         }
 
+        const hasBlockedNumbers = phoneNumbers.some(num => {
+            const clean = num.replace(/[^0-9]/g, '');
+            return BLOCKED_AREA_CODES.some(code => clean.startsWith(code));
+        });
+
+        if (hasBlockedNumbers) {
+            setErrorModalTitle('SMS not sent');
+            setErrorModalBody('1 or more phone numbers are not allowed');
+            setShowErrorModal(true);
+            return;
+        }
+
         setSending(true);
         // Al poner sending=true, la UI se deshabilita automáticamente (ver paso 4)
 
@@ -705,9 +716,71 @@ const SendSMS: React.FC = () => {
             console.log(idToken);
 
             const payload = {
-                numbers: phoneNumbers.map(n => n.replace('+', '')), // Array sin el +
+                numbers: phoneNumbers.map(n => n.replace('+', '')),
                 message: smsMessage,
-                country: smsCountryResults.map(c => c.country) // Array solo nombres
+                countries: phoneNumbers.map(num => {
+                    const clean = num.replace(/[^0-9]/g, '');
+                    let detectedCountry = 'Unknown';
+
+                    for (const result of smsCountryResults) {
+                        let matches = false;
+
+                        if (result.areaCode === '1') {
+                            const next3 = clean.substring(1, 4);
+                            const isCanada = CANADA_AREA_CODES.has(next3);
+                            const isCaribbean = CARIBBEAN_PREFIXES.includes(next3);
+                            if (result.isoCountry === 'CA' && isCanada) matches = true;
+                            else if (result.isoCountry === 'US' && !isCanada && !isCaribbean && clean.startsWith('1')) matches = true;
+                            else if (result.isoCountry === 'PR' && (next3 === '787' || next3 === '939')) matches = true;
+                        } else if (result.areaCode === '7') {
+                            const next1 = clean.charAt(1);
+                            const next3 = clean.substring(1, 4);
+                            if (result.isoCountry === 'RU' && next1 === '9') matches = true;
+                            else if (result.isoCountry === 'KZ' && (next1 === '6' || KAZAKHSTAN_VALID_3DIGIT.includes(next3))) matches = true;
+                        } else if (result.areaCode === '44') {
+                            const next4 = clean.substring(2, 6);
+                            if (result.isoCountry === 'IM' && ISLE_OF_MAN_PREFIXES.some(p => next4.startsWith(p))) matches = true;
+                            else if (result.isoCountry === 'GG' && GUERNSEY_PREFIXES.some(p => next4.startsWith(p))) matches = true;
+                            else if (result.isoCountry === 'JE' && JERSEY_PREFIXES.some(p => next4.startsWith(p))) matches = true;
+                            else if (result.isoCountry === 'GB') {
+                                const next1 = clean.charAt(2);
+                                const next2 = clean.substring(2, 4);
+                                const isIsland = ISLE_OF_MAN_PREFIXES.some(p => next4.startsWith(p)) ||
+                                    GUERNSEY_PREFIXES.some(p => next4.startsWith(p)) ||
+                                    JERSEY_PREFIXES.some(p => next4.startsWith(p));
+                                if (!isIsland && !['1', '2', '3', '5', '8'].includes(next1) && next2 !== '70') matches = true;
+                            }
+                        } else if (result.areaCode === '47') {
+                            const next1 = clean.charAt(2);
+                            const next2 = clean.substring(2, 4);
+                            if (!['2', '3', '5', '6', '8'].includes(next1) && next2 !== '79') matches = true;
+                        } else if (result.areaCode === '61') {
+                            if (['4', '5'].includes(clean.charAt(2))) matches = true;
+                        } else if (result.areaCode === '212') {
+                            if (['6', '7'].includes(clean.charAt(3))) matches = true;
+                        } else if (result.areaCode === '262') {
+                            const next3 = clean.substring(3, 6);
+                            if (result.isoCountry === 'YT' && MAYOTTE_PREFIXES.includes(next3)) matches = true;
+                            else if (result.isoCountry === 'RE' && REUNION_PREFIXES.includes(next3)) matches = true;
+                        } else if (result.areaCode === '358') {
+                            const next3 = clean.substring(3, 6);
+                            const next1 = clean.charAt(3);
+                            const next2 = clean.substring(3, 5);
+                            if (result.isoCountry === 'AX' && next3 === ALAND_PREFIX_3) matches = true;
+                            else if (result.isoCountry === 'FI' && next3 !== ALAND_PREFIX_3 && (next1 === FINLAND_VALID_D1 || next2 === FINLAND_VALID_D2)) matches = true;
+                        } else if (result.areaCode === '672') {
+                            if (result.isoCountry === 'NF' && clean.substring(3, 5) === '38') matches = true;
+                        } else if (clean.startsWith(result.areaCode)) {
+                            matches = true;
+                        }
+
+                        if (matches) {
+                            detectedCountry = result.country;
+                            break;
+                        }
+                    }
+                    return detectedCountry;
+                })
             };
 
             console.log(payload);
@@ -1110,7 +1183,10 @@ const SendSMS: React.FC = () => {
 
                                 {phoneNumbers.some(n => !isNumberValid(n)) && (
                                     <p className="text-red-400 text-xs mt-3 font-medium">
-                                        No countries detected from 1 or more phone numbers
+                                        {phoneNumbers.some(num => BLOCKED_AREA_CODES.some(code => num.replace(/[^0-9]/g, '').startsWith(code)))
+                                            ? '1 or more phone numbers are not allowed'
+                                            : 'No countries detected from 1 or more phone numbers'
+                                        }
                                     </p>
                                 )}
                             </div>

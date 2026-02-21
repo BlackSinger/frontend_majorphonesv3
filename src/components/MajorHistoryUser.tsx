@@ -201,6 +201,10 @@ const MajorHistoryUser: React.FC = () => {
         return;
       }
 
+      if (Array.isArray(smsOrdersArray)) {
+        smsOrdersArray = smsOrdersArray.filter((item: any) => item.type !== 'Send Only');
+      }
+
       // Format the data
       const formattedData = smsOrdersArray.map((item: any) => {
         // Format purchase date
@@ -656,6 +660,7 @@ const MajorHistoryUser: React.FC = () => {
   };
 
   const getCountryInitials = (countryName: string) => {
+    if (!countryName || typeof countryName !== 'string') return 'No country detected';
     switch (countryName) {
       case 'United States':
         return 'US';
@@ -826,8 +831,8 @@ const MajorHistoryUser: React.FC = () => {
                 <button
                   onClick={() => handleTabChange('numbers')}
                   className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${activeTab === 'numbers'
-                      ? 'text-emerald-400 border-emerald-400'
-                      : 'text-slate-400 border-transparent hover:text-slate-300'
+                    ? 'text-emerald-400 border-emerald-400'
+                    : 'text-slate-400 border-transparent hover:text-slate-300'
                     }`}
                 >
                   Numbers
@@ -835,8 +840,8 @@ const MajorHistoryUser: React.FC = () => {
                 <button
                   onClick={() => handleTabChange('vcc')}
                   className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${activeTab === 'vcc'
-                      ? 'text-emerald-400 border-emerald-400'
-                      : 'text-slate-400 border-transparent hover:text-slate-300'
+                    ? 'text-emerald-400 border-emerald-400'
+                    : 'text-slate-400 border-transparent hover:text-slate-300'
                     }`}
                 >
                   Virtual Debit Cards
@@ -1115,8 +1120,8 @@ const MajorHistoryUser: React.FC = () => {
                               key={page}
                               onClick={() => setCurrentPage(page)}
                               className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentPage === page
-                                  ? 'bg-emerald-500 text-white'
-                                  : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
                                 }`}
                             >
                               {page}
@@ -1439,8 +1444,8 @@ const MajorHistoryUser: React.FC = () => {
                   onClick={handleCopyUuid}
                   style={{ width: '5.5rem' }}
                   className={`font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg flex items-center justify-center ${isCopied
-                      ? 'bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600'
-                      : 'bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600'
+                    ? 'bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600'
+                    : 'bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600'
                     } text-white`}
                 >
                   {isCopied ? (

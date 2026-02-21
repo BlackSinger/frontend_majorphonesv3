@@ -745,6 +745,10 @@ const MajorHistory: React.FC = () => {
             return;
           }
 
+          if (Array.isArray(smsOrdersArray)) {
+            smsOrdersArray = smsOrdersArray.filter((item: any) => item.type !== 'Send Only');
+          }
+
           const formattedData = smsOrdersArray.map((item: any) => {
             let formattedDate = 'N/A';
             if (item.createdAt && item.createdAt._seconds) {
@@ -1091,6 +1095,7 @@ const MajorHistory: React.FC = () => {
   };
 
   const getCountryInitials = (countryName: string) => {
+    if (!countryName || typeof countryName !== 'string') return 'No country detected';
     switch (countryName) {
       case 'United States':
         return 'US';
@@ -1266,8 +1271,8 @@ const MajorHistory: React.FC = () => {
               <button
                 onClick={() => setActiveTab('numbers')}
                 className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${activeTab === 'numbers'
-                    ? 'text-emerald-400 border-emerald-400'
-                    : 'text-slate-400 border-transparent hover:text-slate-300'
+                  ? 'text-emerald-400 border-emerald-400'
+                  : 'text-slate-400 border-transparent hover:text-slate-300'
                   }`}
               >
                 Numbers
@@ -1275,8 +1280,8 @@ const MajorHistory: React.FC = () => {
               <button
                 onClick={() => setActiveTab('vcc')}
                 className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${activeTab === 'vcc'
-                    ? 'text-emerald-400 border-emerald-400'
-                    : 'text-slate-400 border-transparent hover:text-slate-300'
+                  ? 'text-emerald-400 border-emerald-400'
+                  : 'text-slate-400 border-transparent hover:text-slate-300'
                   }`}
               >
                 Virtual Debit Cards
@@ -1620,8 +1625,8 @@ const MajorHistory: React.FC = () => {
                                       }}
                                       disabled={!record.fullsms || record.fullsms.trim() === ''}
                                       className={`p-2 transition-colors duration-200 rounded-lg ${record.fullsms && record.fullsms.trim() !== ''
-                                          ? 'text-slate-400 hover:text-green-500 hover:bg-slate-700/30 cursor-pointer'
-                                          : 'text-slate-600 cursor-not-allowed opacity-50'
+                                        ? 'text-slate-400 hover:text-green-500 hover:bg-slate-700/30 cursor-pointer'
+                                        : 'text-slate-600 cursor-not-allowed opacity-50'
                                         }`}
                                       title={record.fullsms && record.fullsms.trim() !== '' ? "View Full SMS" : "No Full SMS available"}
                                     >
@@ -1683,8 +1688,8 @@ const MajorHistory: React.FC = () => {
                                   key={page}
                                   onClick={() => setCurrentPage(page)}
                                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentPage === page
-                                      ? 'bg-emerald-500 text-white'
-                                      : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
                                     }`}
                                 >
                                   {page}
@@ -1898,8 +1903,8 @@ const MajorHistory: React.FC = () => {
                                   key={page}
                                   onClick={() => setCurrentVirtualCardPage(page)}
                                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentVirtualCardPage === page
-                                      ? 'bg-emerald-500 text-white'
-                                      : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
                                     }`}
                                 >
                                   {page}
@@ -2069,8 +2074,8 @@ const MajorHistory: React.FC = () => {
                                 key={page}
                                 onClick={() => setCurrentProxyPage(page)}
                                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentProxyPage === page
-                                    ? 'bg-emerald-500 text-white'
-                                    : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                                  ? 'bg-emerald-500 text-white'
+                                  : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
                                   }`}
                               >
                                 {page}
@@ -2127,8 +2132,8 @@ const MajorHistory: React.FC = () => {
                   onClick={handleCopyUuid}
                   style={{ width: '5.5rem' }}
                   className={`font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg flex items-center justify-center ${isCopied
-                      ? 'bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600'
-                      : 'bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600'
+                    ? 'bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600'
+                    : 'bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600'
                     } text-white`}
                 >
                   {isCopied ? (
