@@ -122,7 +122,9 @@ const Tickets: React.FC = () => {
 
     switch (typeValue) {
       case 'number':
-        return 'Number';
+        return 'Non VoIP Number';
+      case 'voip':
+        return 'VoIP Number';
       case 'payment':
         return 'Payment';
       case 'vcc':
@@ -217,7 +219,8 @@ const Tickets: React.FC = () => {
   const issueOptions = [
     'All Issues',
     'Payment',
-    'Number',
+    'Non VoIP Number',
+    'VoIP Number',
     'Virtual Debit Card',
     //'Proxy',
     'Other'
@@ -225,7 +228,8 @@ const Tickets: React.FC = () => {
 
   const issueTypeOptions = [
     'Payment',
-    'Number',
+    'Non VoIP Number',
+    'VoIP Number',
     'Virtual Debit Card',
     //'Proxy',
     'Other'
@@ -464,7 +468,9 @@ const Tickets: React.FC = () => {
     switch (issueType) {
       case 'Payment':
         return 'ID';
-      case 'Number':
+      case 'Non VoIP Number':
+        return 'ID';
+      case 'VoIP Number':
         return 'ID';
       case 'Virtual Debit Card':
         return 'ID';
@@ -723,8 +729,10 @@ const Tickets: React.FC = () => {
     switch (issueType) {
       case 'Payment':
         return 'payment';
-      case 'Number':
+      case 'Non VoIP Number':
         return 'number';
+      case 'VoIP Number':
+        return 'voip';
       case 'Virtual Debit Card':
         return 'vcc';
       //case 'Proxy':
@@ -1217,7 +1225,8 @@ const Tickets: React.FC = () => {
                       </div>
                       <div className="flex-1">
                         <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
-                          {selectedIssueType === 'Number' && 'Enter Order ID'}
+                          {selectedIssueType === 'Non VoIP Number' && 'Enter Order ID'}
+                          {selectedIssueType === 'VoIP Number' && 'Enter Order ID'}
                           {selectedIssueType === 'Virtual Debit Card' && 'Enter Order ID'}
                           {/*{selectedIssueType === 'Proxy' && 'Enter Order ID'}*/}
                           {selectedIssueType === 'Payment' && 'Enter Payment ID'}

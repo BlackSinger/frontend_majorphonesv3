@@ -348,7 +348,7 @@ const History: React.FC = () => {
   const searchParams = new URLSearchParams(location.search);
   const tabFromUrl = searchParams.get('tab');
 
-  const [activeTab, setActiveTab] = useState<'numbers' | 'virtualCards' | 'proxies'>(
+  const [activeTab, setActiveTab] = useState<'numbers' | 'virtualCards' | 'proxies' | 'voip'>(
     tabFromUrl === 'virtualCards' ? 'virtualCards' : tabFromUrl === 'proxies' ? 'proxies' : 'numbers'
   );
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('All');
@@ -403,6 +403,36 @@ const History: React.FC = () => {
 
   const [proxyFirestoreData, setProxyFirestoreData] = useState<ProxyRecord[]>([]);
   const [isLoadingProxies, setIsLoadingProxies] = useState(true);
+
+  const [voipData, setVoipData] = useState<{
+    id: string;
+    orderId: string;
+    number: string;
+    country: string;
+    message: string;
+    price: number;
+    status: string;
+    type: string;
+    createdAt: Date;
+  }[]>([]);
+  const [isLoadingVoip, setIsLoadingVoip] = useState(true);
+  const [voipNumberSearch, setVoipNumberSearch] = useState('');
+  const [voipStatusFilter, setVoipStatusFilter] = useState('All');
+  const [isVoipStatusDropdownOpen, setIsVoipStatusDropdownOpen] = useState(false);
+  const [currentVoipPage, setCurrentVoipPage] = useState(1);
+  const [showVoipInfoModal, setShowVoipInfoModal] = useState(false);
+  const [selectedVoipRecord, setSelectedVoipRecord] = useState<{
+    id: string;
+    orderId: string;
+    number: string;
+    country: string;
+    message: string;
+    price: number;
+    status: string;
+    type: string;
+    createdAt: Date;
+  } | null>(null);
+  const voipStatusDropdownRef = useRef<HTMLDivElement>(null);
 
   const [, setForceUpdate] = useState(0);
 
@@ -601,6 +631,9 @@ const History: React.FC = () => {
       if (proxyDurationDropdownRef.current && !proxyDurationDropdownRef.current.contains(event.target as Node)) {
         setIsProxyDurationDropdownOpen(false);
       }
+      if (voipStatusDropdownRef.current && !voipStatusDropdownRef.current.contains(event.target as Node)) {
+        setIsVoipStatusDropdownOpen(false);
+      }
 
       Object.keys(openActionMenus).forEach(recordId => {
         const ref = actionMenuRefs.current[recordId];
@@ -701,6 +734,24 @@ const History: React.FC = () => {
   const proxyStartIndex = (currentProxyPage - 1) * itemsPerPage;
   const proxyEndIndex = proxyStartIndex + itemsPerPage;
   const paginatedProxyData = filteredProxyData.slice(proxyStartIndex, proxyEndIndex);
+
+  const filteredVoipData = useMemo(() => {
+    let filtered = voipData;
+    if (voipNumberSearch.trim() !== '') {
+      filtered = filtered.filter(record =>
+        record.number.includes(voipNumberSearch.trim())
+      );
+    }
+    if (voipStatusFilter !== 'All') {
+      filtered = filtered.filter(record => record.status === voipStatusFilter);
+    }
+    return filtered;
+  }, [voipData, voipNumberSearch, voipStatusFilter]);
+
+  const totalVoipPages = Math.ceil(filteredVoipData.length / itemsPerPage);
+  const voipStartIndex = (currentVoipPage - 1) * itemsPerPage;
+  const voipEndIndex = voipStartIndex + itemsPerPage;
+  const paginatedVoipData = filteredVoipData.slice(voipStartIndex, voipEndIndex);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -835,6 +886,7 @@ const History: React.FC = () => {
           let nextData = [...currentData];
 
           querySnapshot.docChanges().forEach(change => {
+            if (change.doc.data().type === 'Send Only') return;
             const changedRecord = createHistoryRecord(change.doc.data(), change.doc.id);
             const recordId = changedRecord.id;
             const existingIndex = nextData.findIndex(item => item.id === recordId);
@@ -950,6 +1002,66 @@ const History: React.FC = () => {
         setErrorMessage(errorMsg);
         setShowErrorModal(true);
         setIsLoadingVCC(false);
+      }
+    );
+
+    return () => {
+      isSubscribed = false;
+      unsubscribe();
+    };
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'voip') return;
+
+    if (!currentUser) {
+      setIsLoadingVoip(false);
+      return;
+    }
+
+    const uid = currentUser.uid;
+    setIsLoadingVoip(true);
+    let isSubscribed = true;
+
+    const voipOrdersRef = collection(db, 'voipOrders');
+    const q = query(
+      voipOrdersRef,
+      where('uid', '==', uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (!isSubscribed) return;
+        const records = snapshot.docs.map(doc => {
+          const data = doc.data();
+          const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+          return {
+            id: doc.id,
+            orderId: data.orderId || doc.id,
+            number: String(data.number || ''),
+            country: String(data.country || 'N/A'),
+            message: String(data.message || ''),
+            price: typeof data.price === 'number' ? data.price : parseFloat(data.price || '0'),
+            status: String(data.status || ''),
+            type: String(data.type || ''),
+            createdAt,
+          };
+        });
+        setVoipData(records);
+        setIsLoadingVoip(false);
+      },
+      (error: any) => {
+        if (!isSubscribed) return;
+        let errorMsg = 'An error occurred loading VoIP orders';
+        if (error?.code === 'permission-denied') errorMsg = 'Access denied';
+        else if (error?.code === 'unavailable') errorMsg = 'Service temporarily unavailable';
+        else if (error?.code === 'unauthenticated') errorMsg = 'You are not authenticated';
+        else if (error?.message) errorMsg = `Error: ${error.message}`;
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+        setIsLoadingVoip(false);
       }
     );
 
@@ -1211,7 +1323,16 @@ const History: React.FC = () => {
                   : 'text-slate-400 border-transparent hover:text-slate-300'
                   }`}
               >
-                Numbers
+                Non VoIP
+              </button>
+              <button
+                onClick={() => { setActiveTab('voip'); setCurrentVoipPage(1); }}
+                className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${activeTab === 'voip'
+                  ? 'text-emerald-400 border-emerald-400'
+                  : 'text-slate-400 border-transparent hover:text-slate-300'
+                  }`}
+              >
+                VoIP
               </button>
               <button
                 onClick={() => { setActiveTab('virtualCards'); setCurrentVirtualCardPage(1); }}
@@ -1955,6 +2076,211 @@ const History: React.FC = () => {
             </>
           )}
 
+          {/* VoIP Tab Content */}
+          {activeTab === 'voip' && (
+            <>
+              {/* VoIP Filters */}
+              <div className="mb-6">
+                <div className="flex flex-col lg:flex-row gap-6">
+                  {/* Number Search */}
+                  <div className="flex-1">
+                    <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                      Recipient Number
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={voipNumberSearch}
+                        onChange={(e) => {
+                          const onlyNums = e.target.value.replace(/\D/g, '');
+                          setVoipNumberSearch(onlyNums);
+                          setCurrentVoipPage(1);
+                        }}
+                        placeholder="Enter phone number"
+                        className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Filter */}
+                  <div className="flex-1">
+                    <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                      Status
+                    </label>
+                    <div className="relative group" ref={voipStatusDropdownRef}>
+                      <div
+                        onClick={() => setIsVoipStatusDropdownOpen(!isVoipStatusDropdownOpen)}
+                        className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner cursor-pointer hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                      >
+                        <span>{voipStatusFilter === 'All' ? 'All Statuses' : voipStatusFilter}</span>
+                      </div>
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isVoipStatusDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                      {isVoipStatusDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] text-sm">
+                          {['All', 'Completed', 'Failed'].map((option) => (
+                            <div
+                              key={option}
+                              onClick={() => {
+                                setVoipStatusFilter(option);
+                                setIsVoipStatusDropdownOpen(false);
+                                setCurrentVoipPage(1);
+                              }}
+                              className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                            >
+                              <span className="text-white">{option === 'All' ? 'All Statuses' : option}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* VoIP Table */}
+              <div className="overflow-x-auto overflow-y-visible">
+                {isLoadingVoip ? (
+                  <div className="flex flex-col items-center justify-center py-16">
+                    <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p className="text-slate-400 mt-4">Loading numbers...</p>
+                  </div>
+                ) : filteredVoipData.length > 0 ? (
+                  <>
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-slate-700/50">
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Recipient</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Country</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Message</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedVoipData.map((record, index) => (
+                          <tr
+                            key={record.id}
+                            className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'}`}
+                          >
+                            {/* Info */}
+                            <td className="py-4 px-6">
+                              <div className="flex items-center justify-center">
+                                <button
+                                  onClick={() => { setSelectedVoipRecord(record); setShowVoipInfoModal(true); }}
+                                  className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
+                                  title="View Information"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                            {/* Recipient */}
+                            <td className="py-4 px-6">
+                              <div className="font-mono text-white text-center">+{record.number}</div>
+                            </td>
+                            {/* Country */}
+                            <td className="py-4 px-6 text-white text-center">{record.country}</td>
+                            {/* Message */}
+                            <td className="py-4 px-6 text-white text-center max-w-xs truncate">{record.message}</td>
+                            {/* Price */}
+                            <td className="py-4 px-6 text-center">
+                              <span className="text-emerald-400 font-semibold">${record.price.toFixed(2)}</span>
+                            </td>
+                            {/* Status */}
+                            <td className="py-4 px-6 text-center">
+                              <span className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold border ${record.status === 'Completed'
+                                ? 'text-green-400 border-green-500/30 bg-green-500/20'
+                                : record.status === 'Failed'
+                                  ? 'text-red-400 border-red-500/30 bg-red-500/20'
+                                  : 'text-gray-400 border-gray-500/30 bg-gray-500/20'
+                                }`}>
+                                {record.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    {/* VoIP Pagination */}
+                    {totalVoipPages > 1 && (
+                      <div className="mt-6">
+                        <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
+                          Showing {voipStartIndex + 1} to {Math.min(voipEndIndex, filteredVoipData.length)} of {filteredVoipData.length} results
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="hidden md:block text-sm text-slate-400">
+                            Showing {voipStartIndex + 1} to {Math.min(voipEndIndex, filteredVoipData.length)} of {filteredVoipData.length} results
+                          </div>
+                          <div className="flex items-center space-x-2 mx-auto md:mx-0">
+                            <button
+                              onClick={() => setCurrentVoipPage(prev => Math.max(prev - 1, 1))}
+                              disabled={currentVoipPage === 1}
+                              className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                            <div className="flex space-x-1">
+                              {Array.from({ length: totalVoipPages }, (_, i) => i + 1).map((page) => (
+                                <button
+                                  key={page}
+                                  onClick={() => setCurrentVoipPage(page)}
+                                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentVoipPage === page
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                                    }`}
+                                >
+                                  {page}
+                                </button>
+                              ))}
+                            </div>
+                            <button
+                              onClick={() => setCurrentVoipPage(prev => Math.min(prev + 1, totalVoipPages))}
+                              disabled={currentVoipPage === totalVoipPages}
+                              className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-16">
+                    <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
+                      <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                    </div>
+                    <h1 className="text-xl font-bold text-slate-300 mb-3">No VoIP Numbers Found</h1>
+                    <p className="text-slate-400 text-lg">You haven't purchased any VoIP numbers yet</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
           {/* Proxies Tab Content */}
           {activeTab === 'proxies' && (
             <>
@@ -2316,6 +2642,61 @@ const History: React.FC = () => {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VoIP Info Modal */}
+      {showVoipInfoModal && selectedVoipRecord && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 mx-auto flex items-center justify-center mb-2">
+                <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
+              </div>
+              <h3 className="text-lg font-semibold text-white">Information</h3>
+            </div>
+            <div className="space-y-3 text-left">
+              <div>
+                <span className="text-slate-300">Order ID: </span>
+                <span className="text-emerald-400 break-all">{selectedVoipRecord.orderId}
+                  <button
+                    onClick={handleCopyInfoId}
+                    className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                    title={isInfoIdCopied ? "Copied!" : "Copy Order ID"}
+                  >
+                    {isInfoIdCopied ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-300">Sent On: </span>
+                <span className="text-emerald-400">{selectedVoipRecord.createdAt.toLocaleString('en-US', {
+                  year: 'numeric', month: 'numeric', day: 'numeric',
+                  hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+                })}</span>
+              </div>
+              <div>
+                <span className="text-slate-300">Number Type: </span>
+                <span className="text-emerald-400">{selectedVoipRecord.type}</span>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-center">
+              <button
+                onClick={() => { setShowVoipInfoModal(false); setSelectedVoipRecord(null); }}
+                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

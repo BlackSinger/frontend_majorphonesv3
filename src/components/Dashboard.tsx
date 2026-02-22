@@ -673,6 +673,14 @@ const Dashboard: React.FC = () => {
   const newsItems = [
     {
       id: 1,
+      title: "Send SMS worldwide",
+      description: "Now you can send SMS to any number worldwide",
+      time: "22/02/26",
+      type: "product",
+      urgent: true
+    },
+    {
+      id: 2,
       title: "New Payment Methods",
       description: "From China and Africa",
       time: "30/01/26",
@@ -680,7 +688,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 2,
+      id: 3,
       title: "Get 1 free number",
       description: "Deposit $10 or more through Crypto or Payeer",
       time: "10/07/25",
@@ -688,17 +696,9 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 3,
+      id: 4,
       title: "Extended Middle Term Duration",
       description: "Get middle term numbers for more than just 1 day",
-      time: "10/07/25",
-      type: "product",
-      urgent: true
-    },
-    {
-      id: 4,
-      title: "Reusable Option Coming Soon",
-      description: "You will soon reuse short term numbers",
       time: "10/07/25",
       type: "product",
       urgent: true
@@ -729,14 +729,6 @@ const Dashboard: React.FC = () => {
     },
     {
       id: 7,
-      title: "Send messages",
-      description: "You can now reply SMS with our Receive/Send option",
-      time: "10/07/25",
-      type: "products",
-      urgent: true
-    },
-    {
-      id: 8,
       title: "Extended Number Duration",
       description: "Try our long numberd and entire SIM cards",
       time: "10/07/25",
