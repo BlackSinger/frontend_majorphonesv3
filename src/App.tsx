@@ -15,6 +15,7 @@ import EmptySimcard from './components/EmptySimcard';
 //import SendMessage from './components/SendMessage';
 import SendSMS from './components/SendSMS';
 import VirtualCard from './components/VirtualCard';
+import VirtualCardTest from './components/VirtualCardTest';
 import Proxies from './components/Proxies';
 import History from './components/History';
 import Transactions from './components/Transactions';
@@ -63,6 +64,7 @@ function App() {
             {/* <Route path="/sendmessage" element={<PrivateRoute><DashboardLayout><SendMessage /></DashboardLayout></PrivateRoute>} /> */}
             <Route path="/send-sms" element={<PrivateRoute><DashboardLayout><SendSMS /></DashboardLayout></PrivateRoute>} />
             <Route path="/virtualcard" element={<PrivateRoute><DashboardLayout><VirtualCard /></DashboardLayout></PrivateRoute>} />
+            <Route path="/test" element={<PrivateRoute><DashboardLayout><VirtualCardTest /></DashboardLayout></PrivateRoute>} />
             <Route path="/proxies" element={<PrivateRoute><DashboardLayout><Proxies /></DashboardLayout></PrivateRoute>} />
             <Route path="/history" element={<PrivateRoute><DashboardLayout><History /></DashboardLayout></PrivateRoute>} />
             <Route path="/transactions" element={<PrivateRoute><DashboardLayout><Transactions /></DashboardLayout></PrivateRoute>} />
