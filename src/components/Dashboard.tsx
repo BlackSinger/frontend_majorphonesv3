@@ -252,6 +252,7 @@ const Dashboard: React.FC = () => {
       let ordersCount = 0;
       let proxyOrdersCount = 0;
       let vccOrdersCount = 0;
+      let voipOrdersCount = 0;
 
       const ordersQuery = query(
         collection(db, 'orders'),
@@ -276,7 +277,7 @@ const Dashboard: React.FC = () => {
             }
           });
 
-          setTotalPurchases(ordersCount + proxyOrdersCount + vccOrdersCount);
+          setTotalPurchases(ordersCount + proxyOrdersCount + vccOrdersCount + voipOrdersCount);
           setShowPurchases(true);
           setPurchasesDataLoaded(true);
           setIsLoadingPurchases(false);
@@ -297,7 +298,7 @@ const Dashboard: React.FC = () => {
         (snapshot) => {
           proxyOrdersCount = snapshot.size;
 
-          setTotalPurchases(ordersCount + proxyOrdersCount + vccOrdersCount);
+          setTotalPurchases(ordersCount + proxyOrdersCount + vccOrdersCount + voipOrdersCount);
         },
         (error) => {
           handlePurchasesError(error);
@@ -315,7 +316,25 @@ const Dashboard: React.FC = () => {
         (snapshot) => {
           vccOrdersCount = snapshot.size;
 
-          setTotalPurchases(ordersCount + proxyOrdersCount + vccOrdersCount);
+          setTotalPurchases(ordersCount + proxyOrdersCount + vccOrdersCount + voipOrdersCount);
+        },
+        (error) => {
+          handlePurchasesError(error);
+        }
+      );
+
+      const voipOrdersQuery = query(
+        collection(db, 'voipOrders'),
+        where('uid', '==', currentUser.uid),
+        where('createdAt', '>=', thirtyDaysTimestamp)
+      );
+
+      const unsubscribeVoipOrders = onSnapshot(
+        voipOrdersQuery,
+        (snapshot) => {
+          voipOrdersCount = snapshot.size;
+
+          setTotalPurchases(ordersCount + proxyOrdersCount + vccOrdersCount + voipOrdersCount);
         },
         (error) => {
           handlePurchasesError(error);
@@ -327,6 +346,7 @@ const Dashboard: React.FC = () => {
   };
 
   const handlePurchasesError = (error: any) => {
+    console.error('Purchases error:', error);
     let errorMessage = 'Failed to load data';
 
     if (error.code === 'permission-denied') {
@@ -357,6 +377,7 @@ const Dashboard: React.FC = () => {
       let ordersSpent = 0;
       let proxyOrdersSpent = 0;
       let vccOrdersSpent = 0;
+      let voipOrdersSpent = 0;
 
       const ordersQuery = query(
         collection(db, 'orders'),
@@ -381,7 +402,7 @@ const Dashboard: React.FC = () => {
             }
           });
 
-          setTotalSpent(ordersSpent + proxyOrdersSpent + vccOrdersSpent);
+          setTotalSpent(ordersSpent + proxyOrdersSpent + vccOrdersSpent + voipOrdersSpent);
           setShowSpent(true);
           setSpentDataLoaded(true);
           setIsLoadingSpent(false);
@@ -407,7 +428,7 @@ const Dashboard: React.FC = () => {
             proxyOrdersSpent += parseFloat(data.price) || 0;
           });
 
-          setTotalSpent(ordersSpent + proxyOrdersSpent + vccOrdersSpent);
+          setTotalSpent(ordersSpent + proxyOrdersSpent + vccOrdersSpent + voipOrdersSpent);
         },
         (error) => {
           handleSpentError(error);
@@ -420,6 +441,29 @@ const Dashboard: React.FC = () => {
         where('createdAt', '>=', thirtyDaysTimestamp)
       );
 
+      const voipOrdersQuery = query(
+        collection(db, 'voipOrders'),
+        where('uid', '==', currentUser.uid),
+        where('createdAt', '>=', thirtyDaysTimestamp)
+      );
+
+      const unsubscribeVoipOrders = onSnapshot(
+        voipOrdersQuery,
+        (snapshot) => {
+          voipOrdersSpent = 0;
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            voipOrdersSpent += parseFloat(data.price) || 0;
+          });
+
+          setTotalSpent(ordersSpent + proxyOrdersSpent + vccOrdersSpent + voipOrdersSpent);
+        },
+        (error) => {
+          handleSpentError(error);
+        }
+      );
+
       const unsubscribeVccOrders = onSnapshot(
         vccOrdersQuery,
         (snapshot) => {
@@ -430,7 +474,7 @@ const Dashboard: React.FC = () => {
             vccOrdersSpent += parseFloat(data.price) || 0;
           });
 
-          setTotalSpent(ordersSpent + proxyOrdersSpent + vccOrdersSpent);
+          setTotalSpent(ordersSpent + proxyOrdersSpent + vccOrdersSpent + voipOrdersSpent);
         },
         (error) => {
           handleSpentError(error);
@@ -443,6 +487,7 @@ const Dashboard: React.FC = () => {
 
   const handleSpentError = (error: any) => {
     let errorMessage = 'Failed to load data';
+    console.error('Spent error:', error);
 
     if (error.code === 'permission-denied') {
       errorMessage = 'Access denied to information';
@@ -1097,7 +1142,7 @@ const Dashboard: React.FC = () => {
                   </svg>
                 </div>
               </div>
-              <h3 className="text-lg font-medium text-white mb-2">Purchases Error</h3>
+              <h3 className="text-lg font-medium text-white mb-2">Error</h3>
               <p className="text-blue-200 mb-4">{purchasesError}</p>
               <button
                 onClick={handlePurchasesModalClose}

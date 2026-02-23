@@ -63,7 +63,7 @@ interface HistoryRecord {
   date: string;
   expirationDate: string;
   number: string;
-  serviceType: string; // Normalized to lowercase: 'short' | 'middle' | 'long' | 'empty simcard'
+  serviceType: string;
   status: 'Pending' | 'Cancelled' | 'Completed' | 'Inactive' | 'Active' | 'Expired' | 'Timed out';
   service: string;
   price: number;
@@ -94,8 +94,6 @@ const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: stri
 
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
-      // Usage of updatedAt if available (for reused numbers), otherwise use createdAt
-      // const startTime = updatedAt ? updatedAt.getTime() : createdAt.getTime();
       const startTime = createdAt.getTime();
       const fiveMinutes = 5 * 60 * 1000;
       const expiryTime = startTime + fiveMinutes;
@@ -364,7 +362,6 @@ const MajorHistory: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [showErrorModal, setShowErrorModal] = useState(false);
 
-  // Cache states for each tab
   const [numbersDataFetched, setNumbersDataFetched] = useState(false);
   const [vccDataFetched, setVccDataFetched] = useState(false);
   const [proxiesDataFetched, setProxiesDataFetched] = useState(false);
@@ -372,7 +369,6 @@ const MajorHistory: React.FC = () => {
   const [cachedVccData, setCachedVccData] = useState<VirtualCardRecord[]>([]);
   const [cachedProxiesData, setCachedProxiesData] = useState<ProxyRecord[]>([]);
 
-  // VCC filters and pagination
   const [cardNumberSearch, setCardNumberSearch] = useState('');
   const [fundsFilter, setFundsFilter] = useState<string>('All');
   const [isFundsDropdownOpen, setIsFundsDropdownOpen] = useState(false);
@@ -380,14 +376,12 @@ const MajorHistory: React.FC = () => {
   const [copiedCardNumbers, setCopiedCardNumbers] = useState<{ [key: string]: boolean }>({});
   const fundsDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Proxy states and pagination
   const [currentProxyPage, setCurrentProxyPage] = useState(1);
   const [showProxyInfoModal, setShowProxyInfoModal] = useState(false);
   const [selectedProxyRecord, setSelectedProxyRecord] = useState<ProxyRecord | null>(null);
   const [isProxyIdCopied, setIsProxyIdCopied] = useState(false);
   const [copiedProxyFields, setCopiedProxyFields] = useState<{ [key: string]: boolean }>({});
 
-  // VoIP states
   const [voipDataFetched, setVoipDataFetched] = useState(false);
   const [cachedVoipData, setCachedVoipData] = useState<{
     id: string;
@@ -672,18 +666,15 @@ const MajorHistory: React.FC = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
-  // VCC filtering and pagination
   const filteredVirtualCardData = useMemo(() => {
     let filtered = cachedVccData;
 
-    // Filter by card number search
     if (cardNumberSearch.trim()) {
       filtered = filtered.filter(record =>
         record.cardNumber.toLowerCase().includes(cardNumberSearch.toLowerCase())
       );
     }
 
-    // Filter by initial funds
     if (fundsFilter !== 'All') {
       const fundsValue = fundsFilter === '$0' ? 0 : 3;
       filtered = filtered.filter(record => record.funds === fundsValue);
@@ -697,13 +688,11 @@ const MajorHistory: React.FC = () => {
   const virtualCardEndIndex = virtualCardStartIndex + itemsPerPage;
   const paginatedVirtualCardData = filteredVirtualCardData.slice(virtualCardStartIndex, virtualCardEndIndex);
 
-  // Proxy pagination
   const totalProxyPages = Math.ceil(cachedProxiesData.length / itemsPerPage);
   const proxyStartIndex = (currentProxyPage - 1) * itemsPerPage;
   const proxyEndIndex = proxyStartIndex + itemsPerPage;
   const paginatedProxyData = cachedProxiesData.slice(proxyStartIndex, proxyEndIndex);
 
-  // VoIP filtering and pagination
   const filteredVoipData = useMemo(() => {
     let filtered = cachedVoipData;
     if (voipNumberSearch.trim() !== '') {
@@ -739,7 +728,6 @@ const MajorHistory: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (activeTab === 'numbers') {
-        // Check if we already fetched numbers data
         if (numbersDataFetched) {
           setFirestoreData(cachedNumbersData);
           setIsLoading(false);
@@ -783,8 +771,6 @@ const MajorHistory: React.FC = () => {
             }
           }
 
-          console.log('Backend response (Numbers):', data);
-
           let smsOrdersArray = [];
 
           if (Array.isArray(data)) {
@@ -794,7 +780,6 @@ const MajorHistory: React.FC = () => {
           } else if (data.orders && Array.isArray(data.orders)) {
             smsOrdersArray = data.orders;
           } else {
-            console.error('Expected array but got:', data);
             setFirestoreData([]);
             setIsLoading(false);
             return;
@@ -849,17 +834,14 @@ const MajorHistory: React.FC = () => {
               ? new Date(item.codeAwakeAt._seconds * 1000)
               : undefined;
 
-            // Normalize serviceType to lowercase and handle variations for consistent filtering
             const normalizedServiceType = (() => {
               if (!item.type) return '';
               const typeStr = String(item.type).toLowerCase().trim();
 
-              // Handle different variations of service types
               if (typeStr === 'short') return 'short';
               if (typeStr === 'middle') return 'middle';
               if (typeStr === 'long') return 'long';
 
-              // Handle all variations of "Empty SIM Card"
               if (typeStr.includes('empty') && typeStr.includes('sim')) {
                 return 'empty simcard';
               }
@@ -908,15 +890,12 @@ const MajorHistory: React.FC = () => {
           setNumbersDataFetched(true);
           setIsLoading(false);
         } catch (error) {
-          console.error('Error fetching SMS orders:', error);
           setErrorMessage('Please refresh');
           setShowErrorModal(true);
           setIsLoading(false);
         }
       } else if (activeTab === 'vcc') {
-        // Check if we already fetched VCC data
         if (vccDataFetched) {
-          console.log('Using cached VCC data:', cachedVccData);
           setIsLoading(false);
           return;
         }
@@ -957,9 +936,7 @@ const MajorHistory: React.FC = () => {
             }
           }
 
-          console.log('Backend response (VCC):', data);
 
-          // Format VCC data
           let vccOrdersArray = [];
 
           if (Array.isArray(data)) {
@@ -969,7 +946,6 @@ const MajorHistory: React.FC = () => {
           } else if (data.orders && Array.isArray(data.orders)) {
             vccOrdersArray = data.orders;
           } else {
-            console.error('Expected VCC array but got:', data);
             setCachedVccData([]);
             setVccDataFetched(true);
             setIsLoading(false);
@@ -977,7 +953,6 @@ const MajorHistory: React.FC = () => {
           }
 
           const formattedVccData: VirtualCardRecord[] = vccOrdersArray.map((item: any) => {
-            // Format purchase date
             let formattedDate = 'N/A';
             if (item.createdAt && item.createdAt._seconds) {
               const date = new Date(item.createdAt._seconds * 1000);
@@ -992,7 +967,6 @@ const MajorHistory: React.FC = () => {
               });
             }
 
-            // Calculate funds based on price
             let funds = 0;
             if (item.price === 4) {
               funds = 0;
@@ -1016,16 +990,13 @@ const MajorHistory: React.FC = () => {
           setVccDataFetched(true);
           setIsLoading(false);
         } catch (error) {
-          console.error('Error fetching VCC orders:', error);
           setErrorMessage('Please refresh');
           setShowErrorModal(true);
           setIsLoading(false);
         }
       } else if (activeTab === 'voip') {
-        // Check if we already fetched VoIP data
         if (voipDataFetched) {
           if (cachedVoipData.length > 0) {
-            console.log('Using cached VoIP data:', cachedVoipData);
           }
           setIsLoading(false);
           return;
@@ -1067,7 +1038,6 @@ const MajorHistory: React.FC = () => {
             }
           }
 
-          console.log('Backend response (VoIP):', data);
 
           let voipOrdersArray = [];
 
@@ -1078,7 +1048,6 @@ const MajorHistory: React.FC = () => {
           } else if (data.orders && Array.isArray(data.orders)) {
             voipOrdersArray = data.orders;
           } else {
-            console.log('No VoIP orders or unexpected format:', data);
             setCachedVoipData([]);
             setVoipDataFetched(true);
             setIsLoading(false);
@@ -1118,15 +1087,12 @@ const MajorHistory: React.FC = () => {
           setVoipDataFetched(true);
           setIsLoading(false);
         } catch (error) {
-          console.error('Error fetching VoIP orders:', error);
           setErrorMessage('Please refresh');
           setShowErrorModal(true);
           setIsLoading(false);
         }
       } else if (activeTab === 'proxies') {
-        // Check if we already fetched proxies data
         if (proxiesDataFetched) {
-          // Only log if we have actual data (not empty state)
           if (cachedProxiesData.length > 0) {
             console.log('Using cached Proxies data:', cachedProxiesData);
           }
@@ -1170,19 +1136,13 @@ const MajorHistory: React.FC = () => {
             }
           }
 
-          // Check if no proxies were found
           if (data.message === 'No proxy orders found') {
-            // Cache empty state
             setCachedProxiesData([]);
             setProxiesDataFetched(true);
             setIsLoading(false);
             return;
           }
 
-          // Success - process and convert proxy data
-          console.log('Backend response (Proxies):', data);
-
-          // Handle different possible response formats
           let proxyOrdersArray: any[] = [];
           if (Array.isArray(data)) {
             proxyOrdersArray = data;
@@ -1193,14 +1153,12 @@ const MajorHistory: React.FC = () => {
           } else if (data.orders && Array.isArray(data.orders)) {
             proxyOrdersArray = data.orders;
           } else {
-            console.error('Expected Proxy array but got:', data);
             setCachedProxiesData([]);
             setProxiesDataFetched(true);
             setIsLoading(false);
             return;
           }
 
-          // Convert proxy documents to ProxyRecord format
           const formattedProxyData: ProxyRecord[] = proxyOrdersArray.map((item: any) =>
             convertProxyDocumentToRecord(item as ProxyOrderDocument)
           );
@@ -1209,7 +1167,6 @@ const MajorHistory: React.FC = () => {
           setProxiesDataFetched(true);
           setIsLoading(false);
         } catch (error) {
-          console.error('Error fetching Proxies:', error);
           setErrorMessage('Please refresh');
           setShowErrorModal(true);
           setIsLoading(false);
@@ -1321,7 +1278,6 @@ const MajorHistory: React.FC = () => {
     }
   };
 
-  // Proxy handlers
   const handleProxyInfoClickWrapper = (record: ProxyRecord) => {
     setSelectedProxyRecord(record);
     setShowProxyInfoModal(true);
@@ -1822,13 +1778,11 @@ const MajorHistory: React.FC = () => {
                     {/* Pagination */}
                     {filteredData.length > 0 && totalPages > 1 && (
                       <div className="mt-6">
-                        {/* Results info - shown above pagination on small screens */}
                         <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
                           Showing {startIndex + 1} to {Math.min(endIndex, filteredData.length)} of {filteredData.length} results
                         </div>
 
                         <div className="flex items-center justify-between">
-                          {/* Results info - shown on left side on larger screens */}
                           <div className="hidden md:block text-sm text-slate-400">
                             Showing {startIndex + 1} to {Math.min(endIndex, filteredData.length)} of {filteredData.length} results
                           </div>
@@ -1845,7 +1799,7 @@ const MajorHistory: React.FC = () => {
                               </svg>
                             </button>
 
-                            {/* Page Numbers - Show current and next page only */}
+                            {/* Page Numbers */}
                             <div className="flex space-x-1">
                               {[currentPage, currentPage + 1].filter(page => page <= totalPages).map((page) => (
                                 <button
@@ -2037,13 +1991,11 @@ const MajorHistory: React.FC = () => {
                     {/* Virtual Cards Pagination */}
                     {totalVirtualCardPages > 1 && (
                       <div className="mt-6">
-                        {/* Results info - shown above pagination on small screens */}
                         <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
                           Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, filteredVirtualCardData.length)} of {filteredVirtualCardData.length} results
                         </div>
 
                         <div className="flex items-center justify-between">
-                          {/* Results info - shown on left side on larger screens */}
                           <div className="hidden md:block text-sm text-slate-400">
                             Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, filteredVirtualCardData.length)} of {filteredVirtualCardData.length} results
                           </div>
@@ -2418,13 +2370,11 @@ const MajorHistory: React.FC = () => {
                   {/* Proxies Pagination */}
                   {totalProxyPages > 1 && (
                     <div className="mt-6">
-                      {/* Results info - shown above pagination on small screens */}
                       <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
                         Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, cachedProxiesData.length)} of {cachedProxiesData.length} results
                       </div>
 
                       <div className="flex items-center justify-between">
-                        {/* Results info - shown on left side on larger screens */}
                         <div className="hidden md:block text-sm text-slate-400">
                           Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, cachedProxiesData.length)} of {cachedProxiesData.length} results
                         </div>

@@ -1793,13 +1793,11 @@ const History: React.FC = () => {
                     {/* Pagination */}
                     {filteredData.length > 0 && totalPages > 1 && (
                       <div className="mt-6">
-                        {/* Results info - shown above pagination on small screens */}
                         <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
                           Showing {startIndex + 1} to {Math.min(endIndex, filteredData.length)} of {filteredData.length} results
                         </div>
 
                         <div className="flex items-center justify-between">
-                          {/* Results info - shown on left side on larger screens */}
                           <div className="hidden md:block text-sm text-slate-400">
                             Showing {startIndex + 1} to {Math.min(endIndex, filteredData.length)} of {filteredData.length} results
                           </div>
@@ -2006,13 +2004,11 @@ const History: React.FC = () => {
                     {/* Virtual Cards Pagination */}
                     {totalVirtualCardPages > 1 && (
                       <div className="mt-6">
-                        {/* Results info - shown above pagination on small screens */}
                         <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
                           Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, filteredVirtualCardData.length)} of {filteredVirtualCardData.length} results
                         </div>
 
                         <div className="flex items-center justify-between">
-                          {/* Results info - shown on left side on larger screens */}
                           <div className="hidden md:block text-sm text-slate-400">
                             Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, filteredVirtualCardData.length)} of {filteredVirtualCardData.length} results
                           </div>
@@ -2472,13 +2468,11 @@ const History: React.FC = () => {
                     {/* Proxies Pagination */}
                     {totalProxyPages > 1 && (
                       <div className="mt-6">
-                        {/* Results info - shown above pagination on small screens */}
                         <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
                           Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, filteredProxyData.length)} of {filteredProxyData.length} results
                         </div>
 
                         <div className="flex items-center justify-between">
-                          {/* Results info - shown on left side on larger screens */}
                           <div className="hidden md:block text-sm text-slate-400">
                             Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, filteredProxyData.length)} of {filteredProxyData.length} results
                           </div>

@@ -102,32 +102,27 @@ const SendSMS: React.FC = () => {
         loadCountries();
     }, []);
 
-    // Resetear resultados cuando cambian los tags o el filtro
     useEffect(() => {
         if (searchResults.length > 0) {
             setSearchResults([]);
         }
     }, [countryTags, countryFilter]);
 
-    // Buscar países en Firestore por los tags
     const handleSearchCountry = async () => {
         if (countryTags.length === 0) return;
 
-        // Primero validar TODOS los tags contra countries_simple.json
         const notFound: string[] = [];
         const matches: { tag: string; isoCountry: string }[] = [];
 
         for (const tag of countryTags) {
             const cleanTag = tag.toLowerCase().trim();
 
-            // 1. Verificar si es un Alias (usa, uk, england, etc.)
             const aliasIso = COUNTRY_ALIASES[cleanTag];
             if (aliasIso) {
                 matches.push({ tag, isoCountry: aliasIso });
                 continue;
             }
 
-            // 2. Buscar por coincidencia EXACTA (Nombre o ISO)
             const exactMatch = countriesSimple.find(
                 (c: any) => c.country.toLowerCase() === cleanTag || c.isoCountry.toLowerCase() === cleanTag
             );
@@ -135,13 +130,11 @@ const SendSMS: React.FC = () => {
             if (exactMatch) {
                 matches.push({ tag, isoCountry: exactMatch.isoCountry });
             } else {
-                // 3. CAMBIO CLAVE: Usamos .filter() para obtener TODOS los que empiecen por el tag
                 const allStartMatch = countriesSimple.filter(
                     (c: any) => c.country.toLowerCase().startsWith(cleanTag)
                 );
 
                 if (allStartMatch.length > 0) {
-                    // Agregamos todos los países encontrados a la lista de búsqueda
                     allStartMatch.forEach(m => {
                         matches.push({ tag, isoCountry: m.isoCountry });
                     });
@@ -151,19 +144,16 @@ const SendSMS: React.FC = () => {
             }
         }
 
-        // Si hay algún país no encontrado, mostrar error y NO buscar en Firestore
         if (notFound.length > 0) {
             setError(`One or more countries weren't found, please check the spelling and try again`);
             setShowErrorModal(true);
             return;
         }
 
-        // Todos los tags son válidos, buscar en Firestore
         setSearching(true);
         try {
             const results: CountryData[] = [];
 
-            // FILTRO DE UNICIDAD: Evita duplicados como UK y England
             const uniqueIsoCodes = Array.from(new Set(matches.map(m => m.isoCountry)));
             for (const isoCountry of uniqueIsoCodes) {
                 const docRef = doc(db, 'sendSMS', 'opt1', 'countries', isoCountry);
@@ -190,38 +180,31 @@ const SendSMS: React.FC = () => {
         }
     };
 
-    // Cuando el usuario presiona Enter, agrega el tag
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && countryFilter.trim()) {
             e.preventDefault();
             const newTag = countryFilter.trim();
-            // Evitar duplicados
             if (!countryTags.some(tag => tag.toLowerCase() === newTag.toLowerCase())) {
                 setCountryTags([...countryTags, newTag]);
             }
             setCountryFilter('');
-            setSearchResults([]); // Vuelve a la tabla normal
+            setSearchResults([]);
         }
     };
 
-    // Eliminar un tag
     const removeTag = (tagToRemove: string) => {
         setCountryTags(countryTags.filter(tag => tag !== tagToRemove));
-        setSearchResults([]); // Vuelve a la tabla normal
+        setSearchResults([]);
     };
 
-    // Detectar países por area code de los números y buscar precios en Firestore
     const detectCountriesFromNumbers = async (numbers: string[]) => {
         if (numbers.length === 0) {
             setSmsCountryResults([]);
             return;
         }
 
-        // 1. Limpiar los números (quitar +, espacios y cualquier caracter no numérico)
         const cleanNumbers = numbers.map(n => n.replace(/[^0-9]/g, ''));
 
-        // 2. IMPORTANTE: Ordenar los países por la longitud del areaCode de mayor a menor
-        // Esto garantiza que el sistema intente matchear "1664" ANTES que "1"
         const sortedCountries = [...countriesData].sort((a, b) =>
             b.areaCode.length - a.areaCode.length
         );
@@ -229,186 +212,131 @@ const SendSMS: React.FC = () => {
         const matchedIsoCodes = new Set<string>();
 
         for (const num of cleanNumbers) {
-            // Buscamos el match en la lista ordenada (Longest Prefix Match)
             for (const country of sortedCountries) {
                 if (num.startsWith(country.areaCode)) {
 
-                    // --- CASO ESPECIAL +1 (USA / CANADA / CARIBE) ---
                     if (country.areaCode === '1') {
-                        const next3 = num.substring(1, 4); // Los 3 dígitos después del 1
+                        const next3 = num.substring(1, 4);
 
-                        // RECHAZAR el número si es el código 939
                         if (next3 === '939') break;
 
                         if (CANADA_AREA_CODES.has(next3)) {
-                            matchedIsoCodes.add('CA'); // Canadá
+                            matchedIsoCodes.add('CA');
                         } else if (USA_AREA_CODES.has(next3)) {
-                            matchedIsoCodes.add('US'); // USA
+                            matchedIsoCodes.add('US');
                         } else {
-                            // Cualquier otro código que empiece por 1 (si no es 939) se trata como USA
                             matchedIsoCodes.add('US');
                         }
                     }
 
-                    // --- CASO ESPECIAL +7 (RUSIA / KAZAKHSTAN) ---
                     else if (country.areaCode === '7') {
-                        const next1 = num.charAt(1);        // El dígito justo después del 7
-                        const next2 = num.substring(1, 3);   // Los 2 dígitos después del 7
-                        const next3 = num.substring(1, 4);   // Los 3 dígitos después del 7
+                        const next1 = num.charAt(1);
+                        const next2 = num.substring(1, 3);
+                        const next3 = num.substring(1, 4);
 
-                        // 1. REGLAS PARA RUSIA
                         if (next1 === '9') {
-                            matchedIsoCodes.add('RU'); // Se acepta solo si le sigue un 9
+                            matchedIsoCodes.add('RU');
                         } else if (RUSSIA_REJECT_1DIGIT.includes(next1)) {
-                            break; // RECHAZADO: si le sigue 3, 4, 5 u 8
+                            break;
                         }
 
-                        // 2. REGLAS PARA KAZAKHSTAN
                         else if (KAZAKHSTAN_VALID_3DIGIT.includes(next3)) {
-                            matchedIsoCodes.add('KZ'); // Se acepta si coincide con los 3 dígitos de la lista
+                            matchedIsoCodes.add('KZ');
                         } else if (KAZAKHSTAN_REJECT_2DIGIT.includes(next2)) {
-                            break; // RECHAZADO: si le sigue 71 o 72
+                            break;
                         }
 
-                        // 3. CASO EXTRA: +7 6 (Mantenemos soporte para Kazakhstan si empieza por 6)
                         else if (next1 === '6') {
                             matchedIsoCodes.add('KZ');
                         }
 
                         else {
-                            // Si no cumple ninguna regla de aceptación anterior, se ignora el número
                             break;
                         }
                     }
-
-                    // --- CASO ESPECIAL +44 (UK / DEPENDENCIAS) ---
                     else if (country.areaCode === '44') {
-                        const next1 = num.charAt(2);        // El dígito justo después del 44
-                        const next2 = num.substring(2, 4);   // Los 2 dígitos después del 44
-                        const next4 = num.substring(2, 6);   // Los 4 dígitos después del 44
+                        const next1 = num.charAt(2);
+                        const next2 = num.substring(2, 4);
+                        const next4 = num.substring(2, 6);
 
-                        // --- NUEVAS EXCLUSIONES ---
-
-                        // 1. Bloquear +44 1, 2, 3, 5, 8 (Incluye fijos de UK y las Islas)
                         if (['1', '2', '3', '5', '8'].includes(next1)) break;
 
-                        // 2. Bloquear +44 70 (Servicios personales)
                         if (next2 === '70') break;
 
-                        // 3. Bloquear +44 76 (Radiolocalización) excepto el móvil de Isle of Man 7624
                         if (next2 === '76' && next4 !== '7624') break;
 
-                        // --- DETECCIÓN DE ISLAS (Redes Móviles) ---
                         if (ISLE_OF_MAN_PREFIXES.some(p => next4.startsWith(p))) {
-                            matchedIsoCodes.add('IM'); // Isle of Man
+                            matchedIsoCodes.add('IM');
                         } else if (GUERNSEY_PREFIXES.some(p => next4.startsWith(p))) {
-                            matchedIsoCodes.add('GG'); // Guernsey
+                            matchedIsoCodes.add('GG');
                         } else if (JERSEY_PREFIXES.some(p => next4.startsWith(p))) {
-                            matchedIsoCodes.add('JE'); // Jersey
+                            matchedIsoCodes.add('JE');
                         } else {
-                            // Si pasó todos los filtros anteriores, es un móvil de UK
-                            matchedIsoCodes.add('GB'); // United Kingdom
+                            matchedIsoCodes.add('GB');
                         }
                     }
-
-                    // --- CASO ESPECIAL +47 (NORWAY) ---
                     else if (country.areaCode === '47') {
-                        const next1 = num.charAt(2);        // El dígito justo después del 47
-                        const next2 = num.substring(2, 4);   // Los 2 dígitos después del 47
+                        const next1 = num.charAt(2);
+                        const next2 = num.substring(2, 4);
 
-                        // --- EXCLUSIONES ---
-                        // No se aceptan números que empiecen por 2, 3, 5, 6, 8 o el prefijo 79
                         if (['2', '3', '5', '6', '8'].includes(next1)) break;
                         if (next2 === '79') break;
-
-                        // Si pasó los filtros, añadimos ambas regiones
-                        matchedIsoCodes.add('NO'); // Norway
+                        matchedIsoCodes.add('NO');
                     }
-
-                    // --- CASO ESPECIAL +61 (AUSTRALIA) ---
                     else if (country.areaCode === '61') {
-                        const next1 = num.charAt(2); // El dígito justo después del 61
+                        const next1 = num.charAt(2);
 
-                        // --- EXCLUSIONES Y ACEPTACIONES ---
-                        // Solo se aceptan si empiezan por 4 o 5 (Móviles)
                         if (['4', '5'].includes(next1)) {
-                            matchedIsoCodes.add('AU'); // Australia
+                            matchedIsoCodes.add('AU');
                         } else {
-                            // Se descartan automáticamente los que empiezan por 1, 2, 3, 7 u 8
                             break;
                         }
                     }
-
-                    // --- CASO ESPECIAL +212 (MOROCCO) ---
                     else if (country.areaCode === '212') {
-                        const next1 = num.charAt(3); // El dígito justo después del 212
+                        const next1 = num.charAt(3);
 
-                        // --- EXCLUSIONES Y ACEPTACIONES ---
-                        // Solo se aceptan si empiezan por 6 o 7 (Móviles)
                         if (['6', '7'].includes(next1)) {
-                            matchedIsoCodes.add('MA'); // Morocco
+                            matchedIsoCodes.add('MA');
                         } else {
-                            // Se descartan automáticamente los que empiezan por 5 u 8
                             break;
                         }
                     }
-
-                    // --- CASO ESPECIAL +262 (REUNION / MAYOTTE) ---
                     else if (country.areaCode === '262') {
-                        const next1 = num.charAt(3);       // El dígito justo después del 262
-                        const next3 = num.substring(3, 6); // Los 3 dígitos después del 262
-
-                        // 1. REGLAS DE RECHAZO
-                        // Rechazar si empieza por 262, 269 o el dígito 8
+                        const next1 = num.charAt(3);
+                        const next3 = num.substring(3, 6);
                         if (REUNION_MAYOTTE_DISCARD_3.includes(next3) || next1 === '8') break;
 
-                        // 2. DETECCIÓN ESPECÍFICA
                         if (MAYOTTE_PREFIXES.includes(next3)) {
-                            matchedIsoCodes.add('YT'); // Mayotte
+                            matchedIsoCodes.add('YT');
                         } else if (REUNION_PREFIXES.includes(next3)) {
-                            matchedIsoCodes.add('RE'); // Reunion
+                            matchedIsoCodes.add('RE');
                         } else {
-                            // Si no es ninguno de los móviles aceptados, no lo consideramos
                             break;
                         }
                     }
-
-                    // --- CASO ESPECIAL +358 (FINLAND / ALAND ISLANDS) ---
                     else if (country.areaCode === '358') {
-                        const next1 = num.charAt(3);       // El dígito justo después del 358
-                        const next2 = num.substring(3, 5); // Los 2 dígitos después del 358
-                        const next3 = num.substring(3, 6); // Los 3 dígitos después del 358
-
-                        // 1. Detección Åland Islands (457)
+                        const next1 = num.charAt(3);
+                        const next2 = num.substring(3, 5);
+                        const next3 = num.substring(3, 6);
                         if (next3 === ALAND_PREFIX_3) {
                             matchedIsoCodes.add('AX');
                         }
-                        // 2. Detección Finlandia (Empieza por 4 o por 50)
-                        // Esto acepta: 4, 40, 41, 44, 45, 46 y 50
                         else if (next1 === FINLAND_VALID_D1 || next2 === FINLAND_VALID_D2) {
                             matchedIsoCodes.add('FI');
                         }
-                        // 3. RECHAZO: Cualquier otro número (1, 2, 3, 5X, 6, 7, 8, 9, fijos y servicios)
                         else {
                             break;
                         }
                     }
-
-                    // --- CASO ESPECIAL +672 (NORFOLK ISLAND) ---
                     else if (country.areaCode === '672') {
-                        const next2 = num.substring(3, 5); // Los 2 dígitos después del 672
-
-                        // Aceptar ÚNICAMENTE si empieza por 38
+                        const next2 = num.substring(3, 5);
                         if (next2 === '38') {
-                            matchedIsoCodes.add('NF'); // Norfolk Island
+                            matchedIsoCodes.add('NF');
                         } else {
-                            // Se rechaza automáticamente cualquier otro dígito (1, 2, 4, 5, 6, 7, 8, 9)
-                            // y también el 3 si no es seguido por un 8.
                             break;
                         }
                     }
 
-                    // --- RESTO DE PAÍSES ---
                     else {
                         matchedIsoCodes.add(country.isoCountry);
                     }
@@ -423,7 +351,6 @@ const SendSMS: React.FC = () => {
             return;
         }
 
-        // 3. Buscar en Firestore (manteniendo la lógica de buscar solo los necesarios)
         setSmsSearching(true);
         try {
             const results: CountryData[] = [];
@@ -452,7 +379,6 @@ const SendSMS: React.FC = () => {
         }
     };
 
-    // Lógica de paginación para resultados de SMS
     const smsTotalPages = Math.ceil(smsCountryResults.length / itemsPerPage);
     const smsStartIndex = (smsCurrentPage - 1) * itemsPerPage;
     const smsEndIndex = smsStartIndex + itemsPerPage;
@@ -469,37 +395,31 @@ const SendSMS: React.FC = () => {
         }
     };
 
-    // Agregar número como chip al presionar Enter
     const handlePhoneKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && phoneInput.trim()) {
             e.preventDefault();
 
             const newNumber = phoneInput.trim();
 
-            // VALIDACIÓN: Solo permite crear el chip si son TODO números
             if (!/^\d+$/.test(newNumber)) {
-                return; // Si hay letras o símbolos, no hace nada
+                return;
             }
 
             if (!phoneNumbers.includes(newNumber)) {
                 const updatedNumbers = [...phoneNumbers, newNumber];
                 setPhoneNumbers(updatedNumbers);
                 setPricesChecked(false);
-                //detectCountriesFromNumbers(updatedNumbers);
             }
             setPhoneInput('');
         }
     };
 
-    // Eliminar chip de número
     const removePhoneNumber = (numberToRemove: string) => {
         const updatedNumbers = phoneNumbers.filter(n => n !== numberToRemove);
         setPhoneNumbers(updatedNumbers);
-        //detectCountriesFromNumbers(updatedNumbers);
         setPricesChecked(false);
     };
 
-    // Calcular precio total
     const calculateTotalPrice = (): number => {
         let total = 0;
         const cleanNumbers = phoneNumbers.map(n => n.replace(/[^0-9]/g, ''));
@@ -516,7 +436,6 @@ const SendSMS: React.FC = () => {
                     if (result.isoCountry === 'CA' && isCanada) matches = true;
                     else if (result.isoCountry === 'US' && !isCanada && !isCaribbean && num.startsWith('1')) matches = true;
                     else if (result.isoCountry === 'PR' && (next3 === '787' || next3 === '939')) matches = true;
-                    // Los demás países del prefijo +1 se validan por su código de 4 dígitos abajo
                 } else if (result.areaCode === '7') {
                     const next1 = num.charAt(1);
                     const next3 = num.substring(1, 4);
@@ -569,12 +488,10 @@ const SendSMS: React.FC = () => {
     };
 
     const getFlagEmoji = (isoCode: string): React.ReactElement => {
-        // Validar que existe y tiene exactamente 2 caracteres
         if (!isoCode || isoCode.trim().length !== 2) {
             return <span className="text-2xl">🏳️</span>;
         }
 
-        // Limpiar espacios y convertir a MINÚSCULAS (flagcdn requiere minúsculas)
         const cleanCode = isoCode.trim().toLowerCase();
 
         return (
@@ -586,18 +503,14 @@ const SendSMS: React.FC = () => {
         );
     };
 
-    // No filtrar mientras escribe, solo cuando haga click en Search country
     const filteredCountries = useMemo(() => {
         return countries;
     }, [countries]);
-
-    // Paginación
     const totalPages = Math.ceil(filteredCountries.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const paginatedCountries = filteredCountries.slice(startIndex, endIndex);
 
-    // Reset página cuando cambia el filtro
     useEffect(() => {
         setCurrentPage(1);
     }, [countryFilter]);
@@ -610,26 +523,22 @@ const SendSMS: React.FC = () => {
 
         if (BLOCKED_AREA_CODES.some(code => clean.startsWith(code))) return false;
 
-        // Buscamos en countriesData (estático) para validación instantánea y sin parpadeos
         const sortedCountries = [...countriesData].sort((a, b) => b.areaCode.length - a.areaCode.length);
 
         for (const country of sortedCountries) {
             if (clean.startsWith(country.areaCode)) {
-                // --- CASO ESPECIAL +1 (USA / CANADA / CARIBBEAN) ---
                 if (country.areaCode === '1') {
                     const next3 = clean.substring(1, 4);
-                    if (next3 === '939') return false; // El 939 siempre se rechaza
-                    return true; // Cualquier otro +1 se considera válido para el color verde
+                    if (next3 === '939') return false;
+                    return true;
                 }
 
-                // --- CASO ESPECIAL +7 (RUSIA / KAZAKHSTAN) ---
                 if (country.areaCode === '7') {
                     const next1 = clean.charAt(1);
                     const next3 = clean.substring(1, 4);
                     return next1 === '9' || next1 === '6' || KAZAKHSTAN_VALID_3DIGIT.includes(next3);
                 }
 
-                // --- CASO ESPECIAL +44 (UK / ISLANDS) ---
                 if (country.areaCode === '44') {
                     const next1 = clean.charAt(2);
                     const next2 = clean.substring(2, 4);
@@ -640,7 +549,6 @@ const SendSMS: React.FC = () => {
                     return true;
                 }
 
-                // --- CASO ESPECIAL +47 (NORWAY) ---
                 if (country.areaCode === '47') {
                     const next1 = clean.charAt(2);
                     const next2 = clean.substring(2, 4);
@@ -648,19 +556,16 @@ const SendSMS: React.FC = () => {
                     return true;
                 }
 
-                // --- CASO ESPECIAL +61 (AUSTRALIA) ---
                 if (country.areaCode === '61') {
                     const next1 = clean.charAt(2);
                     return ['4', '5'].includes(next1);
                 }
 
-                // --- CASO ESPECIAL +212 (MOROCCO) ---
                 if (country.areaCode === '212') {
                     const next1 = clean.charAt(3);
                     return ['6', '7'].includes(next1);
                 }
 
-                // --- CASO ESPECIAL +262 (REUNION / MAYOTTE) ---
                 if (country.areaCode === '262') {
                     const next1 = clean.charAt(3);
                     const next3 = clean.substring(3, 6);
@@ -668,7 +573,6 @@ const SendSMS: React.FC = () => {
                     return MAYOTTE_PREFIXES.includes(next3) || REUNION_PREFIXES.includes(next3);
                 }
 
-                // --- CASO ESPECIAL +358 (FINLAND / ALAND) ---
                 if (country.areaCode === '358') {
                     const next1 = clean.charAt(3);
                     const next2 = clean.substring(3, 5);
@@ -676,12 +580,10 @@ const SendSMS: React.FC = () => {
                     return next3 === ALAND_PREFIX_3 || next1 === FINLAND_VALID_D1 || next2 === FINLAND_VALID_D2;
                 }
 
-                // --- CASO ESPECIAL +672 (NORFOLK ISLAND) ---
                 if (country.areaCode === '672') {
                     return clean.substring(3, 5) === '38';
                 }
 
-                // Si no hay reglas especiales y coincide el prefijo, es verde
                 return true;
             }
         }
@@ -709,11 +611,9 @@ const SendSMS: React.FC = () => {
         }
 
         setSending(true);
-        // Al poner sending=true, la UI se deshabilita automáticamente (ver paso 4)
 
         try {
             const idToken = await auth.currentUser.getIdToken();
-            console.log(idToken);
 
             const payload = {
                 numbers: phoneNumbers.map(n => n.replace('+', '')),
@@ -783,8 +683,6 @@ const SendSMS: React.FC = () => {
                 })
             };
 
-            console.log(payload);
-
             const response = await fetch('https://sendsms-ezeznlhr5a-uc.a.run.app', {
                 method: 'POST',
                 headers: {
@@ -795,10 +693,8 @@ const SendSMS: React.FC = () => {
             });
 
             const data: any = await response.json();
-            console.log('Respuesta del Backend:', data);
 
             if (response.ok) {
-                // Éxito 200
                 setSending(false);
 
                 if (data.failedNumbers && Array.isArray(data.failedNumbers) && data.failedNumbers.length > 0) {
@@ -808,7 +704,6 @@ const SendSMS: React.FC = () => {
                     setShowSuccessModal(true);
                 }
             } else {
-                // Errores
                 setSending(false);
 
                 if (response.status === 400) {
@@ -825,7 +720,6 @@ const SendSMS: React.FC = () => {
                         setErrorModalTitle('Insufficient balance');
                         setErrorModalBody('Your message cannot be sent, please recharge your account');
                     } else {
-                        // Fallback
                         setErrorModalTitle('Error');
                         setErrorModalBody(data.error || 'An error occurred');
                     }
@@ -836,7 +730,7 @@ const SendSMS: React.FC = () => {
                     setErrorModalTitle('Error');
                     setErrorModalBody('An unexpected error occurred');
                 }
-                setShowErrorModal(true); // Usamos el estado existente para mostrar, pero con título/cuerpo dinámicos
+                setShowErrorModal(true);
             }
         } catch (error) {
             console.error(error);
@@ -881,7 +775,7 @@ const SendSMS: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Information Section - Always on top */}
+                {/* Information Section*/}
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4 mb-6">
                     <div className="flex items-center justify-center">
                         <div className="text-center">
@@ -958,7 +852,6 @@ const SendSMS: React.FC = () => {
                                     </button>
                                     <button
                                         onClick={() => setShowSendForm(true)}
-                                        // AÑADIR ESTA LÍNEA: Se deshabilita si se está buscando
                                         disabled={searching}
                                         className="group flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-[1.02] border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                                     >
@@ -977,17 +870,14 @@ const SendSMS: React.FC = () => {
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-slate-700">
-                                            {/* Oculta "Country" mientras carga o busca */}
                                             <th className="px-6 py-4 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
                                                 {!(loading || searching) && "Country"}
                                             </th>
 
-                                            {/* Oculta "Area Code" mientras carga o busca */}
                                             <th className="px-6 py-4 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
                                                 {!(loading || searching) && "Area Code"}
                                             </th>
 
-                                            {/* Solo muestra "Price per SMS" cuando la búsqueda termina y hay resultados */}
                                             {searchResults.length > 0 && !searching && (
                                                 <th className="px-6 py-4 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
                                                     Price per SMS
@@ -1058,13 +948,11 @@ const SendSMS: React.FC = () => {
                             {/* Pagination */}
                             {searchResults.length === 0 && !searching && filteredCountries.length > 0 && totalPages > 1 && (
                                 <div className="mt-6">
-                                    {/* Results info - shown above pagination on small screens */}
                                     <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
                                         Showing {startIndex + 1} to {Math.min(endIndex, filteredCountries.length)} of {filteredCountries.length} results
                                     </div>
 
                                     <div className="flex items-center justify-between">
-                                        {/* Results info - shown on left side on larger screens */}
                                         <div className="hidden md:block text-sm text-slate-400">
                                             Showing {startIndex + 1} to {Math.min(endIndex, filteredCountries.length)} of {filteredCountries.length} results
                                         </div>
@@ -1135,7 +1023,7 @@ const SendSMS: React.FC = () => {
                                 </button>
                             </div>
 
-                            {/* 1) Phone Numbers Input */}
+                            {/* Phone Numbers Input */}
                             <div>
                                 <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
                                     Recipient phone numbers
@@ -1193,7 +1081,7 @@ const SendSMS: React.FC = () => {
 
 
 
-                            {/* 2) Message Textarea */}
+                            {/* Message Textarea */}
                             <div>
                                 <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
                                     Message ({smsMessage.length}/160)
@@ -1216,7 +1104,7 @@ const SendSMS: React.FC = () => {
                                     }}
                                 />
 
-                                {/* NUEVO BOTÓN: Check Price */}
+                                {/* Check Price */}
                                 {(!pricesChecked && phoneNumbers.some(n => isNumberValid(n))) && (
                                     <div className="flex justify-center mt-4">
                                         <button
@@ -1242,7 +1130,7 @@ const SendSMS: React.FC = () => {
                                 )}
                             </div>
 
-                            {/* 3) Price Table (solo si hay números) */}
+                            {/* Price Table */}
                             {(pricesChecked && !smsSearching && smsCountryResults.length > 0) && (
                                 <div className="overflow-x-auto">
                                     <table className="w-full">
@@ -1395,7 +1283,7 @@ const SendSMS: React.FC = () => {
                                 </div>
                             )}
 
-                            {/* 4) Total Price + Send Button */}
+                            {/* Total Price + Send Button */}
                             {(pricesChecked && !smsSearching && smsCountryResults.length > 0) && (
                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-slate-800/30 rounded-2xl border border-slate-700/50">
                                     <div className="text-center sm:text-left">
@@ -1427,7 +1315,7 @@ const SendSMS: React.FC = () => {
                     </div>
                 )}
 
-                {/* Error Modal - Firestore Connection Error */}
+                {/* Error Modal*/}
                 {showErrorModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
                         <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
@@ -1440,14 +1328,13 @@ const SendSMS: React.FC = () => {
                                     </div>
                                 </div>
                                 <h3 className="text-lg font-medium text-white mb-2">{errorModalTitle || 'Search Error'}</h3>
-                                {/* Usa errorModalBody si existe, si no usa error (para compatibilidad con búsqueda) */}
                                 <p className="text-blue-200 mb-4">{errorModalBody || error}</p>
                                 <button
                                     onClick={() => {
                                         setShowErrorModal(false);
                                         setError(null);
-                                        setErrorModalBody(''); // Limpiar
-                                        setErrorModalTitle('Error'); // Reset
+                                        setErrorModalBody('');
+                                        setErrorModalTitle('Error');
                                     }}
                                     className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
                                 >
@@ -1500,7 +1387,6 @@ const SendSMS: React.FC = () => {
                                 <div className="text-left mb-4">
                                     <p className="text-blue-200 text-sm mb-2 text-center">Your message could not be sent to these numbers:</p>
 
-                                    {/* Lista con scroll y altura fija */}
                                     <div className="bg-slate-800/50 rounded-lg p-3 h-32 overflow-y-auto dashboard-scrollbar mb-2 border border-slate-600/30">
                                         <ul className="space-y-1">
                                             {failedNumbers.map((num, idx) => (
@@ -1519,16 +1405,13 @@ const SendSMS: React.FC = () => {
                                 <div className="flex gap-3 justify-center">
                                     <button
                                         onClick={() => {
-                                            // 1. Ponemos los números fallidos como chips activos en el input
                                             setPhoneNumbers(failedNumbers);
 
-                                            // 2. Reseteamos la UI para que desaparezca la tabla y aparezca el botón "Check Price"
                                             setPricesChecked(false);
                                             setSmsCountryResults([]);
                                             setSmsCurrentPage(1);
-                                            setPhoneInput(''); // Limpiamos el input de texto
+                                            setPhoneInput('');
 
-                                            // 3. Cerramos la modal y limpiamos la lista de fallos
                                             setShowPartialSuccessModal(false);
                                             setFailedNumbers([]);
                                         }}
@@ -1540,7 +1423,7 @@ const SendSMS: React.FC = () => {
                                     <button
                                         onClick={() => {
                                             setShowPartialSuccessModal(false);
-                                            setFailedNumbers([]); // Limpiar estado
+                                            setFailedNumbers([]);
                                         }}
                                         className="bg-gradient-to-br from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg text-sm"
                                     >

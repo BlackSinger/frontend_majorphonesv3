@@ -121,7 +121,7 @@ const Tickets: React.FC = () => {
     const typeValue = String(type || '').toLowerCase();
 
     switch (typeValue) {
-      case 'number':
+      case 'non-voip':
         return 'Non VoIP Number';
       case 'voip':
         return 'VoIP Number';
@@ -730,7 +730,7 @@ const Tickets: React.FC = () => {
       case 'Payment':
         return 'payment';
       case 'Non VoIP Number':
-        return 'number';
+        return 'non-voip';
       case 'VoIP Number':
         return 'voip';
       case 'Virtual Debit Card':

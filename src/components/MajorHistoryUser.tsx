@@ -93,7 +93,6 @@ const MajorHistoryUser: React.FC = () => {
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const numberTypeDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Cache states for each tab
   const [numbersDataFetched, setNumbersDataFetched] = useState(false);
   const [vccDataFetched, setVccDataFetched] = useState(false);
   const [proxiesDataFetched, setProxiesDataFetched] = useState(false);
@@ -101,19 +100,16 @@ const MajorHistoryUser: React.FC = () => {
   const [cachedVccData, setCachedVccData] = useState<VirtualCardRecord[]>([]);
   const [cachedProxiesData, setCachedProxiesData] = useState<any>(null);
 
-  // VCC states
   const [showUuidModal, setShowUuidModal] = useState(false);
   const [selectedUuid, setSelectedUuid] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [copiedCardNumbers, setCopiedCardNumbers] = useState<{ [key: string]: boolean }>({});
 
-  // Proxy states
   const [copiedProxyFields, setCopiedProxyFields] = useState<{ [key: string]: boolean }>({});
   const [showProxyInfoModal, setShowProxyInfoModal] = useState(false);
   const [selectedProxyRecord, setSelectedProxyRecord] = useState<ProxyRecord | null>(null);
   const [isProxyIdCopied, setIsProxyIdCopied] = useState(false);
 
-  // VoIP states
   const [voipDataFetched, setVoipDataFetched] = useState(false);
   const [cachedVoipData, setCachedVoipData] = useState<{
     id: string;
@@ -153,7 +149,6 @@ const MajorHistoryUser: React.FC = () => {
       return;
     }
 
-    // Reset cache when searching for a new user
     setNumbersDataFetched(false);
     setVccDataFetched(false);
     setProxiesDataFetched(false);
@@ -189,7 +184,6 @@ const MajorHistoryUser: React.FC = () => {
 
       if (!response.ok) {
         if (data.message === 'Forbidden') {
-          // Sign out user immediately
           const auth = getAuth();
           await signOut(auth);
           navigate('/signin');
@@ -205,7 +199,6 @@ const MajorHistoryUser: React.FC = () => {
           setLoading(false);
           return;
         } else if (data.message === 'No SMS orders found') {
-          // Don't show error modal, just set empty data and show the message in the table area
           setHistoryData([]);
           setCachedNumbersData([]);
           setNumbersDataFetched(true);
@@ -215,10 +208,6 @@ const MajorHistoryUser: React.FC = () => {
         }
       }
 
-      // Log response for debugging
-      console.log('Backend response:', data);
-
-      // Check if data has a smsOrders property (array)
       let smsOrdersArray = [];
 
       if (Array.isArray(data)) {
@@ -238,9 +227,7 @@ const MajorHistoryUser: React.FC = () => {
         smsOrdersArray = smsOrdersArray.filter((item: any) => item.type !== 'Send Only');
       }
 
-      // Format the data
       const formattedData = smsOrdersArray.map((item: any) => {
-        // Format purchase date
         let formattedDate = 'N/A';
         if (item.createdAt && item.createdAt._seconds) {
           const date = new Date(item.createdAt._seconds * 1000);
@@ -255,7 +242,6 @@ const MajorHistoryUser: React.FC = () => {
           });
         }
 
-        // Format expiration date
         let formattedExpirationDate = 'N/A';
         if (item.expiry && item.expiry._seconds) {
           const expiryDate = new Date(item.expiry._seconds * 1000);
@@ -270,7 +256,6 @@ const MajorHistoryUser: React.FC = () => {
           });
         }
 
-        // Convert timestamps to Date objects
         const createdAtDate = item.createdAt && item.createdAt._seconds
           ? new Date(item.createdAt._seconds * 1000)
           : undefined;
@@ -287,10 +272,8 @@ const MajorHistoryUser: React.FC = () => {
           ? new Date(item.codeAwakeAt._seconds * 1000)
           : undefined;
 
-        // Normalize serviceType to lowercase for consistent filtering
         const normalizedServiceType = item.type ? String(item.type).toLowerCase() : '';
 
-        // Calculate duration
         let duration = 'N/A';
         if (createdAtDate && expiryDate && normalizedServiceType) {
           duration = calculateDuration(
@@ -342,20 +325,15 @@ const MajorHistoryUser: React.FC = () => {
     setActiveTab(tab);
 
     if (tab === 'numbers') {
-      // If we already have numbers data cached, use it
       if (numbersDataFetched) {
         setHistoryData(cachedNumbersData);
         return;
       }
-      // Otherwise data is already loaded from handleSearch
     } else if (tab === 'vcc') {
-      // If we already fetched VCC data, use cached data
       if (vccDataFetched) {
-        console.log('Using cached VCC data:', cachedVccData);
         return;
       }
 
-      // Fetch VCC data for the first time
       setLoading(true);
 
       try {
@@ -398,7 +376,6 @@ const MajorHistoryUser: React.FC = () => {
           }
         }
 
-        // Check for "No VCC orders found" message (can come with 200 OK)
         if (data.message === 'No VCC orders found') {
           setCachedVccData([]);
           setVccDataFetched(true);
@@ -406,9 +383,6 @@ const MajorHistoryUser: React.FC = () => {
           return;
         }
 
-        console.log('Backend response (VCC):', data);
-
-        // Format VCC data
         let vccOrdersArray = [];
         if (Array.isArray(data)) {
           vccOrdersArray = data;
@@ -419,7 +393,6 @@ const MajorHistoryUser: React.FC = () => {
         }
 
         const formattedVccData: VirtualCardRecord[] = vccOrdersArray.map((item: any) => {
-          // Format purchase date
           let formattedDate = 'N/A';
           if (item.createdAt && item.createdAt._seconds) {
             const date = new Date(item.createdAt._seconds * 1000);
@@ -434,7 +407,6 @@ const MajorHistoryUser: React.FC = () => {
             });
           }
 
-          // Calculate funds based on price
           let funds = 0;
           if (item.price === 4) {
             funds = 0;
@@ -463,16 +435,13 @@ const MajorHistoryUser: React.FC = () => {
         setLoading(false);
       }
     } else if (tab === 'proxies') {
-      // If we already fetched Proxies data, use cached data
       if (proxiesDataFetched) {
-        // Only log if we have actual data (not empty state)
         if (!cachedProxiesData?.isEmpty) {
           console.log('Using cached Proxies data:', cachedProxiesData);
         }
         return;
       }
 
-      // Fetch Proxies data for the first time
       setLoading(true);
 
       try {
@@ -510,7 +479,6 @@ const MajorHistoryUser: React.FC = () => {
           }
         }
 
-        // Check for "No proxy orders found" message (can come with 200 OK)
         if (data.message === 'No proxy orders found') {
           setCachedProxiesData({ isEmpty: true });
           setProxiesDataFetched(true);
@@ -518,9 +486,6 @@ const MajorHistoryUser: React.FC = () => {
           return;
         }
 
-        console.log('Backend response (Proxies):', data);
-
-        // Convert proxy documents to ProxyRecords
         const proxyRecords = (data.orders || []).map((doc: any) => convertProxyDocumentToRecord(doc));
 
         setCachedProxiesData(proxyRecords);
@@ -533,15 +498,10 @@ const MajorHistoryUser: React.FC = () => {
         setLoading(false);
       }
     } else if (tab === 'voip') {
-      // If we already fetched VoIP data, use cached data
       if (voipDataFetched) {
-        if (cachedVoipData.length > 0) {
-          console.log('Using cached VoIP data:', cachedVoipData);
-        }
         return;
       }
 
-      // Fetch VoIP data for the first time
       setLoading(true);
 
       try {
@@ -582,7 +542,6 @@ const MajorHistoryUser: React.FC = () => {
             setLoading(false);
             return;
           } else {
-            // 400 or other errors
             setErrorMessage('User not found');
             setShowErrorModal(true);
             setLoading(false);
@@ -590,7 +549,6 @@ const MajorHistoryUser: React.FC = () => {
           }
         }
 
-        // Check for "No VoIP numbers found" message (can come with 200 OK)
         if (data.message === 'No VoIP numbers found') {
           setCachedVoipData([]);
           setVoipDataFetched(true);
@@ -598,9 +556,6 @@ const MajorHistoryUser: React.FC = () => {
           return;
         }
 
-        console.log('Backend response (VoIP):', data);
-
-        // Format VoIP data
         let voipOrdersArray = [];
         if (Array.isArray(data)) {
           voipOrdersArray = data;
@@ -609,7 +564,6 @@ const MajorHistoryUser: React.FC = () => {
         } else if (data.orders && Array.isArray(data.orders)) {
           voipOrdersArray = data.orders;
         } else {
-          console.log('No VoIP orders or unexpected format:', data);
           setCachedVoipData([]);
           setVoipDataFetched(true);
           setLoading(false);
@@ -784,7 +738,6 @@ const MajorHistoryUser: React.FC = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
-  // VoIP filtering and pagination
   const filteredVoipData = useMemo(() => {
     let filtered = cachedVoipData;
     if (voipNumberSearch.trim() !== '') {
@@ -938,7 +891,7 @@ const MajorHistoryUser: React.FC = () => {
         </div>
       </div>
 
-      {/* Search Form - Hide when we have searched */}
+      {/* Search Form */}
       {!searchedEmail && (
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6">
           <div className="space-y-6 flex flex-col items-center">
@@ -979,7 +932,7 @@ const MajorHistoryUser: React.FC = () => {
         </div>
       )}
 
-      {/* User Email Display - Show only if we have searched */}
+      {/* User Email Display */}
       {searchedEmail && (numbersDataFetched || vccDataFetched || proxiesDataFetched || voipDataFetched) && (
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6">
           <div className="flex flex-col items-center justify-center gap-4">
@@ -997,7 +950,7 @@ const MajorHistoryUser: React.FC = () => {
         </div>
       )}
 
-      {/* Filters and Table - Show only if we have searched and got data (either numbers or attempted VCC or proxies) */}
+      {/* Filters and Table */}
       {(searchedEmail && (historyData.length > 0 || numbersDataFetched || vccDataFetched || proxiesDataFetched || voipDataFetched)) && (
         <div className="rounded-3xl shadow-2xl border border-slate-700/50 relative">
           <div className="p-6">
@@ -1275,13 +1228,11 @@ const MajorHistoryUser: React.FC = () => {
                 {/* Pagination */}
                 {filteredData.length > 0 && totalPages > 1 && (
                   <div className="mt-6">
-                    {/* Results info - shown above pagination on small screens */}
                     <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
                       Showing {startIndex + 1} to {Math.min(endIndex, filteredData.length)} of {filteredData.length} results
                     </div>
 
                     <div className="flex items-center justify-between">
-                      {/* Results info - shown on left side on larger screens */}
                       <div className="hidden md:block text-sm text-slate-400">
                         Showing {startIndex + 1} to {Math.min(endIndex, filteredData.length)} of {filteredData.length} results
                       </div>
@@ -1298,7 +1249,7 @@ const MajorHistoryUser: React.FC = () => {
                           </svg>
                         </button>
 
-                        {/* Page Numbers - Show current and next page only */}
+                        {/* Page Numbers */}
                         <div className="flex space-x-1">
                           {[currentPage, currentPage + 1].filter(page => page <= totalPages).map((page) => (
                             <button
