@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getAuth } from 'firebase/auth';
 
-const VirtualCard: React.FC = () => {
+const VirtualCardTest: React.FC = () => {
     const navigate = useNavigate();
     const [amount, setAmount] = useState(0);
     const [isPurchasing, setIsPurchasing] = useState(false);
@@ -277,4 +277,4 @@ const VirtualCard: React.FC = () => {
     );
 };
 
-export default VirtualCard;
+export default VirtualCardTest;

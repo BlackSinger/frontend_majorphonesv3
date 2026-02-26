@@ -15,9 +15,11 @@ import EmptySimcard from './components/EmptySimcard';
 //import SendMessage from './components/SendMessage';
 import SendSMS from './components/SendSMS';
 import VirtualCard from './components/VirtualCard';
+import VccConfig from './components/VccConfig';
 import VirtualCardTest from './components/VirtualCardTest';
 import Proxies from './components/Proxies';
 import History from './components/History';
+import HistoryTest from './components/HistoryTest';
 import Transactions from './components/Transactions';
 import Tickets from './components/Tickets';
 import Profile from './components/Profile';
@@ -65,9 +67,11 @@ function App() {
             {/* <Route path="/sendmessage" element={<PrivateRoute><DashboardLayout><SendMessage /></DashboardLayout></PrivateRoute>} /> */}
             <Route path="/send-sms" element={<PrivateRoute><DashboardLayout><SendSMS /></DashboardLayout></PrivateRoute>} />
             <Route path="/virtualcard" element={<PrivateRoute><DashboardLayout><VirtualCard /></DashboardLayout></PrivateRoute>} />
+            <Route path="/vcc-config" element={<PrivateRoute><DashboardLayout><VccConfig /></DashboardLayout></PrivateRoute>} />
             <Route path="/test" element={<PrivateRoute><DashboardLayout><VirtualCardTest /></DashboardLayout></PrivateRoute>} />
             <Route path="/proxies" element={<PrivateRoute><DashboardLayout><Proxies /></DashboardLayout></PrivateRoute>} />
             <Route path="/history" element={<PrivateRoute><DashboardLayout><History /></DashboardLayout></PrivateRoute>} />
+            <Route path="/history-test" element={<PrivateRoute><DashboardLayout><HistoryTest /></DashboardLayout></PrivateRoute>} />
             <Route path="/transactions" element={<PrivateRoute><DashboardLayout><Transactions /></DashboardLayout></PrivateRoute>} />
             <Route path="/tickets" element={<PrivateRoute><DashboardLayout><Tickets /></DashboardLayout></PrivateRoute>} />
             <Route path="/profile" element={<PrivateRoute><DashboardLayout><Profile /></DashboardLayout></PrivateRoute>} />

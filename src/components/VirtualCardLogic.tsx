@@ -1,3 +1,6 @@
+import React from 'react';
+import { getAuth } from 'firebase/auth';
+
 export interface VirtualCardRecord {
   id: string;
   purchaseDate: string;
@@ -23,7 +26,7 @@ export interface VCCOrderDocument {
 export const handleCopyCardNumber = async (
   cardNumber: string,
   cardId: string,
-  setCopiedCardNumbers: (fn: (prev: {[key: string]: boolean}) => {[key: string]: boolean}) => void
+  setCopiedCardNumbers: (fn: (prev: { [key: string]: boolean }) => { [key: string]: boolean }) => void
 ) => {
   try {
     await navigator.clipboard.writeText(cardNumber.replace(/\s/g, ''));
@@ -98,4 +101,70 @@ export const convertVCCDocumentToRecord = (doc: VCCOrderDocument): VirtualCardRe
     funds: funds,
     email: doc.email || 'N/A'
   };
+};
+
+export const handleCheckCard = async (
+  orderId: string,
+  setCheckingCardId: React.Dispatch<React.SetStateAction<string | null>>,
+  setErrorMessage: React.Dispatch<React.SetStateAction<string>>,
+  setShowErrorModal: React.Dispatch<React.SetStateAction<boolean>>
+) => {
+  const auth = getAuth();
+  const currentUser2 = auth.currentUser;
+
+  if (!currentUser2) {
+    setErrorMessage('You are not authenticated or your token is invalid');
+    setShowErrorModal(true);
+    return;
+  }
+
+  setCheckingCardId(orderId);
+
+  try {
+    const idToken = await currentUser2.getIdToken();
+
+    const response = await fetch('https://getcard-ezeznlhr5a-uc.a.run.app', {
+      method: 'POST',
+      headers: {
+        'authorization': `${idToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ orderId })
+    });
+
+    const data = await response.json();
+    console.log("Backend response:", data);
+
+    if (response.ok) {
+      setCheckingCardId(null);
+    } else {
+      let errorMsg = 'An unknown error occurred';
+
+      if (response.status === 400) {
+        if (data.error === 'Missing parameters') {
+          errorMsg = 'Please try again or contact our customer support';
+        } else if (data.error === 'Failed to get card details') {
+          errorMsg = 'Please refresh and try again';
+        } else if (data.error === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+        } else if (data.error === 'User not found') {
+          errorMsg = 'You cannot check this information';
+        } else if (data.error === 'Order not found') {
+          errorMsg = 'Please contact our customer support';
+        }
+      } else if (response.status === 500) {
+        if (data.error === 'Internal Error') {
+          errorMsg = 'Please contact our customer support';
+        }
+      }
+
+      setErrorMessage(errorMsg);
+      setShowErrorModal(true);
+      setCheckingCardId(null);
+    }
+  } catch (error) {
+    setErrorMessage('Please contact our customer support');
+    setShowErrorModal(true);
+    setCheckingCardId(null);
+  }
 };
