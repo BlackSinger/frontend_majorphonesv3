@@ -29,6 +29,7 @@ import PaymentReview from './components/PaymentReview';
 import MajorDashboardLayout from './components/MajorDashboardLayout';
 import MajorHistory from './components/MajorHistory';
 import MajorHistoryUser from './components/MajorHistoryUser';
+import MajorModeration from './components/MajorModeration';
 import MajorTransactions from './components/MajorTransactions';
 import MajorTransactionsUser from './components/MajorTransactionsUser';
 import MajorUser from './components/MajorUser';
@@ -77,6 +78,7 @@ function App() {
 
             <Route path="/major-history" element={<PrivateRoute><MajorDashboardLayout><MajorHistory /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-user-history" element={<PrivateRoute><MajorDashboardLayout><MajorHistoryUser /></MajorDashboardLayout></PrivateRoute>} />
+            <Route path="/major-moderation" element={<PrivateRoute><MajorDashboardLayout><MajorModeration /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-transactions" element={<PrivateRoute><MajorDashboardLayout><MajorTransactions /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-user-transactions" element={<PrivateRoute><MajorDashboardLayout><MajorTransactionsUser /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-user" element={<PrivateRoute><MajorDashboardLayout><MajorUser /></MajorDashboardLayout></PrivateRoute>} />

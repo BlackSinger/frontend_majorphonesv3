@@ -349,7 +349,7 @@ const History: React.FC = () => {
   const tabFromUrl = searchParams.get('tab');
 
   const [activeTab, setActiveTab] = useState<'numbers' | 'virtualCards' | 'proxies' | 'voip'>(
-    tabFromUrl === 'virtualCards' ? 'virtualCards' : tabFromUrl === 'proxies' ? 'proxies' : 'numbers'
+    tabFromUrl === 'virtualCards' ? 'virtualCards' : tabFromUrl === 'proxies' ? 'proxies' : tabFromUrl === 'voip' ? 'voip' : 'numbers'
   );
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -367,6 +367,7 @@ const History: React.FC = () => {
   const [selectedFullSms, setSelectedFullSms] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
+  const [isVoipIdCopied, setIsVoipIdCopied] = useState(false);
   const [copiedCardNumbers, setCopiedCardNumbers] = useState<{ [key: string]: boolean }>({});
 
   const [cardNumberSearch, setCardNumberSearch] = useState<string>('');
@@ -743,8 +744,13 @@ const History: React.FC = () => {
       );
     }
     if (voipStatusFilter !== 'All') {
-      filtered = filtered.filter(record => record.status === voipStatusFilter);
+      if (voipStatusFilter === 'Awaiting moderation') {
+        filtered = filtered.filter(record => record.status === 'Moderation');
+      } else {
+        filtered = filtered.filter(record => record.status === voipStatusFilter);
+      }
     }
+
     return filtered;
   }, [voipData, voipNumberSearch, voipStatusFilter]);
 
@@ -1221,6 +1227,16 @@ const History: React.FC = () => {
     }
   };
 
+  const handleCopyVoipId = async () => {
+    if (selectedVoipRecord) {
+      try {
+        await navigator.clipboard.writeText(selectedVoipRecord.orderId);
+        setIsVoipIdCopied(true);
+        setTimeout(() => setIsVoipIdCopied(false), 2000);
+      } catch (err) {
+      }
+    }
+  };
 
   const handleCopyUuid = async () => {
     try {
@@ -2122,7 +2138,7 @@ const History: React.FC = () => {
                       </div>
                       {isVoipStatusDropdownOpen && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] text-sm">
-                          {['All', 'Completed', 'Failed'].map((option) => (
+                          {['All', 'Completed', 'Failed', ...(!isLoadingVoip && voipData.length > 0 ? ['Awaiting moderation'] : [])].map((option) => (
                             <div
                               key={option}
                               onClick={() => {
@@ -2175,7 +2191,7 @@ const History: React.FC = () => {
                             <td className="py-4 px-6">
                               <div className="flex items-center justify-center">
                                 <button
-                                  onClick={() => { setSelectedVoipRecord(record); setShowVoipInfoModal(true); }}
+                                  onClick={() => { setSelectedVoipRecord(record); setShowVoipInfoModal(true); setIsVoipIdCopied(false); }}
                                   className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
                                   title="View Information"
                                 >
@@ -2193,7 +2209,9 @@ const History: React.FC = () => {
                             {/* Country */}
                             <td className="py-4 px-6 text-white text-center">{record.country}</td>
                             {/* Message */}
-                            <td className="py-4 px-6 text-white text-center max-w-xs truncate">{record.message}</td>
+                            <td className="py-4 px-6 text-white text-center max-w-xs">
+                              <span className="whitespace-normal break-words">{record.message}</span>
+                            </td>
                             {/* Price */}
                             <td className="py-4 px-6 text-center">
                               <span className="text-emerald-400 font-semibold">${record.price.toFixed(2)}</span>
@@ -2204,9 +2222,11 @@ const History: React.FC = () => {
                                 ? 'text-green-400 border-green-500/30 bg-green-500/20'
                                 : record.status === 'Failed'
                                   ? 'text-red-400 border-red-500/30 bg-red-500/20'
-                                  : 'text-gray-400 border-gray-500/30 bg-gray-500/20'
+                                  : record.status === 'Moderation'
+                                    ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/20'
+                                    : 'text-gray-400 border-gray-500/30 bg-gray-500/20'
                                 }`}>
-                                {record.status}
+                                {record.status === 'Moderation' ? 'Awaiting moderation' : record.status}
                               </span>
                             </td>
                           </tr>
@@ -2656,11 +2676,11 @@ const History: React.FC = () => {
                 <span className="text-slate-300">Order ID: </span>
                 <span className="text-emerald-400 break-all">{selectedVoipRecord.orderId}
                   <button
-                    onClick={handleCopyInfoId}
+                    onClick={handleCopyVoipId}
                     className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
-                    title={isInfoIdCopied ? "Copied!" : "Copy Order ID"}
+                    title={isVoipIdCopied ? "Copied!" : "Copy Order ID"}
                   >
-                    {isInfoIdCopied ? (
+                    {isVoipIdCopied ? (
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                       </svg>

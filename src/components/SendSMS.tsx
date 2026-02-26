@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { db, auth } from '../firebase/config';
 import { doc, getDoc } from 'firebase/firestore';
 import countriesData from '../countries_export.json';
@@ -70,11 +71,14 @@ const SendSMS: React.FC = () => {
     const [smsCurrentPage, setSmsCurrentPage] = useState(1);
     const [sending, setSending] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showDirectSuccessModal, setShowDirectSuccessModal] = useState(false);
     const [errorModalTitle, setErrorModalTitle] = useState('Error');
     const [errorModalBody, setErrorModalBody] = useState('');
     const [failedNumbers, setFailedNumbers] = useState<string[]>([]);
     const [showPartialSuccessModal, setShowPartialSuccessModal] = useState(false);
     const itemsPerPage = 10;
+
+    const navigate = useNavigate();
 
     useEffect(() => {
         const loadCountries = () => {
@@ -700,8 +704,12 @@ const SendSMS: React.FC = () => {
                 if (data.failedNumbers && Array.isArray(data.failedNumbers) && data.failedNumbers.length > 0) {
                     setFailedNumbers(data.failedNumbers);
                     setShowPartialSuccessModal(true);
-                } else {
+                } else if (data.orderIds || data.messageQueued) {
+                    // Moderation response
                     setShowSuccessModal(true);
+                } else {
+                    // Direct success response
+                    setShowDirectSuccessModal(true);
                 }
             } else {
                 setSending(false);
@@ -710,6 +718,18 @@ const SendSMS: React.FC = () => {
                     if (data.error === 'Missing parameters') {
                         setErrorModalTitle('Error');
                         setErrorModalBody('Please refresh the page and try again');
+                    } else if (data.error === 'Unauthorized') {
+                        setErrorModalTitle('SMS not sent');
+                        setErrorModalBody('You cannot proceed with this action');
+                    } else if (data.error === 'User not found') {
+                        setErrorModalTitle('SMS not sent');
+                        setErrorModalBody('You cannot proceed with this action');
+                    } else if (data.error === 'Numbers and countries arrays must have the same length') {
+                        setErrorModalTitle('SMS not sent');
+                        setErrorModalBody('Please contact our customer support');
+                    } else if (data.error === 'One or more countries are not supported') {
+                        setErrorModalTitle('SMS not sent');
+                        setErrorModalBody('One or more countries are banned');
                     } else if (data.error === 'Message flagged for moderation') {
                         setErrorModalTitle('SMS not sent');
                         setErrorModalBody('Your message has been flagged for moderation');
@@ -724,7 +744,7 @@ const SendSMS: React.FC = () => {
                         setErrorModalBody(data.error || 'An error occurred');
                     }
                 } else if (response.status === 500) {
-                    setErrorModalTitle('Internal server error');
+                    setErrorModalTitle('Internal Error');
                     setErrorModalBody('Please contact our customer support');
                 } else {
                     setErrorModalTitle('Error');
@@ -735,7 +755,7 @@ const SendSMS: React.FC = () => {
         } catch (error) {
             console.error(error);
             setSending(false);
-            setErrorModalTitle('Internal server error');
+            setErrorModalTitle('Internal Error');
             setErrorModalBody('Please contact our customer support');
             setShowErrorModal(true);
         }
@@ -825,14 +845,27 @@ const SendSMS: React.FC = () => {
                                                 </button>
                                             </span>
                                         ))}
-                                        <input
-                                            type="text"
-                                            value={countryFilter}
-                                            onChange={(e) => setCountryFilter(e.target.value)}
-                                            onKeyDown={handleKeyDown}
-                                            placeholder={"Type country name and press Enter..."}
-                                            className="flex-1 min-w-[150px] bg-transparent text-white text-sm outline-none placeholder-slate-400"
-                                        />
+                                        <form onSubmit={(e) => {
+                                            e.preventDefault();
+                                            if (countryFilter.trim()) {
+                                                const newTag = countryFilter.trim();
+                                                if (!countryTags.some(tag => tag.toLowerCase() === newTag.toLowerCase())) {
+                                                    setCountryTags([...countryTags, newTag]);
+                                                }
+                                                setCountryFilter('');
+                                                setSearchResults([]);
+                                            }
+                                        }} className="flex-1 min-w-[150px]">
+                                            <input
+                                                type="text"
+                                                value={countryFilter}
+                                                onChange={(e) => setCountryFilter(e.target.value)}
+                                                onKeyDown={handleKeyDown}
+                                                placeholder={"Type country name and press Enter..."}
+                                                className="w-full bg-transparent text-white text-sm outline-none placeholder-slate-400"
+                                            />
+                                        </form>
+
                                     </div>
                                 </div>
 
@@ -1058,15 +1091,30 @@ const SendSMS: React.FC = () => {
                                             </span>
                                         );
                                     })}
-                                    <input
-                                        disabled={sending}
-                                        type="text"
-                                        value={phoneInput}
-                                        onChange={(e) => setPhoneInput(e.target.value.replace(/[^0-9]/g, ''))}
-                                        onKeyDown={handlePhoneKeyDown}
-                                        placeholder="Type phone number with area code and press Enter..."
-                                        className="flex-1 min-w-[150px] bg-transparent text-white text-sm outline-none placeholder-slate-400"
-                                    />
+                                    <form onSubmit={(e) => {
+                                        e.preventDefault();
+                                        if (phoneInput.trim()) {
+                                            const newNumber = phoneInput.trim();
+                                            if (!/^\d+$/.test(newNumber)) return;
+                                            if (!phoneNumbers.includes(newNumber)) {
+                                                const updatedNumbers = [...phoneNumbers, newNumber];
+                                                setPhoneNumbers(updatedNumbers);
+                                                setPricesChecked(false);
+                                            }
+                                            setPhoneInput('');
+                                        }
+                                    }} className="flex-1 min-w-[150px]">
+                                        <input
+                                            disabled={sending}
+                                            type="text"
+                                            value={phoneInput}
+                                            onChange={(e) => setPhoneInput(e.target.value.replace(/[^0-9]/g, ''))}
+                                            onKeyDown={handlePhoneKeyDown}
+                                            placeholder="Type phone number with area code and press Enter..."
+                                            className="w-full bg-transparent text-white text-sm outline-none placeholder-slate-400"
+                                        />
+                                    </form>
+
                                 </div>
 
                                 {phoneNumbers.some(n => !isNumberValid(n)) && (
@@ -1345,8 +1393,8 @@ const SendSMS: React.FC = () => {
                     </div>
                 )}
 
-                {/* Success Modal*/}
-                {showSuccessModal && (
+                {/* Success Modal */}
+                {showDirectSuccessModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
                         <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
                             <div className="text-center">
@@ -1360,11 +1408,41 @@ const SendSMS: React.FC = () => {
                                 <h3 className="text-lg font-medium text-white mb-2">Success</h3>
                                 <p className="text-blue-200 mb-4">Your SMS has been sent correctly</p>
                                 <button
-                                    onClick={() => setShowSuccessModal(false)}
+                                    onClick={() => setShowDirectSuccessModal(false)}
                                     className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
                                 >
                                     OK
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+
+                {/* Success but Moderation Modal */}
+                {showSuccessModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+                        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+                            <div className="text-center">
+                                <div className="mb-4">
+                                    <div className="w-12 h-12 mx-auto bg-emerald-500 rounded-full flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-medium text-white mb-2">Success</h3>
+                                <p className="text-blue-200 mb-4">Your SMS might be submitted for moderation, which will take a few minutes</p>
+                                <button
+                                    onClick={() => {
+                                        setShowSuccessModal(false);
+                                        navigate('/history?tab=voip');
+                                    }}
+                                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                                >
+                                    Check History
+                                </button>
+
                             </div>
                         </div>
                     </div>

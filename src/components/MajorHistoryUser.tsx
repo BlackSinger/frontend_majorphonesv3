@@ -89,6 +89,7 @@ const MajorHistoryUser: React.FC = () => {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<HistoryRecord | null>(null);
   const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
+  const [isVoipIdCopied, setIsVoipIdCopied] = useState(false);
   const serviceTypeDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const numberTypeDropdownRef = useRef<HTMLDivElement>(null);
@@ -746,7 +747,11 @@ const MajorHistoryUser: React.FC = () => {
       );
     }
     if (voipStatusFilter !== 'All') {
-      filtered = filtered.filter(record => record.status === voipStatusFilter);
+      if (voipStatusFilter === 'Awaiting moderation') {
+        filtered = filtered.filter(record => record.status === 'Moderation');
+      } else {
+        filtered = filtered.filter(record => record.status === voipStatusFilter);
+      }
     }
     return filtered;
   }, [cachedVoipData, voipNumberSearch, voipStatusFilter]);
@@ -834,6 +839,17 @@ const MajorHistoryUser: React.FC = () => {
         await navigator.clipboard.writeText(selectedRecord.id);
         setIsInfoIdCopied(true);
         setTimeout(() => setIsInfoIdCopied(false), 2000);
+      } catch (err) {
+      }
+    }
+  };
+
+  const handleCopyVoipId = async () => {
+    if (selectedVoipRecord) {
+      try {
+        await navigator.clipboard.writeText(selectedVoipRecord.orderId);
+        setIsVoipIdCopied(true);
+        setTimeout(() => setIsVoipIdCopied(false), 2000);
       } catch (err) {
       }
     }
@@ -1426,7 +1442,7 @@ const MajorHistoryUser: React.FC = () => {
                         </div>
                         {isVoipStatusDropdownOpen && (
                           <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] text-sm">
-                            {['All', 'Completed', 'Failed'].map((option) => (
+                            {['All', 'Completed', 'Failed', ...(!loading && cachedVoipData.length > 0 ? ['Awaiting moderation'] : [])].map((option) => (
                               <div
                                 key={option}
                                 onClick={() => {
@@ -1478,7 +1494,7 @@ const MajorHistoryUser: React.FC = () => {
                               <td className="py-4 px-6">
                                 <div className="flex items-center justify-center">
                                   <button
-                                    onClick={() => { setSelectedVoipRecord(record); setShowVoipInfoModal(true); }}
+                                    onClick={() => { setSelectedVoipRecord(record); setShowVoipInfoModal(true); setIsVoipIdCopied(false); }}
                                     className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
                                     title="View Information"
                                   >
@@ -1493,7 +1509,9 @@ const MajorHistoryUser: React.FC = () => {
                                 <div className="font-mono text-white text-center">+{record.number}</div>
                               </td>
                               <td className="py-4 px-6 text-white text-center">{record.country}</td>
-                              <td className="py-4 px-6 text-white text-center max-w-xs truncate">{record.message}</td>
+                              <td className="py-4 px-6 text-white text-center max-w-xs">
+                                <span className="whitespace-normal break-words">{record.message}</span>
+                              </td>
                               <td className="py-4 px-6 text-center">
                                 <span className="text-emerald-400 font-semibold">${record.price.toFixed(2)}</span>
                               </td>
@@ -1502,9 +1520,11 @@ const MajorHistoryUser: React.FC = () => {
                                   ? 'text-green-400 border-green-500/30 bg-green-500/20'
                                   : record.status === 'Failed'
                                     ? 'text-red-400 border-red-500/30 bg-red-500/20'
-                                    : 'text-gray-400 border-gray-500/30 bg-gray-500/20'
+                                    : record.status === 'Moderation'
+                                      ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/20'
+                                      : 'text-gray-400 border-gray-500/30 bg-gray-500/20'
                                   }`}>
-                                  {record.status}
+                                  {record.status === 'Moderation' ? 'Awaiting moderation' : record.status}
                                 </span>
                               </td>
                             </tr>
@@ -1877,7 +1897,23 @@ const MajorHistoryUser: React.FC = () => {
               <div className="space-y-4 text-left">
                 <div>
                   <span className="text-slate-300">Order ID: </span>
-                  <span className="text-emerald-400 break-all">{selectedVoipRecord.orderId}</span>
+                  <span className="text-emerald-400 break-all">{selectedVoipRecord.orderId}
+                    <button
+                      onClick={handleCopyVoipId}
+                      className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                      title={isVoipIdCopied ? "Copied!" : "Copy Order ID"}
+                    >
+                      {isVoipIdCopied ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      )}
+                    </button>
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-300">Sent on: </span>
