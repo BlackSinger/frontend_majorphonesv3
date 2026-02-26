@@ -705,10 +705,8 @@ const SendSMS: React.FC = () => {
                     setFailedNumbers(data.failedNumbers);
                     setShowPartialSuccessModal(true);
                 } else if (data.orderIds || data.messageQueued) {
-                    // Moderation response
                     setShowSuccessModal(true);
                 } else {
-                    // Direct success response
                     setShowDirectSuccessModal(true);
                 }
             } else {

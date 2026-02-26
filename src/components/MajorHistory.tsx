@@ -2124,7 +2124,7 @@ const MajorHistory: React.FC = () => {
                       </div>
                       {isVoipStatusDropdownOpen && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] text-sm">
-                          {['All', 'Completed', 'Failed', ...(!isLoading && cachedVoipData.length > 0 ? ['Awaiting moderation'] : [])].map((option) => (
+                          {['All', 'Completed', 'Failed', 'Rejected', ...(!isLoading && cachedVoipData.length > 0 ? ['Awaiting moderation'] : [])].map((option) => (
                             <div
                               key={option}
                               onClick={() => {
@@ -2209,13 +2209,15 @@ const MajorHistory: React.FC = () => {
                             </td>
                             {/* Status */}
                             <td className="py-4 px-6 text-center">
-                              <span className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold border ${record.status === 'Completed'
+                              <span style={{ width: '100px' }} className={`inline-block text-center px-3 py-1 rounded-lg text-sm font-semibold border ${record.status === 'Completed'
                                 ? 'text-green-400 border-green-500/30 bg-green-500/20'
                                 : record.status === 'Failed'
                                   ? 'text-red-400 border-red-500/30 bg-red-500/20'
-                                  : record.status === 'Moderation'
-                                    ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/20'
-                                    : 'text-gray-400 border-gray-500/30 bg-gray-500/20'
+                                  : record.status === 'Rejected'
+                                    ? 'text-red-400 border-red-500/30 bg-red-500/20'
+                                    : record.status === 'Moderation'
+                                      ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/20'
+                                      : 'text-gray-400 border-gray-500/30 bg-gray-500/20'
                                 }`}>
                                 {record.status === 'Moderation' ? 'Awaiting moderation' : record.status}
                               </span>

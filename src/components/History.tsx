@@ -1832,7 +1832,7 @@ const History: React.FC = () => {
 
                             {/* Page Numbers */}
                             <div className="flex space-x-1">
-                              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                              {[currentPage, currentPage + 1].filter(page => page <= totalPages).map((page) => (
                                 <button
                                   key={page}
                                   onClick={() => setCurrentPage(page)}
@@ -2043,7 +2043,7 @@ const History: React.FC = () => {
 
                             {/* Page Numbers */}
                             <div className="flex space-x-1">
-                              {Array.from({ length: totalVirtualCardPages }, (_, i) => i + 1).map((page) => (
+                              {[currentVirtualCardPage, currentVirtualCardPage + 1].filter(page => page <= totalVirtualCardPages).map((page) => (
                                 <button
                                   key={page}
                                   onClick={() => setCurrentVirtualCardPage(page)}
@@ -2138,7 +2138,7 @@ const History: React.FC = () => {
                       </div>
                       {isVoipStatusDropdownOpen && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] text-sm">
-                          {['All', 'Completed', 'Failed', ...(!isLoadingVoip && voipData.length > 0 ? ['Awaiting moderation'] : [])].map((option) => (
+                          {['All', 'Completed', 'Failed', 'Rejected', ...(!isLoadingVoip && voipData.some(record => record.status === 'Moderation') ? ['Awaiting moderation'] : [])].map((option) => (
                             <div
                               key={option}
                               onClick={() => {
@@ -2218,16 +2218,19 @@ const History: React.FC = () => {
                             </td>
                             {/* Status */}
                             <td className="py-4 px-6 text-center">
-                              <span className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold border ${record.status === 'Completed'
+                              <span style={{ width: '100px' }} className={`inline-block text-center px-3 py-1 rounded-lg text-sm font-semibold border ${record.status === 'Completed'
                                 ? 'text-green-400 border-green-500/30 bg-green-500/20'
                                 : record.status === 'Failed'
                                   ? 'text-red-400 border-red-500/30 bg-red-500/20'
-                                  : record.status === 'Moderation'
-                                    ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/20'
-                                    : 'text-gray-400 border-gray-500/30 bg-gray-500/20'
+                                  : record.status === 'Rejected'
+                                    ? 'text-red-400 border-red-500/30 bg-red-500/20'
+                                    : record.status === 'Moderation'
+                                      ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/20'
+                                      : 'text-gray-400 border-gray-500/30 bg-gray-500/20'
                                 }`}>
                                 {record.status === 'Moderation' ? 'Awaiting moderation' : record.status}
                               </span>
+
                             </td>
                           </tr>
                         ))}
@@ -2255,7 +2258,7 @@ const History: React.FC = () => {
                               </svg>
                             </button>
                             <div className="flex space-x-1">
-                              {Array.from({ length: totalVoipPages }, (_, i) => i + 1).map((page) => (
+                              {[currentVoipPage, currentVoipPage + 1].filter(page => page <= totalVoipPages).map((page) => (
                                 <button
                                   key={page}
                                   onClick={() => setCurrentVoipPage(page)}
@@ -2511,7 +2514,7 @@ const History: React.FC = () => {
 
                             {/* Page Numbers */}
                             <div className="flex space-x-1">
-                              {Array.from({ length: totalProxyPages }, (_, i) => i + 1).map((page) => (
+                              {[currentProxyPage, currentProxyPage + 1].filter(page => page <= totalProxyPages).map((page) => (
                                 <button
                                   key={page}
                                   onClick={() => setCurrentProxyPage(page)}
