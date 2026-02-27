@@ -9,6 +9,7 @@ import ForgotPassword from './components/ForgotPassword';
 import Account from './components/Account';
 import Dashboard from './components/Dashboard';
 import ShortNumbers from './components/ShortNumbers';
+import ShortNumbersTest from './components/ShortNumbersTest';
 import Middle from './components/Middle';
 import LongTerm from './components/LongTerm';
 import EmptySimcard from './components/EmptySimcard';
@@ -61,6 +62,7 @@ function App() {
             {/* Protected routes - All wrapped with DashboardLayout */}
             <Route path="/dashboard" element={<PrivateRoute><DashboardLayout><Dashboard /></DashboardLayout></PrivateRoute>} />
             <Route path="/short" element={<PrivateRoute><DashboardLayout><ShortNumbers /></DashboardLayout></PrivateRoute>} />
+            <Route path="/short-test" element={<PrivateRoute><DashboardLayout><ShortNumbersTest /></DashboardLayout></PrivateRoute>} />
             <Route path="/middle" element={<PrivateRoute><DashboardLayout><Middle /></DashboardLayout></PrivateRoute>} />
             <Route path="/long" element={<PrivateRoute><DashboardLayout><LongTerm /></DashboardLayout></PrivateRoute>} />
             <Route path="/emptysimcard" element={<PrivateRoute><DashboardLayout><EmptySimcard /></DashboardLayout></PrivateRoute>} />

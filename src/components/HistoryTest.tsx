@@ -11,7 +11,6 @@ import {
     calculateShortDuration,
     getShortAvailableActions,
     handleCancelShort,
-    // handleReuseNumber
 } from './ShortLogic';
 
 import {
@@ -1287,12 +1286,6 @@ const HistoryTest: React.FC = () => {
             }
             return;
         }
-
-        // Handle Reuse action
-        // if (action === 'Reuse') {
-        //   await handleReuseNumber(record.orderId || '', setErrorMessage, setShowErrorModal, setReusingOrderId);
-        //   return;
-        // }
 
         if (action === 'Send') {
             navigate('/sendmessage');
