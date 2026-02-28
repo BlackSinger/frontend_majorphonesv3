@@ -433,12 +433,24 @@ const Middle: React.FC = () => {
             <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
             <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
               <li>• These numbers last 1, 7 or 14 days depending on the option specified</li>
+              <li>• Their duration can only be extended before they expire</li>
               <li>• After purchased, some can be cancelled and some can't</li>
               <li>• Users that deposit through Amazon Pay can't purchase them</li>
+              <li>• If you want to reuse a number for 9-10 minutes or more, go to <Link to="/short" className="text-blue-400 hover:text-blue-300 underline font-semibold">Short Numbers</Link></li>
+              <li>• If you want to verify 1 service for a longer period, go to <Link to="/long" className="text-blue-400 hover:text-blue-300 underline font-semibold">Long Numbers</Link></li>
               <li>• If you want to verify more than 1 service with the same number, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
             </ul>
           </div>
         </div>
+      </div>
+
+      {/* Reuse Announcement */}
+      <div className="bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 mb-6">
+        <p className="text-center text-sm">
+          <span className="text-emerald-300 font-bold">NEW</span>
+          <span className="text-slate-300 mx-2">—</span>
+          <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes or more</span>, go to <Link to="/short" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Short Numbers</Link>!</span>
+        </p>
       </div>
 
       {/* Main Content Section */}

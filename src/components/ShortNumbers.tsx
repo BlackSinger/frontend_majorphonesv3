@@ -19,12 +19,9 @@ interface NumberOption {
   id: string;
   number: string;
   price: number;
-  // extraSmsPrice?: number;
   country: string;
   countryCode: string;
   countryPrefix: string;
-  // isReusable: boolean;
-  receiveSend?: boolean;
   opt: string;
 }
 
@@ -59,9 +56,6 @@ const ShortNumbers: React.FC = () => {
   const [hasError, setHasError] = useState(false);
 
   const [purchasingOptionId, setPurchasingOptionId] = useState<string | null>(null);
-
-  const [showSendSmsWarningModal, setShowSendSmsWarningModal] = useState(false);
-  const [pendingPurchaseOption, setPendingPurchaseOption] = useState<NumberOption | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const serviceDropdownRef = useRef<HTMLDivElement>(null);
@@ -178,7 +172,6 @@ const ShortNumbers: React.FC = () => {
 
       servicesList.sort((a, b) => a.name.localeCompare(b.name));
 
-      // Filter restricted services based on country
       let finalServicesList = servicesList;
       if (selectedCountry === 'India') {
         const restrictedServicesIndia = ['whatsapp'];
@@ -248,64 +241,6 @@ const ShortNumbers: React.FC = () => {
     setShowErrorModal(false);
     setErrorMessage('');
   };
-
-  // Handle purchase for opt6 numbers (reusable)
-  // const handleReuseUSAPurchase = async (uniqueOptionId: string) => {
-  //   const currentUser = getAuth().currentUser;
-
-  //   if (!currentUser) {
-  //     setErrorMessage('You are not authenticated or your token is invalid');
-  //     setShowErrorModal(true);
-  //     return;
-  //   }
-
-  //   setPurchasingOptionId(uniqueOptionId);
-
-  //   try {
-  //     // Get Firebase ID token using official method
-  //     const idToken = await currentUser.getIdToken();
-
-  //     // Make API call to reuseusa cloud function
-  //     const response = await fetch('https://reuseusa-ezeznlhr5a-uc.a.run.app', {
-  //       method: 'POST',
-  //       headers: {
-  //         'authorization': `${idToken}`,
-  //         'Content-Type': 'application/json'
-  //       },
-  //       body: JSON.stringify({
-  //         serviceId: globalPurchaseData.serviceId
-  //       })
-  //     });
-
-  //     const data = await response.json();
-
-  //     if (response.ok && data.success) {
-  //       // Success case - redirect to history
-  //       navigate('/history');
-  //     } else {
-  //       // Handle error responses for reuseusa
-  //       let errorMsg = 'An unknown error occurred';
-
-  //       if (data.message === 'Unauthorized') {
-  //         errorMsg = 'You are not authenticated or your token is invalid';
-  //       } else if (data.message === 'Insufficient balance') {
-  //         errorMsg = 'You do not have enough balance to make the purchase';
-  //       } else if (data.message === 'Failed to get number') {
-  //         errorMsg = 'We ran out of SIM cards, try again later';
-  //       } else if (data.message === 'Internal Server Error') {
-  //         errorMsg = 'Please contact our customer support';
-  //       }
-
-  //       setErrorMessage(errorMsg);
-  //       setShowErrorModal(true);
-  //     }
-  //   } catch (error) {
-  //     setErrorMessage('Please contact our customer support');
-  //     setShowErrorModal(true);
-  //   } finally {
-  //     setPurchasingOptionId(null);
-  //   }
-  // };
 
   const handleBuyShortUSAPurchase = async (uniqueOptionId: string) => {
     const currentUser = getAuth().currentUser;
@@ -623,14 +558,6 @@ const ShortNumbers: React.FC = () => {
   };
 
   const handlePurchaseClick = (option: NumberOption) => {
-    // If option has Send SMS: Yes (receiveSend: true), show warning modal first
-    if (option.receiveSend) {
-      setPendingPurchaseOption(option);
-      setShowSendSmsWarningModal(true);
-      return;
-    }
-
-    // Otherwise, proceed directly with purchase
     executePurchase(option);
   };
 
@@ -645,15 +572,9 @@ const ShortNumbers: React.FC = () => {
         case 'opt2':
           globalPurchaseData.option = 2;
           break;
-        /*case 'opt3':
-          globalPurchaseData.option = 3;
-          break;*/
         case 'opt10':
           globalPurchaseData.option = 10;
           break;
-        /*case 'opt6':
-          globalPurchaseData.option = 6;
-          break;*/
       }
     } else {
       switch (option.opt) {
@@ -669,14 +590,7 @@ const ShortNumbers: React.FC = () => {
     const uniqueOptionId = `${option.id}-${option.opt}`;
 
     if (selectedCountry === 'United States') {
-      // Use different cloud functions based on opt
-      // if (option.opt === 'opt6') {
-      //   // Use reuseusa cloud function for opt6 (reusable numbers)
-      //   handleReuseUSAPurchase(uniqueOptionId);
-      // } else {
-      // Use buyshortusa cloud function for opt1, opt2, opt3
       handleBuyShortUSAPurchase(uniqueOptionId);
-      // }
     } else if (selectedCountry === 'United Kingdom') {
       handleBuyShortUKPurchase(uniqueOptionId);
     } else if (selectedCountry === 'India') {
@@ -685,14 +599,6 @@ const ShortNumbers: React.FC = () => {
       handleBuyShortGermanyPurchase(uniqueOptionId);
     } else if (selectedCountry === 'France') {
       handleBuyShortFrancePurchase(uniqueOptionId);
-    }
-  };
-
-  const handleProceedWithSendSmsPurchase = () => {
-    if (pendingPurchaseOption) {
-      setShowSendSmsWarningModal(false);
-      executePurchase(pendingPurchaseOption);
-      setPendingPurchaseOption(null);
     }
   };
 
@@ -708,8 +614,6 @@ const ShortNumbers: React.FC = () => {
       let allNumbers: NumberOption[] = [];
 
       if (selectedCountry === 'United States') {
-        // opt6 (reusable numbers) is commented out: const searchPromises = ['opt1', 'opt2', 'opt3', 'opt6'].map(async (optDoc) => {
-        //const searchPromises = ['opt1', 'opt2', 'opt3'].map(async (optDoc) => {
         const searchPromises = ['opt1', 'opt2', 'opt10'].map(async (optDoc) => {
           const servicesRef = collection(db, 'stnUSA', optDoc, 'services');
           const querySnapshot = await getDocs(servicesRef);
@@ -723,22 +627,15 @@ const ShortNumbers: React.FC = () => {
               const countryCode = selectedCountryData?.code || 'US';
               const countryPrefix = selectedCountryData?.prefix || '+1';
 
-              //const isOpt3 = optDoc === 'opt3';
               const isOpt10 = optDoc === 'opt10';
-              // const isOpt6 = optDoc === 'opt6';
 
               results.push({
                 id: data.id,
                 number: `${countryPrefix}-XXXXXX`,
                 price: data.price,
-                // extraSmsPrice: isOpt6 ? (data.price / 2) : undefined, // Only opt6 has extraSmsPrice for reuse (half of price)
                 country: selectedCountry,
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
-                // isReusable: isOpt6, // Only opt6 is reusable
-                //receiveSend: isOpt3,
-                //receiveSend: isOpt10,
-                receiveSend: false,
                 opt: optDoc
               });
             }
@@ -781,7 +678,6 @@ const ShortNumbers: React.FC = () => {
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 // isReusable: false, // Both options are not reusable
-                receiveSend: false,
                 opt: optDoc
               });
             }
@@ -821,7 +717,6 @@ const ShortNumbers: React.FC = () => {
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 // isReusable: false, // Both options are not reusable
-                receiveSend: false,
                 opt: optDoc
               });
             }
@@ -857,7 +752,6 @@ const ShortNumbers: React.FC = () => {
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 // isReusable: false, // Both options are not reusable
-                receiveSend: false,
                 opt: optDoc
               });
             }
@@ -893,7 +787,6 @@ const ShortNumbers: React.FC = () => {
                 countryCode: countryCode,
                 countryPrefix: countryPrefix,
                 // isReusable: false, // Both options are not reusable
-                receiveSend: false,
                 opt: optDoc
               });
             }
@@ -965,22 +858,30 @@ const ShortNumbers: React.FC = () => {
         </div>
       </div>
 
-      {/* Information Section - Always on top */}
+      {/* Information Section */}
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4 mb-6">
         <div className="flex items-center justify-center">
           <div className="text-center">
             <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
             <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
-              {/* <li>• They can only be reused if you select the Reusable option, reusable numbers last 12 hours</li> */}
-              <li>• They can only receive and send SMS if you purchase the "Send SMS: Yes" option, they can receive 1 code and send multiple SMS</li>
-              <li>• Numbers with "Send SMS: Yes" last 5 minutes and you can only send SMS if the code has arrived; each sending costs $0.5</li>
+              <li>• They can only be reused multiple times if you purchase the "Reusable: Yes" option, otherwise they can only receive just 1 SMS</li>
+              <li>• You can use the reuse feature for 9-10 minutes or more</li>
               <li>• They can't be refunded once a code arrives</li>
               <li>• Cancelled and timed out (no code arrived) numbers are automatically refunded</li>
-              <li>• If you want to verify 1 service more than once, go to <Link to="/middle" className="text-blue-400 hover:text-blue-300 underline font-semibold">Middle</Link> or <Link to="/long" className="text-blue-400 hover:text-blue-300 underline font-semibold">Long</Link> Numbers</li>
+              <li>• If you want to verify 1 service more than once for a longer period, go to <Link to="/middle" className="text-blue-400 hover:text-blue-300 underline font-semibold">Middle</Link> or <Link to="/long" className="text-blue-400 hover:text-blue-300 underline font-semibold">Long</Link> Numbers</li>
               <li>• If you want to verify multiple services, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
             </ul>
           </div>
         </div>
+      </div>
+
+      {/* Reuse Announcement */}
+      <div className="bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 mb-6">
+        <p className="text-center text-sm">
+          <span className="text-emerald-300 font-bold">NEW</span>
+          <span className="text-slate-300 mx-2">—</span>
+          <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes or more</span> by purchasing a number with <span className="text-emerald-400 font-semibold">Reusable: Yes</span></span>
+        </p>
       </div>
 
       {/* Main Content Section */}
@@ -1206,15 +1107,9 @@ const ShortNumbers: React.FC = () => {
                               </span>
                             </div>
                             <div className="flex items-center justify-between text-md">
-                              <span className="text-slate-300 font-medium">Receive SMS:</span>
-                              <span className="font-semibold text-emerald-400">
-                                Yes
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between text-md">
-                              <span className="text-slate-300 font-medium">Send SMS:</span>
-                              <span className={`font-semibold ${option.receiveSend ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {option.receiveSend ? 'Yes' : 'No'}
+                              <span className="text-slate-300 font-medium">Reusable:</span>
+                              <span className={`font-semibold ${option.opt === 'opt1' || option.opt === 'opt10' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {option.opt === 'opt1' || option.opt === 'opt10' ? 'Yes' : 'No'}
                               </span>
                             </div>
                           </div>
@@ -1245,16 +1140,9 @@ const ShortNumbers: React.FC = () => {
                         </div>
 
                         <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                          <span className="text-slate-300 font-medium">Receive SMS:</span>
-                          <span className="font-semibold text-emerald-400">
-                            Yes
-                          </span>
-                        </div>
-
-                        <div className="hidden md:flex md:items-center md:space-x-2 text-md">
-                          <span className="text-slate-300 font-medium">Send SMS:</span>
-                          <span className={`font-semibold ${option.receiveSend ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {option.receiveSend ? 'Yes' : 'No'}
+                          <span className="text-slate-300 font-medium">Reusable:</span>
+                          <span className={`font-semibold ${option.opt === 'opt1' || option.opt === 'opt10' ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {option.opt === 'opt1' || option.opt === 'opt10' ? 'Yes' : 'No'}
                           </span>
                         </div>
 
@@ -1294,30 +1182,6 @@ const ShortNumbers: React.FC = () => {
         )}
       </div>
 
-      {/* Send SMS Warning Modal */}
-      {showSendSmsWarningModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
-            <div className="text-center">
-              <div className="mb-4">
-                <div className="w-12 h-12 mx-auto bg-yellow-500 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.964-1.333-2.732 0L3.732 16c-.77 1.333.192 3 1.732 3z"></path>
-                  </svg>
-                </div>
-              </div>
-              <h3 className="text-lg font-medium text-white mb-2">Be Aware</h3>
-              <p className="text-blue-200 mb-4">Each SMS sending costs $0.5</p>
-              <button
-                onClick={handleProceedWithSendSmsPurchase}
-                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
-              >
-                Proceed
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Error Modal */}
       {showErrorModal && (

@@ -9,7 +9,6 @@ import ForgotPassword from './components/ForgotPassword';
 import Account from './components/Account';
 import Dashboard from './components/Dashboard';
 import ShortNumbers from './components/ShortNumbers';
-import ShortNumbersTest from './components/ShortNumbersTest';
 import Middle from './components/Middle';
 import LongTerm from './components/LongTerm';
 import EmptySimcard from './components/EmptySimcard';
@@ -20,7 +19,6 @@ import VccConfig from './components/VccConfig';
 import VirtualCardTest from './components/VirtualCardTest';
 import Proxies from './components/Proxies';
 import History from './components/History';
-import HistoryTest from './components/HistoryTest';
 import Transactions from './components/Transactions';
 import Tickets from './components/Tickets';
 import Profile from './components/Profile';
@@ -62,7 +60,6 @@ function App() {
             {/* Protected routes - All wrapped with DashboardLayout */}
             <Route path="/dashboard" element={<PrivateRoute><DashboardLayout><Dashboard /></DashboardLayout></PrivateRoute>} />
             <Route path="/short" element={<PrivateRoute><DashboardLayout><ShortNumbers /></DashboardLayout></PrivateRoute>} />
-            <Route path="/short-test" element={<PrivateRoute><DashboardLayout><ShortNumbersTest /></DashboardLayout></PrivateRoute>} />
             <Route path="/middle" element={<PrivateRoute><DashboardLayout><Middle /></DashboardLayout></PrivateRoute>} />
             <Route path="/long" element={<PrivateRoute><DashboardLayout><LongTerm /></DashboardLayout></PrivateRoute>} />
             <Route path="/emptysimcard" element={<PrivateRoute><DashboardLayout><EmptySimcard /></DashboardLayout></PrivateRoute>} />
@@ -73,7 +70,6 @@ function App() {
             <Route path="/test" element={<PrivateRoute><DashboardLayout><VirtualCardTest /></DashboardLayout></PrivateRoute>} />
             <Route path="/proxies" element={<PrivateRoute><DashboardLayout><Proxies /></DashboardLayout></PrivateRoute>} />
             <Route path="/history" element={<PrivateRoute><DashboardLayout><History /></DashboardLayout></PrivateRoute>} />
-            <Route path="/history-test" element={<PrivateRoute><DashboardLayout><HistoryTest /></DashboardLayout></PrivateRoute>} />
             <Route path="/transactions" element={<PrivateRoute><DashboardLayout><Transactions /></DashboardLayout></PrivateRoute>} />
             <Route path="/tickets" element={<PrivateRoute><DashboardLayout><Tickets /></DashboardLayout></PrivateRoute>} />
             <Route path="/profile" element={<PrivateRoute><DashboardLayout><Profile /></DashboardLayout></PrivateRoute>} />

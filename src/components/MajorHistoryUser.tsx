@@ -52,6 +52,7 @@ interface HistoryRecord {
   country: string;
   reuse?: boolean;
   maySend?: boolean;
+  opt?: number;
   asleep?: boolean;
   createdAt?: Date;
   expiry?: Date;
@@ -281,8 +282,7 @@ const MajorHistoryUser: React.FC = () => {
             normalizedServiceType,
             createdAtDate,
             expiryDate,
-            item.reuse,
-            item.maySend
+            item.opt
           );
         }
 
@@ -300,6 +300,7 @@ const MajorHistoryUser: React.FC = () => {
           country: item.country || 'N/A',
           reuse: item.reuse,
           maySend: item.maySend,
+          opt: item.opt,
           asleep: item.asleep,
           createdAt: createdAtDate,
           expiry: expiryDate,
@@ -611,10 +612,10 @@ const MajorHistoryUser: React.FC = () => {
     }
   };
 
-  const calculateDuration = (type: string, createdAt: Date, expiry: Date, reuse?: boolean, maySend?: boolean): string => {
+  const calculateDuration = (type: string, createdAt: Date, expiry: Date, opt?: number): string => {
     const normalizedType = type.toLowerCase();
     if (normalizedType === 'short') {
-      return calculateShortDuration(createdAt, expiry, reuse, maySend);
+      return calculateShortDuration(createdAt, expiry, opt);
     } else if (normalizedType === 'middle') {
       return calculateMiddleDuration(createdAt, expiry);
     } else if (normalizedType === 'long') {
@@ -636,7 +637,7 @@ const MajorHistoryUser: React.FC = () => {
   const getNumberTypeOptions = (serviceType: string) => {
     switch (serviceType) {
       case 'Short Numbers':
-        return ['All types', 'Single use', 'Receive/Send'];
+        return ['All types', 'Single use', 'Reusable'];
       case 'Middle Numbers':
         return ['All types', '1 day', '7 days', '14 days'];
       case 'Long Numbers':
@@ -698,10 +699,9 @@ const MajorHistoryUser: React.FC = () => {
   };
 
   const getShortNumberType = (record: HistoryRecord) => {
-    const { reuse, maySend } = record;
-    if (reuse === false && maySend === false) return 'Single use';
-    if (reuse === false && maySend === true) return 'Receive/Send';
-    return 'Unknown';
+    const { opt } = record;
+    if (opt === 1 || opt === 10) return 'Reusable';
+    return 'Single use';
   };
 
   const filteredData = useMemo(() => {

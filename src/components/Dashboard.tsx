@@ -50,7 +50,6 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    // Only auto-load tickets, not purchases/spent/deposited
     setIsLoadingTickets(true);
     setTicketsError(null);
 
@@ -237,7 +236,6 @@ const Dashboard: React.FC = () => {
     ticketsIncrease: 18.9
   };
 
-  // Handler to fetch purchases data when eye icon is clicked
   const handleShowPurchases = async () => {
     if (!currentUser || purchasesDataLoaded) return;
 
@@ -362,7 +360,6 @@ const Dashboard: React.FC = () => {
     setIsLoadingPurchases(false);
   };
 
-  // Handler to fetch spent data when eye icon is clicked
   const handleShowSpent = async () => {
     if (!currentUser || spentDataLoaded) return;
 
@@ -502,7 +499,6 @@ const Dashboard: React.FC = () => {
     setIsLoadingSpent(false);
   };
 
-  // Handler to fetch deposited data when eye icon is clicked
   const handleShowDeposited = async () => {
     if (!currentUser || depositedDataLoaded) return;
 
@@ -718,6 +714,14 @@ const Dashboard: React.FC = () => {
   const newsItems = [
     {
       id: 1,
+      title: "Reuse feature",
+      description: "Now you can reuse a short number for 10 minutes",
+      time: "28/02/26",
+      type: "product",
+      urgent: true
+    },
+    {
+      id: 2,
       title: "Send SMS worldwide",
       description: "Now you can send SMS to any number worldwide",
       time: "22/02/26",
@@ -725,7 +729,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 2,
+      id: 3,
       title: "New Payment Methods",
       description: "From China and Africa",
       time: "30/01/26",
@@ -733,7 +737,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 3,
+      id: 4,
       title: "Get 1 free number",
       description: "Deposit $10 or more through Crypto or Payeer",
       time: "10/07/25",
@@ -741,7 +745,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 4,
+      id: 5,
       title: "Extended Middle Term Duration",
       description: "Get middle term numbers for more than just 1 day",
       time: "10/07/25",
@@ -749,7 +753,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 5,
+      id: 6,
       title: "API Available",
       description: "Integrate with our service using our new API endpoints",
       time: "10/07/25",
@@ -757,7 +761,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     /*{
-      id: 5,
+      id: 7,
       title: "Mobile Proxies",
       description: "Stay safe using our new proxies",
       time: "10/07/25",
@@ -765,7 +769,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },*/
     {
-      id: 6,
+      id: 8,
       title: "Virtual Debit Cards",
       description: "VCC for all kinds of verification purposes",
       time: "10/07/25",
@@ -773,7 +777,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 7,
+      id: 9,
       title: "Extended Number Duration",
       description: "Try our long numberd and entire SIM cards",
       time: "10/07/25",

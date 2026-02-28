@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getAuth } from 'firebase/auth';
@@ -216,11 +216,23 @@ const EmptySimcard: React.FC = () => {
             <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
               <li>• They can be used to verify more than 1 service</li>
               <li>• They are valid for 30 days</li>
+              <li>• Their duration can only be extended before they expire</li>
               <li>• After purchased, some can be cancelled and some can't</li>
               <li>• Users that deposit through Amazon Pay can't purchase them</li>
+              <li>• If you want to reuse a number for 9-10 minutes or more, go to <Link to="/short" className="text-blue-400 hover:text-blue-300 underline font-semibold">Short Numbers</Link></li>
+              <li>• If you want to verify 1 service more than once for a longer period, go to <Link to="/middle" className="text-blue-400 hover:text-blue-300 underline font-semibold">Middle</Link> or <Link to="/long" className="text-blue-400 hover:text-blue-300 underline font-semibold">Long</Link> Numbers</li>
             </ul>
           </div>
         </div>
+      </div>
+
+      {/* Reuse Announcement */}
+      <div className="bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 mb-6">
+        <p className="text-center text-sm">
+          <span className="text-emerald-300 font-bold">NEW</span>
+          <span className="text-slate-300 mx-2">—</span>
+          <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes or more</span>, go to <Link to="/short" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Short Numbers</Link>!</span>
+        </p>
       </div>
 
       {!hasSearched ? (

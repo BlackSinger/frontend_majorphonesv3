@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -11,7 +11,7 @@ import {
   calculateShortDuration,
   getShortAvailableActions,
   handleCancelShort,
-  // handleReuseNumber
+  handleReuseShort,
 } from './ShortLogic';
 
 import {
@@ -50,7 +50,8 @@ import {
   handleCopyCardNumber as handleCopyCardNumberVC,
   filterVirtualCards,
   convertVCCDocumentToRecord,
-  formatPrice
+  formatPrice,
+  handleCheckCard
 } from './VirtualCardLogic';
 
 import {
@@ -85,15 +86,16 @@ interface HistoryRecord {
   maySend?: boolean;
   asleep?: boolean;
   createdAt?: Date;
-  // updatedAt?: Date; // Timestamp of last update (used in reuse)
+  updatedAt?: Date;
   expiry?: Date;
   awakeIn?: Date;
   codeAwakeAt?: Date;
   orderId?: string;
   fullsms?: string;
+  opt?: number;
 }
 
-const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: string; onTimeout?: () => void; /* updatedAt?: Date */ }> = React.memo(({ createdAt, recordId, status, onTimeout, /* updatedAt */ }) => {
+const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: string; onTimeout?: () => void; updatedAt?: Date }> = React.memo(({ createdAt, recordId, status, onTimeout, updatedAt }) => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
 
   useEffect(() => {
@@ -104,9 +106,7 @@ const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: stri
 
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
-      // Usage of updatedAt if available (for reused numbers), otherwise use createdAt
-      // const startTime = updatedAt ? updatedAt.getTime() : createdAt.getTime();
-      const startTime = createdAt.getTime();
+      const startTime = updatedAt ? updatedAt.getTime() : createdAt.getTime();
       const fiveMinutes = 5 * 60 * 1000;
       const expiryTime = startTime + fiveMinutes;
       const remaining = expiryTime - now;
@@ -133,7 +133,7 @@ const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: stri
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [createdAt, /* updatedAt, */ status, onTimeout]);
+  }, [createdAt, updatedAt, status, onTimeout]);
 
   if (status !== 'Pending') {
     return <span className="font-mono text-slate-400">-</span>;
@@ -439,10 +439,10 @@ const History: React.FC = () => {
 
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
 
-  // Reusing state: track which order is being reused
-  // const [reusingOrderId, setReusingOrderId] = useState<string | null>(null);
+  const [reusingOrderId, setReusingOrderId] = useState<string | null>(null);
 
   const [activatingOrderId, setActivatingOrderId] = useState<string | null>(null);
+  const [checkingCardId, setCheckingCardId] = useState<string | null>(null);
 
   const userIdRef = useRef<string | undefined>(currentUser?.uid);
 
@@ -554,9 +554,9 @@ const History: React.FC = () => {
     return { type: 'text', value: smsValue };
   };
 
-  const calculateDuration = (type: string, createdAt: Date, expiry: Date, reuse?: boolean, maySend?: boolean): string => {
+  const calculateDuration = (type: string, createdAt: Date, expiry: Date, opt?: number): string => {
     if (type === 'Short') {
-      return calculateShortDuration(createdAt, expiry, reuse, maySend);
+      return calculateShortDuration(createdAt, expiry, opt);
     } else if (type === 'Middle') {
       return calculateMiddleDuration(createdAt, expiry);
     } else if (type === 'Long') {
@@ -578,7 +578,7 @@ const History: React.FC = () => {
   const getNumberTypeOptions = (serviceType: string) => {
     switch (serviceType) {
       case 'Short Numbers':
-        return ['All types', 'Single use', /* 'Reusable', */ 'Receive/Send'];
+        return ['All types', 'Single use', 'Reusable'];
       case 'Middle Numbers':
         return ['All types', '1 day', '7 days', '14 days'];
       case 'Long Numbers':
@@ -676,11 +676,9 @@ const History: React.FC = () => {
   };
 
   const getShortNumberType = (record: HistoryRecord) => {
-    const { reuse, maySend } = record;
-    // if (reuse === true && maySend === false) return 'Reusable';
-    if (reuse === false && maySend === false) return 'Single use';
-    if (reuse === false && maySend === true) return 'Receive/Send';
-    return 'Unknown';
+    const { opt } = record;
+    if (opt === 1 || opt === 10) return 'Reusable';
+    return 'Single use';
   };
 
   const filteredData = useMemo(() => {
@@ -820,8 +818,7 @@ const History: React.FC = () => {
         normalizedTypeForDuration,
         createdAt,
         expiry,
-        docData.reuse,
-        docData.maySend
+        docData.opt
       );
 
       const allowedStatuses = ['Pending', 'Cancelled', 'Completed', 'Inactive', 'Active', 'Expired', 'Timed out'] as const;
@@ -876,10 +873,11 @@ const History: React.FC = () => {
         reuse: docData.reuse,
         maySend: docData.maySend,
         createdAt: createdAt,
-        // updatedAt: docData.updatedAt?.toDate?.() || null,
+        updatedAt: docData.updatedAt?.toDate?.() || undefined,
         expiry: expiry,
         orderId: docData.orderId || docId,
-        fullsms: docData.fullsms || ''
+        fullsms: docData.fullsms || '',
+        opt: docData.opt
       };
     };
 
@@ -1286,12 +1284,6 @@ const History: React.FC = () => {
       return;
     }
 
-    // Handle Reuse action
-    // if (action === 'Reuse') {
-    //   await handleReuseNumber(record.orderId || '', setErrorMessage, setShowErrorModal, setReusingOrderId);
-    //   return;
-    // }
-
     if (action === 'Send') {
       navigate('/sendmessage');
       return;
@@ -1304,6 +1296,13 @@ const History: React.FC = () => {
         await handleActivateLong(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setActivatingOrderId);
       } else if (record.serviceType === 'Empty simcard') {
         await handleActivateEmptySim(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setActivatingOrderId);
+      }
+      return;
+    }
+
+    if (action === 'Reuse') {
+      if (record.serviceType === 'Short') {
+        await handleReuseShort(record.orderId || '', setErrorMessage, setShowErrorModal, setReusingOrderId);
       }
       return;
     }
@@ -1324,6 +1323,15 @@ const History: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Reuse Announcement */}
+      <div className="bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 mb-6">
+        <p className="text-center text-sm">
+          <span className="text-emerald-300 font-bold">NEW</span>
+          <span className="text-slate-300 mx-2">—</span>
+          <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes or more</span>, go to <Link to="/short" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Short Numbers</Link>!</span>
+        </p>
       </div>
 
       {/* Tabs and Table */}
@@ -1533,8 +1541,6 @@ const History: React.FC = () => {
                           </svg>
                           <p className="text-slate-400 mt-4">Loading numbers...</p>
                         </div>
-                      ) : showErrorModal ? (
-                        <></>
                       ) : filteredData.length > 0 ? (
                         <table className="w-full">
                           <thead>
@@ -1547,7 +1553,6 @@ const History: React.FC = () => {
                               <th className="text-center py-4 px-10 text-slate-300 font-semibold">Service</th>
                               <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
                               <th className="text-center py-4 px-6 text-slate-300 font-semibold">Code</th>
-                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">Full SMS</th>
                               <th className="text-center py-4 px-4 text-slate-300 font-semibold">Actions</th>
                             </tr>
                           </thead>
@@ -1632,6 +1637,7 @@ const History: React.FC = () => {
                                       } else if (record.status === 'Pending' && record.createdAt) {
                                         return <CountdownTimer
                                           createdAt={record.createdAt}
+                                          updatedAt={record.updatedAt}
                                           recordId={record.id}
                                           status={record.status}
                                           onTimeout={() => setForceUpdate(prev => prev + 1)}
@@ -1686,28 +1692,7 @@ const History: React.FC = () => {
                                   })()
                                   }
                                 </td>
-                                <td className="py-4 px-6">
-                                  <div className="flex items-center justify-center">
-                                    <button
-                                      onClick={() => {
-                                        if (record.fullsms && record.fullsms.trim() !== '') {
-                                          handleFullSmsClick(record.fullsms);
-                                        }
-                                      }}
-                                      disabled={!record.fullsms || record.fullsms.trim() === ''}
-                                      className={`p-2 transition-colors duration-200 rounded-lg ${record.fullsms && record.fullsms.trim() !== ''
-                                        ? 'text-slate-400 hover:text-green-500 hover:bg-slate-700/30 cursor-pointer'
-                                        : 'text-slate-600 cursor-not-allowed opacity-50'
-                                        }`}
-                                      title={record.fullsms && record.fullsms.trim() !== '' ? "View Full SMS" : "No Full SMS available"}
-                                    >
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                      </svg>
-                                    </button>
-                                  </div>
-                                </td>
+
                                 <td className="py-4 px-6">
                                   <div className="flex items-center justify-center">
                                     {(() => {
@@ -1737,52 +1722,61 @@ const History: React.FC = () => {
                                       const availableActions = getAvailableActions(record);
                                       const hasActions = availableActions.length > 0;
                                       const isCancelling = cancellingOrderId === record.id;
-                                      // const isReusing = reusingOrderId === record.id;
+                                      const isReusing = reusingOrderId === record.id;
                                       const isActivating = activatingOrderId === record.id;
-                                      const isOtherProcessing = (cancellingOrderId !== null && cancellingOrderId !== record.id) ||
-                                        // (reusingOrderId !== null && reusingOrderId !== record.id) ||
-                                        (activatingOrderId !== null && activatingOrderId !== record.id);
+                                      const isOtherProcessing = (cancellingOrderId !== null) || (reusingOrderId !== null) || (activatingOrderId !== null);
+                                      const isProcessing = isCancelling || isReusing || isActivating || isOtherProcessing;
 
-                                      if (isCancelling || /* isReusing || */ isActivating) {
-                                        return (
-                                          <div className="flex justify-center">
-                                            <div className="w-5 h-5 border-2 border-slate-400/30 border-t-slate-200 rounded-full animate-spin"></div>
-                                          </div>
-                                        );
-                                      }
+                                      const hasCancel = availableActions.includes('Cancel');
+                                      const hasReuse = availableActions.includes('Reuse');
+                                      const hasActivate = availableActions.includes('Activate');
 
                                       return (
-                                        <div className="relative" ref={(el) => { actionMenuRefs.current[record.id] = el; }}>
+                                        <div className="flex flex-row items-center justify-center gap-2">
                                           <button
-                                            onClick={() => hasActions && !isOtherProcessing && handleActionMenuToggle(record.id)}
-                                            className={`p-2 rounded-lg transition-colors duration-200 ${hasActions && !isOtherProcessing
-                                              ? 'text-slate-400 hover:text-slate-300 hover:bg-slate-700/30 cursor-pointer'
-                                              : 'text-slate-600 cursor-not-allowed'
+                                            onClick={() => hasCancel && !isProcessing && handleActionClick('Cancel', record)}
+                                            disabled={!hasCancel || isProcessing}
+                                            className={`w-[80px] px-2 py-2 font-medium rounded-lg transition-all duration-300 shadow-lg text-sm whitespace-nowrap flex items-center justify-center border ${hasCancel && !isProcessing
+                                              ? 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30'
+                                              : 'bg-red-500/10 text-red-400/50 border-red-500/20 cursor-not-allowed shadow-none'
                                               }`}
-                                            disabled={!hasActions || isOtherProcessing}
-                                            title={hasActions ? "More actions" : "No actions available"}
                                           >
-                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                                            </svg>
+                                            {isCancelling ? (
+                                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                            ) : (
+                                              'Cancel'
+                                            )}
                                           </button>
 
-                                          {/* Action Menu Dropdown */}
-                                          {hasActions && openActionMenus[record.id] && !isOtherProcessing && (
-                                            <div className="absolute right-0 top-full mt-2 bg-slate-800 border border-slate-600/50 rounded-xl shadow-xl z-[70] min-w-[120px]">
-                                              {availableActions.map((action, index) => (
-                                                <button
-                                                  key={action}
-                                                  onClick={() => handleActionClick(action, record)}
-                                                  className={`w-full text-center px-4 py-3 text-sm text-white hover:bg-slate-700/50 transition-colors duration-200 ${index === 0 ? 'rounded-t-xl' : ''
-                                                    } ${index === availableActions.length - 1 ? 'rounded-b-xl' : ''
-                                                    }`}
-                                                >
-                                                  {action}
-                                                </button>
-                                              ))}
-                                            </div>
-                                          )}
+                                          <button
+                                            onClick={() => hasReuse && !isProcessing && handleActionClick('Reuse', record)}
+                                            disabled={!hasReuse || isProcessing}
+                                            className={`w-[80px] px-2 py-2 font-medium rounded-lg transition-all duration-300 shadow-lg text-sm whitespace-nowrap flex items-center justify-center border ${hasReuse && !isProcessing
+                                              ? 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30'
+                                              : 'bg-green-500/10 text-green-400/50 border-green-500/20 cursor-not-allowed shadow-none'
+                                              }`}
+                                          >
+                                            {isReusing ? (
+                                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                            ) : (
+                                              'Reuse'
+                                            )}
+                                          </button>
+
+                                          <button
+                                            onClick={() => hasActivate && !isProcessing && handleActionClick('Activate', record)}
+                                            disabled={!hasActivate || isProcessing}
+                                            className={`w-[80px] px-2 py-2 font-medium rounded-lg transition-all duration-300 shadow-lg text-sm whitespace-nowrap flex items-center justify-center border ${hasActivate && !isProcessing
+                                              ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30'
+                                              : 'bg-blue-500/10 text-blue-400/50 border-blue-500/20 cursor-not-allowed shadow-none'
+                                              }`}
+                                          >
+                                            {isActivating ? (
+                                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                            ) : (
+                                              'Activate'
+                                            )}
+                                          </button>
                                         </div>
                                       );
                                     })()}
@@ -1885,9 +1879,11 @@ const History: React.FC = () => {
                           setCardNumberSearch(e.target.value);
                           setCurrentVirtualCardPage(1);
                         }}
+                        disabled={checkingCardId !== null}
                         placeholder="Enter card number"
-                        className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300"
+                        className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 ${checkingCardId !== null ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-500/50'}`}
                       />
+
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                         <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -1903,8 +1899,8 @@ const History: React.FC = () => {
                     </label>
                     <div className="relative group" ref={fundsDropdownRef}>
                       <div
-                        onClick={() => setIsFundsDropdownOpen(!isFundsDropdownOpen)}
-                        className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                        onClick={() => checkingCardId === null && setIsFundsDropdownOpen(!isFundsDropdownOpen)}
+                        className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${checkingCardId !== null ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-slate-500/50'}`}
                       >
                         <span>{fundsFilter === 'All' ? 'All Funds' : fundsFilter}</span>
                       </div>
@@ -1960,6 +1956,7 @@ const History: React.FC = () => {
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">Expiration Date</th>
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">CVV</th>
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">Initial Funds</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2011,6 +2008,21 @@ const History: React.FC = () => {
                             <td className="py-4 px-6 text-white text-center font-mono">{record.cvv}</td>
                             <td className="py-4 px-6 text-center">
                               <span className="text-emerald-400 font-semibold">${record.funds}</span>
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              <button
+                                onClick={() => handleCheckCard(record.id, setCheckingCardId, setErrorMessage, setShowErrorModal)}
+                                disabled={checkingCardId !== null}
+                                className={`px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm min-w-[120px] ${checkingCardId !== null ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
+                              >
+                                {checkingCardId === record.id ? (
+                                  <div className="flex items-center justify-center">
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                  </div>
+                                ) : (
+                                  'Check'
+                                )}
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -2650,6 +2662,14 @@ const History: React.FC = () => {
                   <span className="text-slate-300">Expiration Date: </span>
                   <span className="text-emerald-400">{selectedRecord.expirationDate}</span>
                 </div>
+                {selectedRecord.fullsms && selectedRecord.fullsms.trim() !== '' && (
+                  <div className="pt-2 border-t border-slate-700/50">
+                    <span className="text-slate-300 block mb-1">Full SMS: </span>
+                    <div className="text-emerald-400 whitespace-pre-wrap break-words text-justify">
+                      {selectedRecord.fullsms}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex justify-center mt-6">
                 <button
@@ -2719,32 +2739,7 @@ const History: React.FC = () => {
         </div>
       )}
 
-      {/* Full SMS Modal */}
-      {showFullSmsModal && selectedFullSms && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
-            <div className="text-center">
-              <div className="mb-4">
-                <div className="w-12 h-12 mx-auto flex items-center justify-center">
-                  <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
-                </div>
-              </div>
-              <h3 className="text-lg font-medium text-white mb-4">Full SMS</h3>
-              <div className="bg-slate-800/50 rounded-lg p-4 mb-6 max-h-60 overflow-y-auto">
-                <p className="text-white text-left whitespace-pre-wrap break-words">{selectedFullSms}</p>
-              </div>
-              <div className="flex justify-center">
-                <button
-                  onClick={() => setShowFullSmsModal(false)}
-                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
-                >
-                  Ok
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Proxy Information Modal */}
       {showProxyInfoModal && selectedProxyRecord && (
@@ -2807,7 +2802,7 @@ const History: React.FC = () => {
       {/* Error Modal */}
       {showErrorModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80 max-w-md">
+          <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80 max-w-md">
             <div className="text-center">
               <div className="mb-4">
                 <div className="w-12 h-12 mx-auto flex items-center justify-center bg-red-500/20 rounded-full">

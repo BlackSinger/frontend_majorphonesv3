@@ -392,12 +392,24 @@ const LongTerm: React.FC = () => {
                 <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                   <li>• They can only be used to verify just 1 service</li>
                   <li>• They are valid for 30 or 365 days</li>
+                  <li>• Their duration can only be extended before they expire</li>
                   <li>• After purchased, some can be cancelled and some can't</li>
                   <li>• Users that deposit through Amazon Pay can't purchase them</li>
+                  <li>• If you want to reuse a number for 9-10 minutes or more, go to <Link to="/short" className="text-blue-400 hover:text-blue-300 underline font-semibold">Short Numbers</Link></li>
+                  <li>• If you want to verify 1 service for a shorter period, go to <Link to="/middle" className="text-blue-400 hover:text-blue-300 underline font-semibold">Middle Numbers</Link></li>
                   <li>• If you want to verify more than 1 service with the same number, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
                 </ul>
               </div>
             </div>
+          </div>
+
+          {/* Reuse Announcement */}
+          <div className="bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 mb-6">
+            <p className="text-center text-sm">
+              <span className="text-emerald-300 font-bold">NEW</span>
+              <span className="text-slate-300 mx-2">—</span>
+              <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes or more</span>, go to <Link to="/short" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Short Numbers</Link>!</span>
+            </p>
           </div>
 
           {/* Main Content Section */}
@@ -548,12 +560,24 @@ const LongTerm: React.FC = () => {
                 <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                   <li>• They can only be used to verify just 1 service</li>
                   <li>• They are valid for 30 or 365 days</li>
+                  <li>• Their duration can only be extended before they expire</li>
                   <li>• After purchased, some can be cancelled and some can't</li>
                   <li>• Users that deposit through Amazon Pay can't purchase them</li>
+                  <li>• If you want to reuse a number for 9-10 minutes or more, go to <Link to="/short" className="text-blue-400 hover:text-blue-300 underline font-semibold">Short Numbers</Link></li>
+                  <li>• If you want to verify 1 service for a shorter period, go to <Link to="/middle" className="text-blue-400 hover:text-blue-300 underline font-semibold">Middle Numbers</Link></li>
                   <li>• If you want to verify more than 1 service with the same number, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
                 </ul>
               </div>
             </div>
+          </div>
+
+          {/* Reuse Announcement */}
+          <div className="bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 mb-6">
+            <p className="text-center text-sm">
+              <span className="text-emerald-300 font-bold">NEW</span>
+              <span className="text-slate-300 mx-2">—</span>
+              <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes or more</span>, go to <Link to="/short" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Short Numbers</Link>!</span>
+            </p>
           </div>
 
           {/* Results Section */}
@@ -727,33 +751,38 @@ const LongTerm: React.FC = () => {
             </div>
           </div>
         </>
-      )}
+      )
+      }
+
+
 
       {/* Error Modal */}
-      {showErrorModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
-            <div className="text-center">
-              <div className="mb-4">
-                <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                  </svg>
+      {
+        showErrorModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+            <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </div>
                 </div>
+                <h3 className="text-lg font-medium text-white mb-2">Error</h3>
+                <p className="text-blue-200 mb-4">{errorMessage}</p>
+                <button
+                  onClick={handleErrorModalClose}
+                  className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                >
+                  Close
+                </button>
               </div>
-              <h3 className="text-lg font-medium text-white mb-2">Error</h3>
-              <p className="text-blue-200 mb-4">{errorMessage}</p>
-              <button
-                onClick={handleErrorModalClose}
-                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
-              >
-                Close
-              </button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 
