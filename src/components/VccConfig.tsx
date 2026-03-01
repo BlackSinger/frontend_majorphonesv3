@@ -66,6 +66,14 @@ const VccConfig: React.FC = () => {
     const [amount, setAmount] = useState(0);
     const [isLoadingFunds, setIsLoadingFunds] = useState(false);
     const [isLoadingFundsDisabled, setIsLoadingFundsDisabled] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+
+    //Esto maneja el estado de congelacion de la tarjeta, pero debe cambiarse a un estado real de firestore que indique
+    //si la tarjeta esta o no congelada, por ahora lo manejamos asi pero debemos hacer los cambios
+    const [vccFrozen, setVccFrozen] = useState(true);
+    const [isFreezingCard, setIsFreezingCard] = useState(false);
+    const [areCardActionsDisabled, setAreCardActionsDisabled] = useState(false);
 
     const itemsPerPage = 10;
     const totalVirtualCardPages = Math.ceil(tableData.count / itemsPerPage);
@@ -93,9 +101,7 @@ const VccConfig: React.FC = () => {
         setShowErrorModal(false);
     };
 
-
-    //MODIFICAR
-
+    //MODIFICAR AL DEPOSITAR EN QUACKR
     const handleLoadFunds = async () => {
         const currentUser = getAuth().currentUser;
 
@@ -126,8 +132,11 @@ const VccConfig: React.FC = () => {
             const data = await response.json();
 
             if (response.ok) {
-                // Return to info view on success
-                setIsLoadFundsView(false);
+                console.log('Load funds success:', data);
+                setIsLoadingFunds(false);
+                setIsLoadingFundsDisabled(false);
+                setSuccessMessage('You have correctly added funds to your VCC');
+                setShowSuccessModal(true);
             } else {
                 let errorMsg = 'An unknown error occurred';
                 let shouldKeepDisabled = false;
@@ -135,26 +144,29 @@ const VccConfig: React.FC = () => {
                 if (response.status === 400) {
                     if (data.error === 'Missing parameters') {
                         errorMsg = 'Please try again or contact customer support';
-                    } else if (data.error === 'Amount must be less than or equal to 20') {
-                        errorMsg = 'Pre-loaded funds must be less than or equal to $20';
+                    } else if (data.error === 'Funds loaded but failed to get updated card details') {
+                        errorMsg = 'The payment was successful but the card details could not be updated, contact customer support';
                     } else if (data.error === 'Insufficient balance') {
                         errorMsg = "You don't have enough balance to make the purchase";
-                    } else if (data.error === 'Failed to buy card') {
-                        errorMsg = 'We ran out of virtual cards, please try again later';
-                    } else if (data.error === 'You cannot buy a card, because you have used Amazon Pay') {
-                        errorMsg = 'Users that deposit with Amazon Pay cannot purchase virtual cards';
+                    } else if (data.error === 'Failed to load funds') {
+                        errorMsg = 'The payment could not be completed, please try again or contact our customer support';
+                    } else if (data.error === 'Invalid amount') {
+                        errorMsg = 'The amount is invalid, please try again';
                         shouldKeepDisabled = true;
                     }
                 } else if (response.status === 401) {
                     errorMsg = 'You are not authenticated or your token is invalid';
                     shouldKeepDisabled = true;
                 } else if (response.status === 404) {
-                    errorMsg = 'You cannot make the purchase';
-                    shouldKeepDisabled = true;
+                    if (data.error === 'User not found' || data.error === 'Order not found') {
+                        errorMsg = 'You cannot add funds to this VCC';
+                        shouldKeepDisabled = true;
+                    }
                 } else if (response.status === 500) {
                     errorMsg = 'Please contact our customer support';
                 }
 
+                console.log('Load funds error:', response.status, data);
                 setErrorMessage(errorMsg);
                 setShowErrorModal(true);
                 setIsLoadingFunds(false);
@@ -164,10 +176,171 @@ const VccConfig: React.FC = () => {
                 }
             }
         } catch (error) {
+            console.log('Load funds catch error:', error);
             setErrorMessage('Please contact our customer support');
             setShowErrorModal(true);
             setIsLoadingFunds(false);
             setIsLoadingFundsDisabled(false);
+        }
+    };
+
+    const handleFreezeCard = async () => {
+        const currentUser = getAuth().currentUser;
+
+        if (!currentUser) {
+            setErrorMessage('You are not authenticated or your token is invalid');
+            setShowErrorModal(true);
+            return;
+        }
+
+        setIsFreezingCard(true);
+
+        try {
+            const idToken = await currentUser.getIdToken();
+
+            const response = await fetch('https://freezecard-ezeznlhr5a-uc.a.run.app', {
+                method: 'POST',
+                headers: {
+                    'authorization': `${idToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    //orderId: orderId,
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                console.log('Freeze card success:', data);
+                setIsFreezingCard(false);
+                setVccFrozen(true);
+                setSuccessMessage('This VCC has been frozen successfully');
+                setShowSuccessModal(true);
+            } else {
+                let errorMsg = 'An unknown error occurred';
+                let shouldDisableAll = false;
+                let cardAlreadyFrozen = false;
+
+                if (response.status === 400) {
+                    if (data.error === 'Missing parameters') {
+                        errorMsg = 'Please contact our customer support';
+                    } else if (data.error === 'Card is already frozen') {
+                        errorMsg = 'This VCC is already frozen';
+                        cardAlreadyFrozen = true;
+                    } else if (data.error === 'Failed to freeze card') {
+                        errorMsg = 'Please try again or contact our customer support';
+                    } else if (data.error === 'Internal Error') {
+                        errorMsg = 'Please contact our customer support';
+                    }
+                } else if (response.status === 401) {
+                    errorMsg = 'You are not authenticated or your token is invalid';
+                    shouldDisableAll = true;
+                } else if (response.status === 404) {
+                    if (data.error === 'User not found' || data.error === 'Order not found') {
+                        errorMsg = 'You cannot freeze this VCC';
+                        shouldDisableAll = true;
+                    }
+                }
+
+                console.log('Freeze card error:', response.status, data);
+                setErrorMessage(errorMsg);
+                setShowErrorModal(true);
+                setIsFreezingCard(false);
+
+                if (shouldDisableAll) {
+                    setAreCardActionsDisabled(true);
+                }
+
+                if (cardAlreadyFrozen) {
+                    setVccFrozen(true);
+                }
+            }
+        } catch (error) {
+            console.log('Freeze card catch error:', error);
+            setErrorMessage('Please contact our customer support');
+            setShowErrorModal(true);
+            setIsFreezingCard(false);
+        }
+    };
+
+    const handleUnfreezeCard = async () => {
+        const currentUser = getAuth().currentUser;
+
+        if (!currentUser) {
+            setErrorMessage('You are not authenticated or your token is invalid');
+            setShowErrorModal(true);
+            return;
+        }
+
+        setIsFreezingCard(true);
+
+        try {
+            const idToken = await currentUser.getIdToken();
+
+            const response = await fetch('https://unfreezecard-ezeznlhr5a-uc.a.run.app', {
+                method: 'POST',
+                headers: {
+                    'authorization': `${idToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    //orderId: orderId,
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                console.log('Unfreeze card success:', data);
+                setIsFreezingCard(false);
+                setVccFrozen(false);
+                setSuccessMessage('This VCC has been unfrozen successfully');
+                setShowSuccessModal(true);
+            } else {
+                let errorMsg = 'An unknown error occurred';
+                let shouldDisableAll = false;
+                let cardNotFrozen = false;
+
+                if (response.status === 400) {
+                    if (data.error === 'Missing parameters') {
+                        errorMsg = 'Please contact our customer support';
+                    } else if (data.error === 'Card is not frozen') {
+                        errorMsg = 'This VCC is not frozen';
+                        cardNotFrozen = true;
+                    } else if (data.error === 'Failed to unfreeze card') {
+                        errorMsg = 'Please try again or contact our customer support';
+                    } else if (data.error === 'Internal Error') {
+                        errorMsg = 'Please contact our customer support';
+                    }
+                } else if (response.status === 401) {
+                    errorMsg = 'You are not authenticated or your token is invalid';
+                    shouldDisableAll = true;
+                } else if (response.status === 404) {
+                    if (data.error === 'User not found' || data.error === 'Order not found') {
+                        errorMsg = 'You cannot unfreeze this VCC';
+                        shouldDisableAll = true;
+                    }
+                }
+
+                console.log('Unfreeze card error:', response.status, data);
+                setErrorMessage(errorMsg);
+                setShowErrorModal(true);
+                setIsFreezingCard(false);
+
+                if (shouldDisableAll) {
+                    setAreCardActionsDisabled(true);
+                }
+
+                if (cardNotFrozen) {
+                    setVccFrozen(false);
+                }
+            }
+        } catch (error) {
+            console.log('Unfreeze card catch error:', error);
+            setErrorMessage('Please contact our customer support');
+            setShowErrorModal(true);
+            setIsFreezingCard(false);
         }
     };
 
@@ -334,13 +507,22 @@ const VccConfig: React.FC = () => {
                                                                 </div>
                                                                 <div className="flex flex-col md:flex-row gap-3 pt-2">
                                                                     <button
-                                                                        className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl transition-colors duration-300 shadow-lg hover:scale-[1.02] text-sm"
+                                                                        onClick={vccFrozen ? handleUnfreezeCard : handleFreezeCard}
+                                                                        disabled={isFreezingCard || areCardActionsDisabled}
+                                                                        className={`flex-1 px-4 py-2 text-white font-bold rounded-xl transition-colors duration-300 shadow-lg text-sm ${areCardActionsDisabled ? 'bg-slate-700 opacity-50 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 hover:scale-[1.02]'} disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
                                                                     >
-                                                                        Freeze
+                                                                        <div className="flex items-center justify-center h-5">
+                                                                            {isFreezingCard ? (
+                                                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                                            ) : (
+                                                                                <span>{vccFrozen ? 'Unfreeze' : 'Freeze'}</span>
+                                                                            )}
+                                                                        </div>
                                                                     </button>
                                                                     <button
                                                                         onClick={() => setIsLoadFundsView(true)}
-                                                                        className="flex-1 px-4 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-xl transition-colors duration-300 shadow-lg hover:scale-[1.02] text-sm"
+                                                                        disabled={vccFrozen || isFreezingCard || areCardActionsDisabled}
+                                                                        className="flex-1 px-4 py-2 text-white font-bold rounded-xl transition-all duration-300 shadow-lg text-sm bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                                                                     >
                                                                         Load Funds
                                                                     </button>
@@ -587,6 +769,36 @@ const VccConfig: React.FC = () => {
                                 className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
                             >
                                 Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Success Modal */}
+            {showSuccessModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+                    <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+                        <div className="text-center">
+                            <div className="mb-4">
+                                <div className="w-12 h-12 mx-auto bg-emerald-500 rounded-full flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <h3 className="text-lg font-medium text-white mb-2">Success</h3>
+                            <p className="text-blue-200 mb-4">{successMessage}</p>
+                            <button
+                                onClick={() => {
+                                    setShowSuccessModal(false);
+                                    if (isLoadFundsView) {
+                                        setIsLoadFundsView(false);
+                                    }
+                                }}
+                                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                            >
+                                Ok
                             </button>
                         </div>
                     </div>
