@@ -76,6 +76,7 @@ const SendSMS: React.FC = () => {
     const [errorModalBody, setErrorModalBody] = useState('');
     const [failedNumbers, setFailedNumbers] = useState<string[]>([]);
     const [showPartialSuccessModal, setShowPartialSuccessModal] = useState(false);
+    const [showHelpModal, setShowHelpModal] = useState(false);
     const itemsPerPage = 10;
 
     const navigate = useNavigate();
@@ -898,7 +899,7 @@ const SendSMS: React.FC = () => {
                                         <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                         <div className="relative z-10 flex items-center justify-center">
                                             <span className="group-hover:tracking-wide transition-all duration-300">
-                                                Send SMS
+                                                Try this feature
                                             </span>
                                         </div>
                                     </button>
@@ -1066,7 +1067,7 @@ const SendSMS: React.FC = () => {
                             {/* Phone Numbers Input */}
                             <div>
                                 <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
-                                    Recipient phone numbers
+                                    Type the recipient number(s) and hit enter key
                                 </label>
                                 <div
                                     className={`flex flex-wrap items-center gap-2 w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl shadow-inner hover:border-slate-500/50 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500/50 transition-all duration-300 min-h-[48px] max-h-[120px] overflow-y-auto dashboard-scrollbar ${smsSearching || sending ? 'pointer-events-none opacity-60' : ''}`}
@@ -1117,12 +1118,16 @@ const SendSMS: React.FC = () => {
                                             value={phoneInput}
                                             onChange={(e) => setPhoneInput(e.target.value.replace(/[^0-9]/g, ''))}
                                             onKeyDown={handlePhoneKeyDown}
-                                            placeholder="Type phone number with area code and press Enter..."
+                                            placeholder="No need to add + or 00..."
                                             className="w-full bg-transparent text-white text-sm outline-none placeholder-slate-400"
                                         />
                                     </form>
 
                                 </div>
+
+                                <p className="text-slate-400 text-xs mt-3 font-medium text-right">
+                                    Numbers entered: <span className="text-emerald-400 font-semibold">{phoneNumbers.filter(n => isNumberValid(n)).length}</span>
+                                </p>
 
                                 {phoneNumbers.some(n => !isNumberValid(n)) && (
                                     <p className="text-red-400 text-xs mt-3 font-medium">
@@ -1134,15 +1139,13 @@ const SendSMS: React.FC = () => {
                                 )}
                             </div>
 
-
-
                             {/* Message Textarea */}
                             <div>
                                 <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
                                     Message ({smsMessage.length}/160)
                                 </label>
                                 <textarea
-                                    disabled={sending}
+                                    disabled={sending || smsSearching}
                                     value={smsMessage}
                                     onChange={(e) => {
                                         if (e.target.value.length <= 160) {
@@ -1160,11 +1163,22 @@ const SendSMS: React.FC = () => {
                                 />
 
                                 {/* Check Price */}
-                                {(!pricesChecked && phoneNumbers.some(n => isNumberValid(n))) && (
-                                    <div className="flex justify-center mt-4">
+                                {!pricesChecked && (
+                                    <div className="flex justify-center mt-4 gap-3">
+                                        <button
+                                            onClick={() => setShowHelpModal(true)}
+                                            className="group px-6 py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 hover:from-blue-500 hover:via-indigo-500 hover:to-violet-500 text-white font-bold text-sm rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-blue-500/25 hover:scale-[1.02] border border-blue-500/30 hover:border-blue-400/50 relative overflow-hidden min-w-[100px]"
+                                        >
+                                            <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-indigo-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                            <div className="relative z-10 flex items-center justify-center">
+                                                <span className="group-hover:tracking-wide transition-all duration-300">
+                                                    Help
+                                                </span>
+                                            </div>
+                                        </button>
                                         <button
                                             onClick={handleCheckPrices}
-                                            disabled={smsSearching}
+                                            disabled={smsSearching || !phoneNumbers.some(n => isNumberValid(n))}
                                             className="group px-6 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-sm rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-[1.02] border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[140px]"
                                         >
                                             <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -1519,6 +1533,49 @@ const SendSMS: React.FC = () => {
                         </div>
                     </div>
                 )}
+
+                {/* Help Modal */}
+                {showHelpModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+                        <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+                            <div className="text-center">
+                                <div className="mb-4">
+                                    <div className="w-12 h-12 mx-auto bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-medium text-white mb-4">Instructions</h3>
+                                <ul className="text-blue-200 text-sm text-left space-y-3 mb-6">
+                                    <li className="flex items-start">
+                                        <span className="mr-2">•</span>
+                                        <span>To introduce a number, first type it and then click on the Enter key on your keyboard</span>
+                                    </li>
+                                    <li className="flex items-start">
+                                        <span className="mr-2">•</span>
+                                        <span>Type the SMS you want to send</span>
+                                    </li>
+                                    <li className="flex items-start">
+                                        <span className="mr-2">•</span>
+                                        <span>Click on "Check Price" to know the SMS sending price</span>
+                                    </li>
+                                    <li className="flex items-start">
+                                        <span className="mr-2">•</span>
+                                        <span>If you agree to the price, click on "Send SMS"</span>
+                                    </li>
+                                </ul>
+                                <button
+                                    onClick={() => setShowHelpModal(false)}
+                                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
+                                >
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </div>
         </>
     );
