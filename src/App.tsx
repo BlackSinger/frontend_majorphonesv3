@@ -31,7 +31,9 @@ import PaymentReview from './components/PaymentReview';
 /**/
 import MajorDashboardLayout from './components/MajorDashboardLayout';
 import MajorHistory from './components/MajorHistory';
+import MajorHistoryTest from './components/MajorHistoryTest';
 import MajorHistoryUser from './components/MajorHistoryUser';
+import MajorHistoryUserTest from './components/MajorHistoryUserTest';
 import MajorModeration from './components/MajorModeration';
 import MajorTransactions from './components/MajorTransactions';
 import MajorTransactionsUser from './components/MajorTransactionsUser';
@@ -83,7 +85,9 @@ function App() {
             <Route path="/payment-return" element={<PrivateRoute><DashboardLayout><PaymentReturn /></DashboardLayout></PrivateRoute>} />
 
             <Route path="/major-history" element={<PrivateRoute><MajorDashboardLayout><MajorHistory /></MajorDashboardLayout></PrivateRoute>} />
+            <Route path="/major-history-test" element={<PrivateRoute><MajorDashboardLayout><MajorHistoryTest /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-user-history" element={<PrivateRoute><MajorDashboardLayout><MajorHistoryUser /></MajorDashboardLayout></PrivateRoute>} />
+            <Route path="/major-user-history-test" element={<PrivateRoute><MajorDashboardLayout><MajorHistoryUserTest /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-moderation" element={<PrivateRoute><MajorDashboardLayout><MajorModeration /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-transactions" element={<PrivateRoute><MajorDashboardLayout><MajorTransactions /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-user-transactions" element={<PrivateRoute><MajorDashboardLayout><MajorTransactionsUser /></MajorDashboardLayout></PrivateRoute>} />

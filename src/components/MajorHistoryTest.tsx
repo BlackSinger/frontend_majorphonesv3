@@ -1,9 +1,7 @@
-﻿import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { signOut, getAuth } from 'firebase/auth';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase/config';
-import { useAuth } from '../contexts/AuthContext';
 
 import {
     getShortDisplayStatus,
@@ -11,7 +9,7 @@ import {
     calculateShortDuration,
     getShortAvailableActions,
     handleCancelShort,
-    handleReuseShort,
+    // handleReuseNumber
 } from './ShortLogic';
 
 import {
@@ -46,36 +44,27 @@ import {
 
 import {
     type VirtualCardRecord,
-    type VCCOrderDocument,
     handleCopyCardNumber as handleCopyCardNumberVC,
-    filterVirtualCards,
-    convertVCCDocumentToRecord,
-    formatPrice,
-    handleCheckCard
+    formatPrice as formatVCCPrice,
+    formatExpirationDate
 } from './VirtualCardLogicTest';
 
 import {
     type ProxyRecord,
     type ProxyOrderDocument,
-    proxyDurations,
-    filterProxyStates,
-    handleProxyStateSelect,
-    handleProxyStateInputChange,
-    handleProxyStateInputClick,
-    handleProxyInfoClick,
     handleCopyProxyId,
     handleCopyProxyField,
-    filterProxies,
     convertProxyDocumentToRecord,
     formatProxyPrice
 } from './ProxyLogic';
+
 
 interface HistoryRecord {
     id: string;
     date: string;
     expirationDate: string;
     number: string;
-    serviceType: 'Short' | 'Middle' | 'Long' | 'Empty simcard';
+    serviceType: string;
     status: 'Pending' | 'Cancelled' | 'Completed' | 'Inactive' | 'Active' | 'Expired' | 'Timed out';
     service: string;
     price: number;
@@ -84,18 +73,19 @@ interface HistoryRecord {
     country: string;
     reuse?: boolean;
     maySend?: boolean;
+    opt?: number;
     asleep?: boolean;
     createdAt?: Date;
-    updatedAt?: Date;
+    // updatedAt?: Date; // Timestamp of last update (used in reuse)
     expiry?: Date;
     awakeIn?: Date;
     codeAwakeAt?: Date;
     orderId?: string;
+    email?: string;
     fullsms?: string;
-    opt?: number;
 }
 
-const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: string; onTimeout?: () => void; updatedAt?: Date }> = React.memo(({ createdAt, recordId, status, onTimeout, updatedAt }) => {
+const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: string; onTimeout?: () => void; /* updatedAt?: Date */ }> = React.memo(({ createdAt, recordId, status, onTimeout, /* updatedAt */ }) => {
     const [timeLeft, setTimeLeft] = useState<number>(0);
 
     useEffect(() => {
@@ -106,7 +96,7 @@ const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: stri
 
         const calculateTimeLeft = () => {
             const now = new Date().getTime();
-            const startTime = updatedAt ? updatedAt.getTime() : createdAt.getTime();
+            const startTime = createdAt.getTime();
             const fiveMinutes = 5 * 60 * 1000;
             const expiryTime = startTime + fiveMinutes;
             const remaining = expiryTime - now;
@@ -133,7 +123,7 @@ const CountdownTimer: React.FC<{ createdAt: Date; recordId: string; status: stri
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [createdAt, updatedAt, status, onTimeout]);
+    }, [createdAt, /* updatedAt, */ status, onTimeout]);
 
     if (status !== 'Pending') {
         return <span className="font-mono text-slate-400">-</span>;
@@ -341,16 +331,13 @@ const CodeAwakeTimer: React.FC<{ codeAwakeAt: Date; recordId: string; onTimeout?
     );
 });
 
-const HistoryTest: React.FC = () => {
+const MajorHistoryTest: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { currentUser } = useAuth();
     const searchParams = new URLSearchParams(location.search);
     const tabFromUrl = searchParams.get('tab');
 
-    const [activeTab, setActiveTab] = useState<'numbers' | 'virtualCards' | 'proxies' | 'voip'>(
-        tabFromUrl === 'virtualCards' ? 'virtualCards' : tabFromUrl === 'proxies' ? 'proxies' : tabFromUrl === 'voip' ? 'voip' : 'numbers'
-    );
+    const [activeTab, setActiveTab] = useState<'numbers' | 'vcc' | 'proxies' | 'voip'>('numbers');
     const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('All');
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [numberTypeFilter, setNumberTypeFilter] = useState<string>('All');
@@ -358,7 +345,6 @@ const HistoryTest: React.FC = () => {
     const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
     const [isNumberTypeDropdownOpen, setIsNumberTypeDropdownOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
-    const [currentVirtualCardPage, setCurrentVirtualCardPage] = useState(1);
     const [showUuidModal, setShowUuidModal] = useState(false);
     const [showInfoModal, setShowInfoModal] = useState(false);
     const [showFullSmsModal, setShowFullSmsModal] = useState(false);
@@ -368,24 +354,6 @@ const HistoryTest: React.FC = () => {
     const [isCopied, setIsCopied] = useState(false);
     const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
     const [isVoipIdCopied, setIsVoipIdCopied] = useState(false);
-    const [copiedCardNumbers, setCopiedCardNumbers] = useState<{ [key: string]: boolean }>({});
-
-    const [cardNumberSearch, setCardNumberSearch] = useState<string>('');
-    const [fundsFilter, setFundsFilter] = useState<string>('');
-
-    const [selectedProxyState, setSelectedProxyState] = useState('All States');
-    const [selectedProxyDuration, setSelectedProxyDuration] = useState('All Durations');
-    const [isProxyStateDropdownOpen, setIsProxyStateDropdownOpen] = useState(false);
-    const [isProxyDurationDropdownOpen, setIsProxyDurationDropdownOpen] = useState(false);
-    const [proxyStateSearchTerm, setProxyStateSearchTerm] = useState('');
-    const [currentProxyPage, setCurrentProxyPage] = useState(1);
-    const [showProxyInfoModal, setShowProxyInfoModal] = useState(false);
-    const [selectedProxyRecord, setSelectedProxyRecord] = useState<ProxyRecord | null>(null);
-    const [isProxyIdCopied, setIsProxyIdCopied] = useState(false);
-    const [copiedProxyFields, setCopiedProxyFields] = useState<{ [key: string]: boolean }>({});
-    const proxyStateDropdownRef = useRef<HTMLDivElement>(null);
-    const proxyDurationDropdownRef = useRef<HTMLDivElement>(null);
-    const proxyStateInputRef = useRef<HTMLInputElement>(null);
     const [openActionMenus, setOpenActionMenus] = useState<{ [key: string]: boolean }>({});
     const serviceTypeDropdownRef = useRef<HTMLDivElement>(null);
     const statusDropdownRef = useRef<HTMLDivElement>(null);
@@ -397,13 +365,26 @@ const HistoryTest: React.FC = () => {
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [showErrorModal, setShowErrorModal] = useState(false);
 
-    const [vccData, setVccData] = useState<VirtualCardRecord[]>([]);
-    const [isLoadingVCC, setIsLoadingVCC] = useState(true);
+    const [numbersDataFetched, setNumbersDataFetched] = useState(false);
+    const [vccDataFetched, setVccDataFetched] = useState(false);
+    const [proxiesDataFetched, setProxiesDataFetched] = useState(false);
+    const [cachedNumbersData, setCachedNumbersData] = useState<HistoryRecord[]>([]);
+    const [cachedVccData, setCachedVccData] = useState<VirtualCardRecord[]>([]);
+    const [cachedProxiesData, setCachedProxiesData] = useState<ProxyRecord[]>([]);
 
-    const [proxyFirestoreData, setProxyFirestoreData] = useState<ProxyRecord[]>([]);
-    const [isLoadingProxies, setIsLoadingProxies] = useState(true);
+    const [cardNumberSearch, setCardNumberSearch] = useState('');
+    const [initialFundsFilter, setInitialFundsFilter] = useState<string>('');
+    const [currentVirtualCardPage, setCurrentVirtualCardPage] = useState(1);
+    const [copiedCardNumbers, setCopiedCardNumbers] = useState<{ [key: string]: boolean }>({});
 
-    const [voipData, setVoipData] = useState<{
+    const [currentProxyPage, setCurrentProxyPage] = useState(1);
+    const [showProxyInfoModal, setShowProxyInfoModal] = useState(false);
+    const [selectedProxyRecord, setSelectedProxyRecord] = useState<ProxyRecord | null>(null);
+    const [isProxyIdCopied, setIsProxyIdCopied] = useState(false);
+    const [copiedProxyFields, setCopiedProxyFields] = useState<{ [key: string]: boolean }>({});
+
+    const [voipDataFetched, setVoipDataFetched] = useState(false);
+    const [cachedVoipData, setCachedVoipData] = useState<{
         id: string;
         orderId: string;
         number: string;
@@ -412,9 +393,9 @@ const HistoryTest: React.FC = () => {
         price: number;
         status: string;
         type: string;
-        createdAt: Date;
+        createdAt: string;
+        email: string;
     }[]>([]);
-    const [isLoadingVoip, setIsLoadingVoip] = useState(true);
     const [voipNumberSearch, setVoipNumberSearch] = useState('');
     const [voipStatusFilter, setVoipStatusFilter] = useState('All');
     const [isVoipStatusDropdownOpen, setIsVoipStatusDropdownOpen] = useState(false);
@@ -429,7 +410,8 @@ const HistoryTest: React.FC = () => {
         price: number;
         status: string;
         type: string;
-        createdAt: Date;
+        createdAt: string;
+        email: string;
     } | null>(null);
     const voipStatusDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -437,33 +419,29 @@ const HistoryTest: React.FC = () => {
 
     const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
 
-    const [reusingOrderId, setReusingOrderId] = useState<string | null>(null);
+    // Reusing state: track which order is being reused
+    // const [reusingOrderId, setReusingOrderId] = useState<string | null>(null);
 
     const [activatingOrderId, setActivatingOrderId] = useState<string | null>(null);
-    const [checkingCardId, setCheckingCardId] = useState<string | null>(null);
-
-    const userIdRef = useRef<string | undefined>(currentUser?.uid);
-
-    useEffect(() => {
-        userIdRef.current = currentUser?.uid;
-    }, [currentUser?.uid]);
 
     const itemsPerPage = 10;
 
     const getDisplayStatus = (record: HistoryRecord): string => {
-        if (record.serviceType === 'Short') {
+        const normalizedType = record.serviceType.toLowerCase();
+        if (normalizedType === 'short') {
             return getShortDisplayStatus(record);
-        } else if (record.serviceType === 'Middle') {
+        } else if (normalizedType === 'middle') {
             return getMiddleDisplayStatus(record);
-        } else if (record.serviceType === 'Long') {
+        } else if (normalizedType === 'long') {
             return getLongDisplayStatus(record);
-        } else if (record.serviceType === 'Empty simcard') {
+        } else if (normalizedType === 'empty simcard') {
             return getEmptySimDisplayStatus(record);
         }
         return record.status;
     };
 
-    const formatPrice = (price: number): string => {
+    const formatPrice = (price: number | undefined | null): string => {
+        if (price == null || isNaN(price)) return '0.00';
         return price % 1 === 0 ? price.toString() : price.toFixed(2);
     };
 
@@ -471,8 +449,9 @@ const HistoryTest: React.FC = () => {
         const { serviceType, status, code, createdAt, codeAwakeAt } = record;
         const smsValue = code || '';
         const hasSms = smsValue && smsValue.trim() !== '';
+        const normalizedType = serviceType.toLowerCase();
 
-        if (serviceType === 'Short') {
+        if (normalizedType === 'short') {
             if (codeAwakeAt) {
                 const now = new Date().getTime();
                 const startTime = codeAwakeAt.getTime();
@@ -493,7 +472,7 @@ const HistoryTest: React.FC = () => {
             } else {
                 return { type: 'text', value: smsValue };
             }
-        } else if (serviceType === 'Middle') {
+        } else if (normalizedType === 'middle') {
             const countdownTime = getMiddleCountdownTime(record);
             if (countdownTime !== null) {
                 return { type: 'middleCountdown', value: countdownTime };
@@ -511,7 +490,7 @@ const HistoryTest: React.FC = () => {
                 default:
                     return { type: 'text', value: smsValue };
             }
-        } else if (serviceType === 'Long') {
+        } else if (normalizedType === 'long') {
             const countdownTime = getLongCountdownTime(record);
             if (countdownTime !== null) {
                 return { type: 'longCountdown', value: countdownTime };
@@ -529,7 +508,7 @@ const HistoryTest: React.FC = () => {
                 default:
                     return { type: 'text', value: smsValue };
             }
-        } else if (serviceType === 'Empty simcard') {
+        } else if (normalizedType === 'empty simcard') {
             const countdownTime = getEmptySimCountdownTime(record);
             if (countdownTime !== null) {
                 return { type: 'emptySimCountdown', value: countdownTime };
@@ -553,13 +532,14 @@ const HistoryTest: React.FC = () => {
     };
 
     const calculateDuration = (type: string, createdAt: Date, expiry: Date, opt?: number): string => {
-        if (type === 'Short') {
+        const normalizedType = type.toLowerCase();
+        if (normalizedType === 'short') {
             return calculateShortDuration(createdAt, expiry, opt);
-        } else if (type === 'Middle') {
+        } else if (normalizedType === 'middle') {
             return calculateMiddleDuration(createdAt, expiry);
-        } else if (type === 'Long') {
+        } else if (normalizedType === 'long') {
             return calculateLongDuration(createdAt, expiry);
-        } else if (type === 'Empty simcard') {
+        } else if (normalizedType === 'empty simcard') {
             return calculateEmptySimDuration(createdAt, expiry);
         }
         return '';
@@ -586,31 +566,6 @@ const HistoryTest: React.FC = () => {
         }
     };
 
-    const filteredStates = filterProxyStates(proxyStateSearchTerm);
-
-    const handleProxyStateInputChangeWrapper = (e: React.ChangeEvent<HTMLInputElement>) => {
-        handleProxyStateInputChange(e.target.value, setProxyStateSearchTerm);
-    };
-
-    const handleProxyStateInputClickWrapper = () => {
-        handleProxyStateInputClick(setIsProxyStateDropdownOpen);
-    };
-
-    const handleProxyStateSelectWrapper = (state: string) => {
-        handleProxyStateSelect(state, setSelectedProxyState, setIsProxyStateDropdownOpen, setProxyStateSearchTerm);
-    };
-
-    const handleProxyInfoClickWrapper = (record: ProxyRecord) => {
-        handleProxyInfoClick(record, setSelectedProxyRecord, setShowProxyInfoModal, setIsProxyIdCopied);
-    };
-
-    const handleCopyProxyIdWrapper = () => {
-        handleCopyProxyId(selectedProxyRecord, setIsProxyIdCopied);
-    };
-
-    const handleCopyProxyFieldWrapper = (fieldValue: string, fieldKey: string) => {
-        handleCopyProxyField(fieldValue, fieldKey, setCopiedProxyFields);
-    };
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -622,13 +577,6 @@ const HistoryTest: React.FC = () => {
             }
             if (numberTypeDropdownRef.current && !numberTypeDropdownRef.current.contains(event.target as Node)) {
                 setIsNumberTypeDropdownOpen(false);
-            }
-            if (proxyStateDropdownRef.current && !proxyStateDropdownRef.current.contains(event.target as Node)) {
-                setIsProxyStateDropdownOpen(false);
-                setProxyStateSearchTerm('');
-            }
-            if (proxyDurationDropdownRef.current && !proxyDurationDropdownRef.current.contains(event.target as Node)) {
-                setIsProxyDurationDropdownOpen(false);
             }
             if (voipStatusDropdownRef.current && !voipStatusDropdownRef.current.contains(event.target as Node)) {
                 setIsVoipStatusDropdownOpen(false);
@@ -646,7 +594,7 @@ const HistoryTest: React.FC = () => {
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [openActionMenus, selectedProxyState]);
+    }, [openActionMenus]);
 
     const getAvailableStatuses = (serviceType: string) => {
         switch (serviceType) {
@@ -665,10 +613,10 @@ const HistoryTest: React.FC = () => {
 
     const mapServiceTypeToFirestore = (uiServiceType: string) => {
         switch (uiServiceType) {
-            case 'Short Numbers': return 'Short';
-            case 'Middle Numbers': return 'Middle';
-            case 'Long Numbers': return 'Long';
-            case 'Empty SIM cards': return 'Empty simcard';
+            case 'Short Numbers': return 'short';
+            case 'Middle Numbers': return 'middle';
+            case 'Long Numbers': return 'long';
+            case 'Empty SIM cards': return 'empty simcard';
             default: return null;
         }
     };
@@ -709,31 +657,44 @@ const HistoryTest: React.FC = () => {
         return filtered;
     }, [serviceTypeFilter, statusFilter, numberTypeFilter, firestoreData]);
 
-    const filteredProxyData = useMemo(() => {
-        return filterProxies(proxyFirestoreData, selectedProxyState, selectedProxyDuration);
-    }, [proxyFirestoreData, selectedProxyState, selectedProxyDuration]);
-
-    const filteredVirtualCardData = useMemo(() => {
-        return filterVirtualCards(vccData, cardNumberSearch, fundsFilter);
-    }, [vccData, cardNumberSearch, fundsFilter]);
 
     const totalPages = Math.ceil(filteredData.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const paginatedData = filteredData.slice(startIndex, endIndex);
 
+    const filteredVirtualCardData = useMemo(() => {
+        let filtered = cachedVccData;
+
+        if (cardNumberSearch.trim()) {
+            const searchNormalized = cardNumberSearch.replace(/\s+/g, '');
+            filtered = filtered.filter(record =>
+                record.cardNumber.replace(/\s+/g, '').toLowerCase().includes(searchNormalized.toLowerCase())
+            );
+        }
+
+        if (initialFundsFilter.trim() !== '') {
+            const filterNum = parseFloat(initialFundsFilter);
+            if (!isNaN(filterNum)) {
+                filtered = filtered.filter(record => record.initialFunds === filterNum);
+            }
+        }
+
+        return filtered;
+    }, [cardNumberSearch, initialFundsFilter, cachedVccData]);
+
     const totalVirtualCardPages = Math.ceil(filteredVirtualCardData.length / itemsPerPage);
     const virtualCardStartIndex = (currentVirtualCardPage - 1) * itemsPerPage;
     const virtualCardEndIndex = virtualCardStartIndex + itemsPerPage;
     const paginatedVirtualCardData = filteredVirtualCardData.slice(virtualCardStartIndex, virtualCardEndIndex);
 
-    const totalProxyPages = Math.ceil(filteredProxyData.length / itemsPerPage);
+    const totalProxyPages = Math.ceil(cachedProxiesData.length / itemsPerPage);
     const proxyStartIndex = (currentProxyPage - 1) * itemsPerPage;
     const proxyEndIndex = proxyStartIndex + itemsPerPage;
-    const paginatedProxyData = filteredProxyData.slice(proxyStartIndex, proxyEndIndex);
+    const paginatedProxyData = cachedProxiesData.slice(proxyStartIndex, proxyEndIndex);
 
     const filteredVoipData = useMemo(() => {
-        let filtered = voipData;
+        let filtered = cachedVoipData;
         if (voipNumberSearch.trim() !== '') {
             filtered = filtered.filter(record =>
                 record.number.includes(voipNumberSearch.trim())
@@ -746,9 +707,8 @@ const HistoryTest: React.FC = () => {
                 filtered = filtered.filter(record => record.status === voipStatusFilter);
             }
         }
-
         return filtered;
-    }, [voipData, voipNumberSearch, voipStatusFilter]);
+    }, [cachedVoipData, voipNumberSearch, voipStatusFilter]);
 
     const totalVoipPages = Math.ceil(filteredVoipData.length / itemsPerPage);
     const voipStartIndex = (currentVoipPage - 1) * itemsPerPage;
@@ -758,10 +718,6 @@ const HistoryTest: React.FC = () => {
     useEffect(() => {
         setCurrentPage(1);
     }, [serviceTypeFilter, statusFilter, numberTypeFilter]);
-
-    useEffect(() => {
-        setCurrentProxyPage(1);
-    }, [selectedProxyState, selectedProxyDuration]);
 
     useEffect(() => {
         if (activeTab !== 'numbers') return;
@@ -774,371 +730,467 @@ const HistoryTest: React.FC = () => {
     }, [activeTab]);
 
     useEffect(() => {
-        if (activeTab !== 'numbers') {
-            setIsLoading(false);
-            return;
-        }
+        const fetchData = async () => {
+            if (activeTab === 'numbers') {
+                if (numbersDataFetched) {
+                    setFirestoreData(cachedNumbersData);
+                    setIsLoading(false);
+                    return;
+                }
 
-        const uid = userIdRef.current;
-        if (!uid) {
-            setIsLoading(false);
-            setFirestoreData([]);
-            return;
-        }
+                setIsLoading(true);
 
-        setIsLoading(true);
-        let isSubscribed = true;
-        const ordersRef = collection(db, 'orders');
-        const q = query(
-            ordersRef,
-            where('uid', '==', uid),
-            orderBy('createdAt', 'desc')
-        );
+                try {
+                    const currentUser = getAuth().currentUser;
 
-        const createHistoryRecord = (docData: any, docId: string): HistoryRecord => {
-            const createdAt = docData.createdAt?.toDate ? docData.createdAt.toDate() : new Date(docData.createdAt);
-            const expiry = docData.expiry?.toDate ? docData.expiry.toDate() : new Date(docData.expiry);
+                    if (!currentUser) {
+                        setIsLoading(false);
+                        setFirestoreData([]);
+                        return;
+                    }
 
-            const rawType = String(docData.type || 'Short').toLowerCase().trim();
-            let normalizedTypeForDuration = 'Short';
-            if (rawType === 'short') {
-                normalizedTypeForDuration = 'Short';
-            } else if (rawType === 'middle') {
-                normalizedTypeForDuration = 'Middle';
-            } else if (rawType === 'long') {
-                normalizedTypeForDuration = 'Long';
-            } else if (rawType === 'empty simcard' || rawType === 'empty sim card') {
-                normalizedTypeForDuration = 'Empty simcard';
-            }
+                    const idToken = await currentUser.getIdToken();
 
-            const durationText = calculateDuration(
-                normalizedTypeForDuration,
-                createdAt,
-                expiry,
-                docData.opt
-            );
-
-            const allowedStatuses = ['Pending', 'Cancelled', 'Completed', 'Inactive', 'Active', 'Expired', 'Timed out'] as const;
-
-            let statusValue = typeof docData.status === 'string' ? docData.status : String(docData.status || 'Pending');
-
-            const statusLower = statusValue.toLowerCase();
-            if (statusLower === 'timed out' || statusLower === 'timedout' || statusLower === 'timeout' || statusLower === 'timed-out') {
-                statusValue = 'Timed out';
-            }
-
-            const validatedStatus = allowedStatuses.includes(statusValue as any) ? statusValue as typeof allowedStatuses[number] : 'Pending';
-
-            const typeLower = String(docData.type || '').toLowerCase().trim();
-
-            let validatedType: 'Short' | 'Middle' | 'Long' | 'Empty simcard' = '-' as any;
-            if (typeLower === 'short') {
-                validatedType = 'Short';
-            } else if (typeLower === 'middle') {
-                validatedType = 'Middle';
-            } else if (typeLower === 'long') {
-                validatedType = 'Long';
-            } else if (typeLower === 'empty simcard' || typeLower === 'empty sim card') {
-                validatedType = 'Empty simcard';
-            }
-
-            let serviceName = docData.serviceName || 'N/A';
-            if (validatedType === 'Empty simcard') {
-                serviceName = 'Empty SIM card';
-            }
-
-            return {
-                id: docData.orderId || docId,
-                date: createdAt.toLocaleString('en-US', {
-                    year: 'numeric', month: 'numeric', day: 'numeric',
-                    hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
-                }),
-                expirationDate: expiry.toLocaleString('en-US', {
-                    year: 'numeric', month: 'numeric', day: 'numeric',
-                    hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
-                }),
-                number: String(docData.number || 'N/A'),
-                serviceType: validatedType,
-                status: validatedStatus,
-                service: serviceName,
-                price: parseFloat((typeof docData.price === 'number' ? docData.price : 0).toFixed(2)),
-                duration: durationText,
-                code: String(docData.sms || ''),
-                country: docData.country || 'N/A',
-                reuse: docData.reuse,
-                maySend: docData.maySend,
-                createdAt: createdAt,
-                updatedAt: docData.updatedAt?.toDate?.() || undefined,
-                expiry: expiry,
-                orderId: docData.orderId || docId,
-                fullsms: docData.fullsms || '',
-                opt: docData.opt
-            };
-        };
-
-        const unsubscribe = onSnapshot(
-            q,
-            (querySnapshot) => {
-                if (!isSubscribed) return;
-
-                setFirestoreData(currentData => {
-                    let nextData = [...currentData];
-
-                    querySnapshot.docChanges().forEach(change => {
-                        if (change.doc.data().type === 'Send Only') return;
-                        const changedRecord = createHistoryRecord(change.doc.data(), change.doc.id);
-                        const recordId = changedRecord.id;
-                        const existingIndex = nextData.findIndex(item => item.id === recordId);
-
-                        switch (change.type) {
-                            case 'added':
-                                if (existingIndex > -1) {
-                                    nextData[existingIndex] = changedRecord;
-                                } else {
-                                    nextData.push(changedRecord);
-                                }
-                                break;
-                            case 'modified':
-                                if (existingIndex > -1) {
-                                    nextData[existingIndex] = changedRecord;
-                                } else {
-                                    nextData.push(changedRecord);
-                                }
-                                break;
-                            case 'removed':
-                                if (existingIndex > -1) {
-                                    nextData.splice(existingIndex, 1);
-                                }
-                                break;
+                    const response = await fetch('https://getsmsorders-ezeznlhr5a-uc.a.run.app', {
+                        method: 'GET',
+                        headers: {
+                            'authorization': `${idToken}`,
+                            'Content-Type': 'application/json'
                         }
                     });
 
-                    nextData.sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+                    const data = await response.json();
 
-                    return nextData;
-                });
+                    if (!response.ok) {
+                        if (data.message === 'Forbidden') {
+                            const auth = getAuth();
+                            await signOut(auth);
+                            navigate('/signin');
+                            return;
+                        } else if (data.message === 'Internal Server Error') {
+                            setErrorMessage('Please refresh');
+                            setShowErrorModal(true);
+                            setIsLoading(false);
+                            return;
+                        }
+                    }
 
-                if (isSubscribed) {
+                    let smsOrdersArray = [];
+
+                    if (Array.isArray(data)) {
+                        smsOrdersArray = data;
+                    } else if (data.smsOrders && Array.isArray(data.smsOrders)) {
+                        smsOrdersArray = data.smsOrders;
+                    } else if (data.orders && Array.isArray(data.orders)) {
+                        smsOrdersArray = data.orders;
+                    } else {
+                        setFirestoreData([]);
+                        setIsLoading(false);
+                        return;
+                    }
+
+                    if (Array.isArray(smsOrdersArray)) {
+                        smsOrdersArray = smsOrdersArray.filter((item: any) => item.type !== 'Send Only');
+                    }
+
+                    const formattedData = smsOrdersArray.map((item: any) => {
+                        let formattedDate = 'N/A';
+                        if (item.createdAt && item.createdAt._seconds) {
+                            const date = new Date(item.createdAt._seconds * 1000);
+                            formattedDate = date.toLocaleString('en-US', {
+                                month: '2-digit',
+                                day: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: true
+                            });
+                        }
+
+                        let formattedExpirationDate = 'N/A';
+                        if (item.expiry && item.expiry._seconds) {
+                            const expiryDate = new Date(item.expiry._seconds * 1000);
+                            formattedExpirationDate = expiryDate.toLocaleString('en-US', {
+                                month: '2-digit',
+                                day: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: true
+                            });
+                        }
+
+                        const createdAtDate = item.createdAt && item.createdAt._seconds
+                            ? new Date(item.createdAt._seconds * 1000)
+                            : undefined;
+
+                        const expiryDate = item.expiry && item.expiry._seconds
+                            ? new Date(item.expiry._seconds * 1000)
+                            : undefined;
+
+                        const awakeInDate = item.awakeIn && item.awakeIn._seconds
+                            ? new Date(item.awakeIn._seconds * 1000)
+                            : undefined;
+
+                        const codeAwakeAtDate = item.codeAwakeAt && item.codeAwakeAt._seconds
+                            ? new Date(item.codeAwakeAt._seconds * 1000)
+                            : undefined;
+
+                        const normalizedServiceType = (() => {
+                            if (!item.type) return '';
+                            const typeStr = String(item.type).toLowerCase().trim();
+
+                            if (typeStr === 'short') return 'short';
+                            if (typeStr === 'middle') return 'middle';
+                            if (typeStr === 'long') return 'long';
+
+                            if (typeStr.includes('empty') && typeStr.includes('sim')) {
+                                return 'empty simcard';
+                            }
+
+                            return typeStr;
+                        })();
+
+                        let duration = 'N/A';
+                        if (createdAtDate && expiryDate && normalizedServiceType) {
+                            duration = calculateDuration(
+                                normalizedServiceType,
+                                createdAtDate,
+                                expiryDate,
+                                item.opt
+                            );
+                        }
+
+                        return {
+                            id: item.orderId || 'N/A',
+                            date: formattedDate,
+                            expirationDate: formattedExpirationDate,
+                            number: item.number ? String(item.number) : 'N/A',
+                            serviceType: normalizedServiceType,
+                            status: item.status || 'N/A',
+                            service: item.serviceName || 'N/A',
+                            price: item.price || 0,
+                            duration: duration,
+                            code: item.sms || '',
+                            country: item.country || 'N/A',
+                            reuse: item.reuse,
+                            maySend: item.maySend,
+                            opt: item.opt,
+                            asleep: item.asleep,
+                            createdAt: createdAtDate,
+                            expiry: expiryDate,
+                            awakeIn: awakeInDate,
+                            codeAwakeAt: codeAwakeAtDate,
+                            orderId: item.orderId || 'N/A',
+                            email: item.email || 'N/A',
+                            fullsms: item.fullsms || ''
+                        };
+                    });
+
+                    setFirestoreData(formattedData);
+                    setCachedNumbersData(formattedData);
+                    setNumbersDataFetched(true);
+                    setIsLoading(false);
+                } catch (error) {
+                    setErrorMessage('Please refresh');
+                    setShowErrorModal(true);
                     setIsLoading(false);
                 }
-            },
-            (error: any) => {
-                if (!isSubscribed) return;
-
-                let errorMsg = 'An error occurred when loading the orders, please try again';
-
-                if (error?.code === 'permission-denied') {
-                    errorMsg = 'Access denied, you cannot check these orders';
-                } else if (error?.code === 'unavailable') {
-                    errorMsg = 'Service temporarily unavailable, please try again';
-                } else if (error?.code === 'unauthenticated') {
-                    errorMsg = 'You are not authenticated';
-                } else if (error?.message) {
-                    errorMsg = `Error: ${error.message}`;
+            } else if (activeTab === 'vcc') {
+                if (vccDataFetched) {
+                    setIsLoading(false);
+                    return;
                 }
 
-                setErrorMessage('An error occurred. Please try again.');
-                setShowErrorModal(true);
-                setIsLoading(false);
-            }
-        );
+                setIsLoading(true);
 
-        return () => {
-            isSubscribed = false;
-            unsubscribe();
-        };
-    }, [activeTab]);
+                try {
+                    const currentUser = getAuth().currentUser;
 
-    useEffect(() => {
-        if (activeTab !== 'virtualCards') {
-            return;
-        }
+                    if (!currentUser) {
+                        setIsLoading(false);
+                        return;
+                    }
 
-        if (!currentUser) {
-            setIsLoadingVCC(false);
-            return;
-        }
+                    const idToken = await currentUser.getIdToken();
 
-        const uid = currentUser.uid;
-        setIsLoadingVCC(true);
-        let isSubscribed = true;
+                    const response = await fetch('https://getvccorders-ezeznlhr5a-uc.a.run.app', {
+                        method: 'GET',
+                        headers: {
+                            'authorization': `${idToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
 
-        const vccOrdersRef = collection(db, 'vccOrders');
-        const q = query(
-            vccOrdersRef,
-            where('uid', '==', uid),
-            orderBy('createdAt', 'desc')
-        );
+                    const data = await response.json();
 
-        const unsubscribe = onSnapshot(
-            q,
-            (snapshot) => {
-                if (!isSubscribed) return;
+                    if (!response.ok) {
+                        console.error('Error in getvccorders:', data);
+                        if (data.message === 'Forbidden') {
+                            const auth = getAuth();
+                            await signOut(auth);
+                            navigate('/signin');
+                            return;
+                        } else if (data.message === 'Internal Server Error') {
+                            setErrorMessage('Please refresh');
+                            setShowErrorModal(true);
+                            setIsLoading(false);
+                            return;
+                        }
+                    }
 
-                const vccRecords: VirtualCardRecord[] = snapshot.docs.map(doc => {
-                    const data = doc.data() as VCCOrderDocument;
-                    return convertVCCDocumentToRecord(data);
-                });
 
-                setVccData(vccRecords);
-                setIsLoadingVCC(false);
-            },
-            (error: any) => {
-                if (!isSubscribed) return;
+                    console.log('Success in getvccorders:', data);
 
-                let errorMsg = 'An error occurred when loading the cards, please try again';
+                    let vccOrdersArray = [];
 
-                if (error?.code === 'permission-denied') {
-                    errorMsg = 'Access denied, you cannot check these cards';
-                } else if (error?.code === 'unavailable') {
-                    errorMsg = 'Service temporarily unavailable, please try again';
-                } else if (error?.code === 'unauthenticated') {
-                    errorMsg = 'You are not authenticated';
-                } else if (error?.message) {
-                    errorMsg = `Error: ${error.message}`;
+                    if (Array.isArray(data)) {
+                        vccOrdersArray = data;
+                    } else if (data.vccOrders && Array.isArray(data.vccOrders)) {
+                        vccOrdersArray = data.vccOrders;
+                    } else if (data.orders && Array.isArray(data.orders)) {
+                        vccOrdersArray = data.orders;
+                    } else {
+                        setCachedVccData([]);
+                        setVccDataFetched(true);
+                        setIsLoading(false);
+                        return;
+                    }
+
+                    const formattedVccData: VirtualCardRecord[] = vccOrdersArray.map((item: any) => {
+                        let formattedDate = 'N/A';
+                        if (item.createdAt && item.createdAt._seconds) {
+                            const date = new Date(item.createdAt._seconds * 1000);
+                            formattedDate = date.toLocaleString('en-US', {
+                                month: '2-digit',
+                                day: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: true
+                            });
+                        }
+
+                        return {
+                            id: item.id || 'N/A',
+                            purchaseDate: formattedDate,
+                            price: typeof item.price === 'number' ? item.price : parseFloat(item.price || '0'),
+                            totalPrice: typeof item.totalPrice === 'number' ? item.totalPrice : parseFloat(item.totalPrice || item.price || '0'),
+                            cardNumber: item.cardNumber || 'N/A',
+                            expirationDate: formatExpirationDate(item.expirationDate || 'N/A'),
+                            cvv: item.cvv || 'N/A',
+                            initialFunds: typeof item.initialFunds === 'number' ? item.initialFunds : parseFloat(item.initialFunds || '0'),
+                            balance: typeof item.balance === 'number' ? item.balance : parseFloat(item.balance || '0'),
+                            email: item.email || 'N/A',
+                            cardHolderName: item.cardHolderName || 'N/A',
+                            status: item.status || 'Active'
+                        };
+                    });
+
+                    setCachedVccData(formattedVccData);
+                    setVccDataFetched(true);
+                    setIsLoading(false);
+                } catch (error) {
+                    console.error('Catch error in getvccorders:', error);
+                    setErrorMessage('Please refresh');
+                    setShowErrorModal(true);
+                    setIsLoading(false);
+                }
+            } else if (activeTab === 'voip') {
+                if (voipDataFetched) {
+                    if (cachedVoipData.length > 0) {
+                    }
+                    setIsLoading(false);
+                    return;
                 }
 
-                setErrorMessage(errorMsg);
-                setShowErrorModal(true);
-                setIsLoadingVCC(false);
-            }
-        );
+                setIsLoading(true);
 
-        return () => {
-            isSubscribed = false;
-            unsubscribe();
-        };
-    }, [activeTab]);
+                try {
+                    const currentUser = getAuth().currentUser;
 
-    useEffect(() => {
-        if (activeTab !== 'voip') return;
+                    if (!currentUser) {
+                        setIsLoading(false);
+                        return;
+                    }
 
-        if (!currentUser) {
-            setIsLoadingVoip(false);
-            return;
-        }
+                    const idToken = await currentUser.getIdToken();
 
-        const uid = currentUser.uid;
-        setIsLoadingVoip(true);
-        let isSubscribed = true;
+                    const response = await fetch('https://getvoiporders-ezeznlhr5a-uc.a.run.app', {
+                        method: 'GET',
+                        headers: {
+                            'authorization': `${idToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
 
-        const voipOrdersRef = collection(db, 'voipOrders');
-        const q = query(
-            voipOrdersRef,
-            where('uid', '==', uid),
-            orderBy('createdAt', 'desc')
-        );
+                    const data = await response.json();
 
-        const unsubscribe = onSnapshot(
-            q,
-            (snapshot) => {
-                if (!isSubscribed) return;
-                const records = snapshot.docs.map(doc => {
-                    const data = doc.data();
-                    const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-                    return {
-                        id: doc.id,
-                        orderId: data.orderId || doc.id,
-                        number: String(data.number || ''),
-                        country: String(data.country || 'N/A'),
-                        message: String(data.message || ''),
-                        price: typeof data.price === 'number' ? data.price : parseFloat(data.price || '0'),
-                        status: String(data.status || ''),
-                        type: String(data.type || ''),
-                        createdAt,
-                    };
-                });
-                setVoipData(records);
-                setIsLoadingVoip(false);
-            },
-            (error: any) => {
-                if (!isSubscribed) return;
-                let errorMsg = 'An error occurred loading VoIP orders';
-                if (error?.code === 'permission-denied') errorMsg = 'Access denied';
-                else if (error?.code === 'unavailable') errorMsg = 'Service temporarily unavailable';
-                else if (error?.code === 'unauthenticated') errorMsg = 'You are not authenticated';
-                else if (error?.message) errorMsg = `Error: ${error.message}`;
-                setErrorMessage(errorMsg);
-                setShowErrorModal(true);
-                setIsLoadingVoip(false);
-            }
-        );
+                    if (!response.ok) {
+                        if (data.message === 'Forbidden') {
+                            const auth = getAuth();
+                            await signOut(auth);
+                            navigate('/signin');
+                            return;
+                        } else if (data.message === 'Internal Server Error') {
+                            setErrorMessage('Please refresh');
+                            setShowErrorModal(true);
+                            setIsLoading(false);
+                            return;
+                        }
+                    }
 
-        return () => {
-            isSubscribed = false;
-            unsubscribe();
-        };
-    }, [activeTab]);
 
-    useEffect(() => {
-        if (activeTab !== 'proxies') {
-            return;
-        }
+                    let voipOrdersArray = [];
 
-        if (!currentUser) {
-            setIsLoadingProxies(false);
-            return;
-        }
+                    if (Array.isArray(data)) {
+                        voipOrdersArray = data;
+                    } else if (data.voipOrders && Array.isArray(data.voipOrders)) {
+                        voipOrdersArray = data.voipOrders;
+                    } else if (data.orders && Array.isArray(data.orders)) {
+                        voipOrdersArray = data.orders;
+                    } else {
+                        setCachedVoipData([]);
+                        setVoipDataFetched(true);
+                        setIsLoading(false);
+                        return;
+                    }
 
-        const uid = currentUser.uid;
-        setIsLoadingProxies(true);
-        let isSubscribed = true;
+                    const formattedVoipData = voipOrdersArray.map((item: any) => {
+                        let formattedDate = 'N/A';
+                        if (item.createdAt && item.createdAt._seconds) {
+                            const date = new Date(item.createdAt._seconds * 1000);
+                            formattedDate = date.toLocaleString('en-US', {
+                                month: '2-digit',
+                                day: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: true
+                            });
+                        }
 
-        const proxyOrdersRef = collection(db, 'proxyOrders');
-        const q = query(
-            proxyOrdersRef,
-            where('uid', '==', uid),
-            orderBy('createdAt', 'desc')
-        );
+                        return {
+                            id: item.id || item.orderId || 'N/A',
+                            orderId: item.orderId || item.id || 'N/A',
+                            number: String(item.number || ''),
+                            country: String(item.country || 'N/A'),
+                            message: String(item.message || ''),
+                            price: typeof item.price === 'number' ? item.price : parseFloat(item.price || '0'),
+                            status: String(item.status || ''),
+                            type: String(item.type || ''),
+                            createdAt: formattedDate,
+                            email: item.email || 'N/A'
+                        };
+                    });
 
-        const unsubscribe = onSnapshot(
-            q,
-            (snapshot) => {
-                if (!isSubscribed) return;
-
-                const proxyRecords: ProxyRecord[] = snapshot.docs.map(doc => {
-                    const data = doc.data() as ProxyOrderDocument;
-                    return convertProxyDocumentToRecord(data);
-                });
-
-                setProxyFirestoreData(proxyRecords);
-                setIsLoadingProxies(false);
-            },
-            (error: any) => {
-                if (!isSubscribed) return;
-
-                let errorMsg = 'An error occurred when loading the proxies, please try again';
-
-                if (error?.code === 'permission-denied') {
-                    errorMsg = 'Access denied, you cannot check these proxies';
-                } else if (error?.code === 'unavailable') {
-                    errorMsg = 'Service temporarily unavailable, please try again';
-                } else if (error?.code === 'unauthenticated') {
-                    errorMsg = 'You are not authenticated';
-                } else if (error?.message) {
-                    errorMsg = `Error: ${error.message}`;
+                    setCachedVoipData(formattedVoipData);
+                    setVoipDataFetched(true);
+                    setIsLoading(false);
+                } catch (error) {
+                    setErrorMessage('Please refresh');
+                    setShowErrorModal(true);
+                    setIsLoading(false);
+                }
+            } else if (activeTab === 'proxies') {
+                if (proxiesDataFetched) {
+                    if (cachedProxiesData.length > 0) {
+                        console.log('Using cached Proxies data:', cachedProxiesData);
+                    }
+                    setIsLoading(false);
+                    return;
                 }
 
-                setErrorMessage(errorMsg);
-                setShowErrorModal(true);
-                setIsLoadingProxies(false);
-            }
-        );
+                setIsLoading(true);
 
-        return () => {
-            isSubscribed = false;
-            unsubscribe();
+                try {
+                    const currentUser = getAuth().currentUser;
+
+                    if (!currentUser) {
+                        setIsLoading(false);
+                        return;
+                    }
+
+                    const idToken = await currentUser.getIdToken();
+
+                    const response = await fetch('https://getproxies-ezeznlhr5a-uc.a.run.app', {
+                        method: 'GET',
+                        headers: {
+                            'authorization': `${idToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        if (data.message === 'Forbidden') {
+                            const auth = getAuth();
+                            await signOut(auth);
+                            navigate('/signin');
+                            return;
+                        } else if (data.message === 'Internal Server Error') {
+                            setErrorMessage('Please refresh');
+                            setShowErrorModal(true);
+                            setIsLoading(false);
+                            return;
+                        }
+                    }
+
+                    if (data.message === 'No proxy orders found') {
+                        setCachedProxiesData([]);
+                        setProxiesDataFetched(true);
+                        setIsLoading(false);
+                        return;
+                    }
+
+                    let proxyOrdersArray: any[] = [];
+                    if (Array.isArray(data)) {
+                        proxyOrdersArray = data;
+                    } else if (data.proxy && Array.isArray(data.proxy)) {
+                        proxyOrdersArray = data.proxy;
+                    } else if (data.proxyOrders && Array.isArray(data.proxyOrders)) {
+                        proxyOrdersArray = data.proxyOrders;
+                    } else if (data.orders && Array.isArray(data.orders)) {
+                        proxyOrdersArray = data.orders;
+                    } else {
+                        setCachedProxiesData([]);
+                        setProxiesDataFetched(true);
+                        setIsLoading(false);
+                        return;
+                    }
+
+                    const formattedProxyData: ProxyRecord[] = proxyOrdersArray.map((item: any) =>
+                        convertProxyDocumentToRecord(item as ProxyOrderDocument)
+                    );
+
+                    setCachedProxiesData(formattedProxyData);
+                    setProxiesDataFetched(true);
+                    setIsLoading(false);
+                } catch (error) {
+                    setErrorMessage('Please refresh');
+                    setShowErrorModal(true);
+                    setIsLoading(false);
+                }
+            }
         };
-    }, [activeTab]);
+
+        fetchData();
+    }, [activeTab, navigate, numbersDataFetched, vccDataFetched, proxiesDataFetched, voipDataFetched, cachedNumbersData, cachedVccData, cachedProxiesData, cachedVoipData]);
 
     const getStatusColor = (status: string, serviceType: string) => {
-        if (serviceType === 'Short' || serviceType === 'Short Numbers') {
+        const normalizedType = serviceType.toLowerCase();
+        if (normalizedType === 'short' || normalizedType === 'short numbers') {
             return getShortStatusColor(status);
-        } else if (serviceType === 'Middle' || serviceType === 'Middle Numbers') {
+        } else if (normalizedType === 'middle' || normalizedType === 'middle numbers') {
             return getMiddleStatusColor(status);
-        } else if (serviceType === 'Long' || serviceType === 'Long Numbers') {
+        } else if (normalizedType === 'long' || normalizedType === 'long numbers') {
             return getLongStatusColor(status);
-        } else if (serviceType === 'Empty simcard' || serviceType === 'Empty SIM card' || serviceType === 'Empty Simcard' || serviceType === 'Empty SIM cards') {
+        } else if (normalizedType === 'empty simcard' || normalizedType === 'empty sim card' || normalizedType === 'empty sim cards') {
             return getEmptySimStatusColor(status);
         }
         return 'text-gray-400 border-gray-500/30 bg-gray-500/20';
@@ -1178,14 +1230,15 @@ const HistoryTest: React.FC = () => {
     };
 
     const getServiceTypeDisplayName = (serviceType: string) => {
-        switch (serviceType) {
-            case 'Short':
+        const normalizedType = serviceType.toLowerCase();
+        switch (normalizedType) {
+            case 'short':
                 return 'Short';
-            case 'Middle':
+            case 'middle':
                 return 'Middle';
-            case 'Long':
+            case 'long':
                 return 'Long';
-            case 'Empty simcard':
+            case 'empty simcard':
                 return 'Empty SIM card';
             default:
                 return serviceType;
@@ -1240,16 +1293,31 @@ const HistoryTest: React.FC = () => {
         }
     };
 
+    const handleProxyInfoClickWrapper = (record: ProxyRecord) => {
+        setSelectedProxyRecord(record);
+        setShowProxyInfoModal(true);
+        setIsProxyIdCopied(false);
+    };
+
+    const handleCopyProxyIdWrapper = async () => {
+        await handleCopyProxyId(selectedProxyRecord, setIsProxyIdCopied);
+    };
+
+    const handleCopyProxyFieldWrapper = async (fieldValue: string, fieldKey: string) => {
+        await handleCopyProxyField(fieldValue, fieldKey, setCopiedProxyFields);
+    };
+
     const getAvailableActions = (record: HistoryRecord) => {
         const { serviceType } = record;
+        const normalizedType = serviceType.toLowerCase();
 
-        if (serviceType === 'Short') {
+        if (normalizedType === 'short') {
             return getShortAvailableActions(record);
-        } else if (serviceType === 'Middle') {
+        } else if (normalizedType === 'middle') {
             return getMiddleAvailableActions(record);
-        } else if (serviceType === 'Long') {
+        } else if (normalizedType === 'long') {
             return getLongAvailableActions(record);
-        } else if (serviceType === 'Empty simcard') {
+        } else if (normalizedType === 'empty simcard') {
             return getEmptySimAvailableActions(record);
         }
 
@@ -1265,19 +1333,26 @@ const HistoryTest: React.FC = () => {
 
     const handleActionClick = async (action: string, record: HistoryRecord) => {
         setOpenActionMenus(prev => ({ ...prev, [record.id]: false }));
+        const normalizedType = record.serviceType.toLowerCase();
 
         if (action === 'Cancel') {
-            if (record.serviceType === 'Short') {
+            if (normalizedType === 'short') {
                 await handleCancelShort(record.orderId || '', setErrorMessage, setShowErrorModal, setCancellingOrderId);
-            } else if (record.serviceType === 'Middle') {
+            } else if (normalizedType === 'middle') {
                 await handleCancelMiddle(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setCancellingOrderId);
-            } else if (record.serviceType === 'Long') {
+            } else if (normalizedType === 'long') {
                 await handleCancelLong(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setCancellingOrderId);
-            } else if (record.serviceType === 'Empty simcard') {
+            } else if (normalizedType === 'empty simcard') {
                 await handleCancelEmptySim(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setCancellingOrderId);
             }
             return;
         }
+
+        // Handle Reuse action
+        // if (action === 'Reuse') {
+        //   await handleReuseNumber(record.orderId || '', setErrorMessage, setShowErrorModal, setReusingOrderId);
+        //   return;
+        // }
 
         if (action === 'Send') {
             navigate('/sendmessage');
@@ -1285,19 +1360,12 @@ const HistoryTest: React.FC = () => {
         }
 
         if (action === 'Activate') {
-            if (record.serviceType === 'Middle') {
+            if (normalizedType === 'middle') {
                 await handleActivateMiddle(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setActivatingOrderId);
-            } else if (record.serviceType === 'Long') {
+            } else if (normalizedType === 'long') {
                 await handleActivateLong(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setActivatingOrderId);
-            } else if (record.serviceType === 'Empty simcard') {
+            } else if (normalizedType === 'empty simcard') {
                 await handleActivateEmptySim(record.id, record.orderId || '', setErrorMessage, setShowErrorModal, setActivatingOrderId);
-            }
-            return;
-        }
-
-        if (action === 'Reuse') {
-            if (record.serviceType === 'Short') {
-                await handleReuseShort(record.orderId || '', setErrorMessage, setShowErrorModal, setReusingOrderId);
             }
             return;
         }
@@ -1314,19 +1382,10 @@ const HistoryTest: React.FC = () => {
                             <h1 className="text-left text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent">
                                 History
                             </h1>
-                            <p className="text-slate-300 text-md text-left">View and manage all your purchases</p>
+                            <p className="text-slate-300 text-md text-left">View all purchases</p>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {/* Reuse Announcement */}
-            <div className="bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 mb-6">
-                <p className="text-center text-sm">
-                    <span className="text-emerald-300 font-bold">NEW</span>
-                    <span className="text-slate-300 mx-2">—</span>
-                    <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes or more</span>, go to <Link to="/short" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Short Numbers</Link>!</span>
-                </p>
             </div>
 
             {/* Tabs and Table */}
@@ -1336,7 +1395,7 @@ const HistoryTest: React.FC = () => {
                     <div className="mb-6">
                         <div className="flex space-x-4 border-b border-slate-700/50">
                             <button
-                                onClick={() => { setActiveTab('numbers'); setCurrentPage(1); }}
+                                onClick={() => setActiveTab('numbers')}
                                 className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${activeTab === 'numbers'
                                     ? 'text-emerald-400 border-emerald-400'
                                     : 'text-slate-400 border-transparent hover:text-slate-300'
@@ -1354,8 +1413,8 @@ const HistoryTest: React.FC = () => {
                                 VoIP
                             </button>
                             <button
-                                onClick={() => { setActiveTab('virtualCards'); setCurrentVirtualCardPage(1); }}
-                                className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${activeTab === 'virtualCards'
+                                onClick={() => setActiveTab('vcc')}
+                                className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${activeTab === 'vcc'
                                     ? 'text-emerald-400 border-emerald-400'
                                     : 'text-slate-400 border-transparent hover:text-slate-300'
                                     }`}
@@ -1364,7 +1423,7 @@ const HistoryTest: React.FC = () => {
                             </button>
                             {/*
                 <button
-                  onClick={() => {setActiveTab('proxies'); setCurrentProxyPage(1);}}
+                  onClick={() => setActiveTab('proxies')}
                   className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${
                     activeTab === 'proxies'
                       ? 'text-emerald-400 border-emerald-400'
@@ -1380,6 +1439,7 @@ const HistoryTest: React.FC = () => {
                     {/* Numbers Tab Content */}
                     {activeTab === 'numbers' && (
                         <>
+                            {/* Check if any operation is in progress */}
                             {(() => {
                                 const isProcessing = cancellingOrderId !== null || /* reusingOrderId !== null || */ activatingOrderId !== null;
 
@@ -1535,11 +1595,14 @@ const HistoryTest: React.FC = () => {
                                                     </svg>
                                                     <p className="text-slate-400 mt-4">Loading numbers...</p>
                                                 </div>
+                                            ) : showErrorModal ? (
+                                                <></>
                                             ) : filteredData.length > 0 ? (
                                                 <table className="w-full">
                                                     <thead>
                                                         <tr className="border-b border-slate-700/50">
                                                             <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
+                                                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
                                                             <th className="text-center py-4 px-4 text-slate-300 font-semibold">Country</th>
                                                             <th className="text-center py-4 px-6 text-slate-300 font-semibold">Number</th>
                                                             <th className="text-center py-4 px-4 text-slate-300 font-semibold">Type</th>
@@ -1547,7 +1610,7 @@ const HistoryTest: React.FC = () => {
                                                             <th className="text-center py-4 px-10 text-slate-300 font-semibold">Service</th>
                                                             <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
                                                             <th className="text-center py-4 px-6 text-slate-300 font-semibold">Code</th>
-                                                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Actions</th>
+                                                            <th className="text-center py-4 px-4 text-slate-300 font-semibold">Full SMS</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -1571,6 +1634,7 @@ const HistoryTest: React.FC = () => {
                                                                         </button>
                                                                     </div>
                                                                 </td>
+                                                                <td className="py-4 px-6 text-white">{record.email || 'N/A'}</td>
                                                                 <td className="py-4 px-6">
                                                                     <div className="text-center">
                                                                         <span className="inline-block bg-slate-700/50 text-white font-normal text-sm px-3 py-1 rounded-lg border border-slate-600/50">
@@ -1593,7 +1657,8 @@ const HistoryTest: React.FC = () => {
                                                                 </td>
                                                                 <td className="py-4 px-6">
                                                                     {(() => {
-                                                                        if (record.serviceType === 'Short') {
+                                                                        const normalizedType = record.serviceType.toLowerCase();
+                                                                        if (normalizedType === 'short') {
                                                                             if (record.awakeIn) {
                                                                                 const now = new Date().getTime();
                                                                                 const wakeTime = record.awakeIn.getTime();
@@ -1631,7 +1696,6 @@ const HistoryTest: React.FC = () => {
                                                                             } else if (record.status === 'Pending' && record.createdAt) {
                                                                                 return <CountdownTimer
                                                                                     createdAt={record.createdAt}
-                                                                                    updatedAt={record.updatedAt}
                                                                                     recordId={record.id}
                                                                                     status={record.status}
                                                                                     onTimeout={() => setForceUpdate(prev => prev + 1)}
@@ -1639,7 +1703,7 @@ const HistoryTest: React.FC = () => {
                                                                             } else {
                                                                                 return <span className="font-mono text-slate-400">-</span>;
                                                                             }
-                                                                        } else if (record.serviceType === 'Middle') {
+                                                                        } else if (normalizedType === 'middle') {
                                                                             if (record.status === 'Active') {
                                                                                 return <MiddleCountdownTimer
                                                                                     record={record}
@@ -1653,7 +1717,7 @@ const HistoryTest: React.FC = () => {
                                                                             } else {
                                                                                 return <span className="font-mono text-slate-400">-</span>;
                                                                             }
-                                                                        } else if (record.serviceType === 'Long') {
+                                                                        } else if (normalizedType === 'long') {
                                                                             if (record.status === 'Active') {
                                                                                 return <LongCountdownTimer
                                                                                     record={record}
@@ -1667,7 +1731,7 @@ const HistoryTest: React.FC = () => {
                                                                             } else {
                                                                                 return <span className="font-mono text-slate-400">-</span>;
                                                                             }
-                                                                        } else if (record.serviceType === 'Empty simcard') {
+                                                                        } else if (normalizedType === 'empty simcard') {
                                                                             if (record.status === 'Active') {
                                                                                 return <EmptySimCountdownTimer
                                                                                     record={record}
@@ -1686,94 +1750,26 @@ const HistoryTest: React.FC = () => {
                                                                     })()
                                                                     }
                                                                 </td>
-
                                                                 <td className="py-4 px-6">
                                                                     <div className="flex items-center justify-center">
-                                                                        {(() => {
-                                                                            if (record.awakeIn) {
-                                                                                const now = new Date().getTime();
-                                                                                const wakeTime = record.awakeIn.getTime();
-                                                                                if (now < wakeTime) {
-                                                                                    return (
-                                                                                        <WakeUpTimer
-                                                                                            awakeIn={record.awakeIn}
-                                                                                            recordId={record.id}
-                                                                                            onWakeUp={() => {
-                                                                                                setFirestoreData(currentData =>
-                                                                                                    currentData.map(r =>
-                                                                                                        r.id === record.id
-                                                                                                            ? { ...r, awakeIn: undefined }
-                                                                                                            : r
-                                                                                                    )
-                                                                                                );
-                                                                                                setForceUpdate(prev => prev + 1);
-                                                                                            }}
-                                                                                        />
-                                                                                    );
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                if (record.fullsms && record.fullsms.trim() !== '') {
+                                                                                    handleFullSmsClick(record.fullsms);
                                                                                 }
-                                                                            }
-
-                                                                            const availableActions = getAvailableActions(record);
-                                                                            const hasActions = availableActions.length > 0;
-                                                                            const isCancelling = cancellingOrderId === record.id;
-                                                                            const isReusing = reusingOrderId === record.id;
-                                                                            const isActivating = activatingOrderId === record.id;
-                                                                            const isOtherProcessing = (cancellingOrderId !== null) || (reusingOrderId !== null) || (activatingOrderId !== null);
-                                                                            const isProcessing = isCancelling || isReusing || isActivating || isOtherProcessing;
-
-                                                                            const hasCancel = availableActions.includes('Cancel');
-                                                                            const hasReuse = availableActions.includes('Reuse');
-                                                                            const hasActivate = availableActions.includes('Activate');
-
-                                                                            return (
-                                                                                <div className="flex flex-row items-center justify-center gap-2">
-                                                                                    <button
-                                                                                        onClick={() => hasCancel && !isProcessing && handleActionClick('Cancel', record)}
-                                                                                        disabled={!hasCancel || isProcessing}
-                                                                                        className={`w-[80px] px-2 py-2 font-medium rounded-lg transition-all duration-300 shadow-lg text-sm whitespace-nowrap flex items-center justify-center border ${hasCancel && !isProcessing
-                                                                                            ? 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30'
-                                                                                            : 'bg-red-500/10 text-red-400/50 border-red-500/20 cursor-not-allowed shadow-none'
-                                                                                            }`}
-                                                                                    >
-                                                                                        {isCancelling ? (
-                                                                                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                                                                                        ) : (
-                                                                                            'Cancel'
-                                                                                        )}
-                                                                                    </button>
-
-                                                                                    <button
-                                                                                        onClick={() => hasReuse && !isProcessing && handleActionClick('Reuse', record)}
-                                                                                        disabled={!hasReuse || isProcessing}
-                                                                                        className={`w-[80px] px-2 py-2 font-medium rounded-lg transition-all duration-300 shadow-lg text-sm whitespace-nowrap flex items-center justify-center border ${hasReuse && !isProcessing
-                                                                                            ? 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30'
-                                                                                            : 'bg-green-500/10 text-green-400/50 border-green-500/20 cursor-not-allowed shadow-none'
-                                                                                            }`}
-                                                                                    >
-                                                                                        {isReusing ? (
-                                                                                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                                                                                        ) : (
-                                                                                            'Reuse'
-                                                                                        )}
-                                                                                    </button>
-
-                                                                                    <button
-                                                                                        onClick={() => hasActivate && !isProcessing && handleActionClick('Activate', record)}
-                                                                                        disabled={!hasActivate || isProcessing}
-                                                                                        className={`w-[80px] px-2 py-2 font-medium rounded-lg transition-all duration-300 shadow-lg text-sm whitespace-nowrap flex items-center justify-center border ${hasActivate && !isProcessing
-                                                                                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30'
-                                                                                            : 'bg-blue-500/10 text-blue-400/50 border-blue-500/20 cursor-not-allowed shadow-none'
-                                                                                            }`}
-                                                                                    >
-                                                                                        {isActivating ? (
-                                                                                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                                                                                        ) : (
-                                                                                            'Activate'
-                                                                                        )}
-                                                                                    </button>
-                                                                                </div>
-                                                                            );
-                                                                        })()}
+                                                                            }}
+                                                                            disabled={!record.fullsms || record.fullsms.trim() === ''}
+                                                                            className={`p-2 transition-colors duration-200 rounded-lg ${record.fullsms && record.fullsms.trim() !== ''
+                                                                                ? 'text-slate-400 hover:text-green-500 hover:bg-slate-700/30 cursor-pointer'
+                                                                                : 'text-slate-600 cursor-not-allowed opacity-50'
+                                                                                }`}
+                                                                            title={record.fullsms && record.fullsms.trim() !== '' ? "View Full SMS" : "No Full SMS available"}
+                                                                        >
+                                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                            </svg>
+                                                                        </button>
                                                                     </div>
                                                                 </td>
                                                             </tr>
@@ -1854,8 +1850,8 @@ const HistoryTest: React.FC = () => {
                         </>
                     )}
 
-                    {/* Virtual Cards Tab Content */}
-                    {activeTab === 'virtualCards' && (
+                    {/* VCC Tab Content */}
+                    {activeTab === 'vcc' && (
                         <>
                             {/* Virtual Cards Filters */}
                             <div className="mb-6">
@@ -1873,11 +1869,9 @@ const HistoryTest: React.FC = () => {
                                                     setCardNumberSearch(e.target.value);
                                                     setCurrentVirtualCardPage(1);
                                                 }}
-                                                disabled={checkingCardId !== null}
                                                 placeholder="Enter card number"
-                                                className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 ${checkingCardId !== null ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-500/50'}`}
+                                                className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300"
                                             />
-
                                             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                                 <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -1886,23 +1880,22 @@ const HistoryTest: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Initial Funds Filter */}
+                                    {/* Funds Filter */}
                                     <div className="flex-1">
                                         <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
                                             Initial Funds
                                         </label>
-                                        <div className="relative">
+                                        <div className="relative group">
                                             <input
                                                 type="text"
-                                                value={fundsFilter}
+                                                value={initialFundsFilter}
                                                 onChange={(e) => {
                                                     const val = e.target.value.replace(/[^0-9.]/g, '');
-                                                    setFundsFilter(val);
+                                                    setInitialFundsFilter(val);
                                                     setCurrentVirtualCardPage(1);
                                                 }}
-                                                disabled={checkingCardId !== null}
                                                 placeholder="Enter amount"
-                                                className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 ${checkingCardId !== null ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-500/50'}`}
+                                                className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 hover:border-slate-500/50"
                                             />
                                             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                                 <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1916,7 +1909,7 @@ const HistoryTest: React.FC = () => {
 
                             {/* Virtual Cards Table */}
                             <div className="overflow-x-auto overflow-y-visible">
-                                {isLoadingVCC ? (
+                                {isLoading ? (
                                     <div className="flex flex-col items-center justify-center py-16">
                                         <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -1930,6 +1923,7 @@ const HistoryTest: React.FC = () => {
                                             <thead>
                                                 <tr className="border-b border-slate-700/50">
                                                     <th className="text-center py-4 px-4 text-slate-300 font-semibold">ID</th>
+                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
                                                     <th className="text-center py-4 px-4 text-slate-300 font-semibold">Purchase Date</th>
                                                     <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
                                                     <th className="text-center py-4 px-6 text-slate-300 font-semibold">Card Number</th>
@@ -1937,8 +1931,8 @@ const HistoryTest: React.FC = () => {
                                                     <th className="text-center py-4 px-4 text-slate-300 font-semibold">CVV</th>
                                                     <th className="text-center py-4 px-4 text-slate-300 font-semibold">Cardholder</th>
                                                     <th className="text-center py-4 px-4 text-slate-300 font-semibold">Initial Funds</th>
+                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Current Funds</th>
                                                     <th className="text-center py-4 px-4 text-slate-300 font-semibold">Status</th>
-                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1962,9 +1956,10 @@ const HistoryTest: React.FC = () => {
                                                                 </button>
                                                             </div>
                                                         </td>
+                                                        <td className="py-4 px-6 text-white text-center">{record.email}</td>
                                                         <td className="py-4 px-6 text-white text-center">{record.purchaseDate}</td>
                                                         <td className="py-4 px-6 text-center">
-                                                            <span className="text-emerald-400 font-semibold">${formatPrice(record.price)}</span>
+                                                            <span className="text-emerald-400 font-semibold">${formatPrice(record.price != null && record.price !== 0 ? record.price : (record.totalPrice || 0))}</span>
                                                         </td>
                                                         <td className="py-4 px-6">
                                                             <div className="font-mono text-white text-center">
@@ -1988,29 +1983,22 @@ const HistoryTest: React.FC = () => {
                                                         </td>
                                                         <td className="py-4 px-6 text-white text-center">{record.expirationDate}</td>
                                                         <td className="py-4 px-6 text-white text-center font-mono">{record.cvv}</td>
-                                                        <td className="py-4 px-6 text-white text-center">{record.cardHolderName}</td>
+                                                        <td className="py-4 px-6 text-slate-300 text-center">{record.cardHolderName}</td>
                                                         <td className="py-4 px-6 text-center">
-                                                            <span className="text-emerald-400 font-semibold">${record.initialFunds || 0}</span>
+                                                            <span className="text-emerald-400 font-semibold">${formatPrice(record.initialFunds || 0)}</span>
                                                         </td>
                                                         <td className="py-4 px-6 text-center">
-                                                            <span className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold border ${record.status === 'Active' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
+                                                            <span className="text-emerald-400 font-semibold">${formatPrice(record.balance || 0)}</span>
+                                                        </td>
+                                                        <td className="py-4 px-6 text-center">
+                                                            <span style={{ width: '100px' }} className={`inline-block text-center px-3 py-1 rounded-lg text-sm font-semibold border ${record.status === 'Completed' || record.status === 'Active'
+                                                                ? 'text-green-400 border-green-500/30 bg-green-500/20'
+                                                                : record.status === 'Failed' || record.status === 'Inactive'
+                                                                    ? 'text-red-400 border-red-500/30 bg-red-500/20'
+                                                                    : 'text-gray-400 border-gray-500/30 bg-gray-500/20'
+                                                                }`}>
                                                                 {record.status}
                                                             </span>
-                                                        </td>
-                                                        <td className="py-4 px-6 text-center">
-                                                            <button
-                                                                onClick={() => handleCheckCard(record.id, record.status, setCheckingCardId, setErrorMessage, setShowErrorModal, navigate)}
-                                                                disabled={checkingCardId !== null}
-                                                                className={`px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm min-w-[120px] ${checkingCardId !== null ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
-                                                            >
-                                                                {checkingCardId === record.id ? (
-                                                                    <div className="flex items-center justify-center">
-                                                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                                                    </div>
-                                                                ) : (
-                                                                    'Check'
-                                                                )}
-                                                            </button>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -2081,11 +2069,7 @@ const HistoryTest: React.FC = () => {
                                             </svg>
                                         </div>
                                         <h1 className="text-xl font-bold text-slate-300 mb-3">No Virtual Cards Found</h1>
-                                        <p className="text-slate-400 text-lg">
-                                            {vccData.length === 0
-                                                ? "You haven't purchased any virtual debit cards yet"
-                                                : "You haven't purchased any virtual debit cards with these filters"}
-                                        </p>
+                                        <p className="text-slate-400 text-lg">No virtual debit cards match your current filters</p>
                                     </div>
                                 )}
                             </div>
@@ -2142,7 +2126,7 @@ const HistoryTest: React.FC = () => {
                                             </div>
                                             {isVoipStatusDropdownOpen && (
                                                 <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] text-sm">
-                                                    {['All', 'Completed', 'Failed', 'Rejected', ...(!isLoadingVoip && voipData.some(record => record.status === 'Moderation') ? ['Awaiting moderation'] : [])].map((option) => (
+                                                    {['All', 'Completed', 'Failed', 'Rejected', ...(!isLoading && cachedVoipData.length > 0 ? ['Awaiting moderation'] : [])].map((option) => (
                                                         <div
                                                             key={option}
                                                             onClick={() => {
@@ -2164,7 +2148,7 @@ const HistoryTest: React.FC = () => {
 
                             {/* VoIP Table */}
                             <div className="overflow-x-auto overflow-y-visible">
-                                {isLoadingVoip ? (
+                                {isLoading ? (
                                     <div className="flex flex-col items-center justify-center py-16">
                                         <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -2172,12 +2156,15 @@ const HistoryTest: React.FC = () => {
                                         </svg>
                                         <p className="text-slate-400 mt-4">Loading numbers...</p>
                                     </div>
+                                ) : showErrorModal ? (
+                                    <></>
                                 ) : filteredVoipData.length > 0 ? (
                                     <>
                                         <table className="w-full">
                                             <thead>
                                                 <tr className="border-b border-slate-700/50">
                                                     <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
+                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
                                                     <th className="text-center py-4 px-4 text-slate-300 font-semibold">Recipient</th>
                                                     <th className="text-center py-4 px-4 text-slate-300 font-semibold">Country</th>
                                                     <th className="text-center py-4 px-4 text-slate-300 font-semibold">Message</th>
@@ -2206,6 +2193,8 @@ const HistoryTest: React.FC = () => {
                                                                 </button>
                                                             </div>
                                                         </td>
+                                                        {/* User */}
+                                                        <td className="py-4 px-6 text-white">{record.email}</td>
                                                         {/* Recipient */}
                                                         <td className="py-4 px-6">
                                                             <div className="font-mono text-white text-center">+{record.number}</div>
@@ -2218,7 +2207,7 @@ const HistoryTest: React.FC = () => {
                                                         </td>
                                                         {/* Price */}
                                                         <td className="py-4 px-6 text-center">
-                                                            <span className="text-emerald-400 font-semibold">${record.price.toFixed(2)}</span>
+                                                            <span className="text-emerald-400 font-semibold">${(record.price || 0).toFixed(2)}</span>
                                                         </td>
                                                         {/* Status */}
                                                         <td className="py-4 px-6 text-center">
@@ -2234,7 +2223,6 @@ const HistoryTest: React.FC = () => {
                                                                 }`}>
                                                                 {record.status === 'Moderation' ? 'Awaiting moderation' : record.status}
                                                             </span>
-
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -2306,261 +2294,170 @@ const HistoryTest: React.FC = () => {
 
                     {/* Proxies Tab Content */}
                     {activeTab === 'proxies' && (
-                        <>
-                            {/* Proxy Filters */}
-                            <div className="mb-6">
-                                <div className="flex flex-col lg:flex-row gap-6">
-                                    {/* USA State Filter */}
-                                    <div className="flex-1">
-                                        <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
-                                            USA State
-                                        </label>
-                                        <div className="relative group" ref={proxyStateDropdownRef}>
-                                            <div className="relative">
-                                                <input
-                                                    ref={proxyStateInputRef}
-                                                    type="text"
-                                                    value={proxyStateSearchTerm || selectedProxyState || ''}
-                                                    onChange={handleProxyStateInputChangeWrapper}
-                                                    onClick={handleProxyStateInputClickWrapper}
-                                                    placeholder="Type or choose state"
-                                                    className="w-full pl-4 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 placeholder-slate-400"
-                                                />
-                                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                                    <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isProxyStateDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                                    </svg>
-                                                </div>
-                                            </div>
-
-                                            {/* Custom Dropdown Options */}
-                                            {isProxyStateDropdownOpen && (
-                                                <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
-                                                    {filteredStates.length > 0 ? (
-                                                        filteredStates.map((state) => (
-                                                            <div
-                                                                key={state.code}
-                                                                onClick={() => handleProxyStateSelectWrapper(state.name)}
-                                                                className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-                                                            >
-                                                                <span className="text-white">{state.name}</span>
-                                                            </div>
-                                                        ))
-                                                    ) : (
-                                                        <div className="px-4 py-3 text-slate-400 text-center">
-                                                            No states found
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Duration Filter */}
-                                    <div className="flex-1">
-                                        <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
-                                            Duration
-                                        </label>
-                                        <div className="relative group" ref={proxyDurationDropdownRef}>
-                                            <div
-                                                onClick={() => setIsProxyDurationDropdownOpen(!isProxyDurationDropdownOpen)}
-                                                className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
-                                            >
-                                                <span>{selectedProxyDuration}</span>
-                                            </div>
-
-                                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                                <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isProxyDurationDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                                </svg>
-                                            </div>
-
-                                            {/* Custom Dropdown Options */}
-                                            {isProxyDurationDropdownOpen && (
-                                                <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
-                                                    {proxyDurations.map((duration) => (
-                                                        <div
-                                                            key={duration}
-                                                            onClick={() => {
-                                                                setSelectedProxyDuration(duration);
-                                                                setIsProxyDurationDropdownOpen(false);
-                                                            }}
-                                                            className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-                                                        >
-                                                            <span className="text-white">{duration}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
+                        <div className="overflow-x-auto overflow-y-visible">
+                            {isLoading ? (
+                                <div className="flex flex-col items-center justify-center py-16">
+                                    <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <p className="text-slate-400 mt-4">Loading proxies...</p>
                                 </div>
-                            </div>
-
-                            {/* Proxies Table */}
-                            <div className="overflow-x-auto overflow-y-visible">
-                                {isLoadingProxies ? (
-                                    <div className="flex flex-col items-center justify-center py-16">
-                                        <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        <p className="text-slate-400 mt-4">Loading proxies...</p>
-                                    </div>
-                                ) : filteredProxyData.length > 0 ? (
-                                    <>
-                                        <table className="w-full">
-                                            <thead>
-                                                <tr className="border-b border-slate-700/50">
-                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
-                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
-                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Duration</th>
-                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">IP</th>
-                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">HTTPS/Port</th>
-                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">SOCKS5/Port	</th>
-                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
-                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Password</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {paginatedProxyData.map((record, index) => (
-                                                    <tr
-                                                        key={record.id}
-                                                        className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
-                                                            }`}
-                                                    >
-                                                        <td className="py-4 px-6">
-                                                            <div className="flex items-center justify-center">
-                                                                <button
-                                                                    onClick={() => handleProxyInfoClickWrapper(record)}
-                                                                    className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
-                                                                    title="View Information"
-                                                                >
-                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            ) : cachedProxiesData.length > 0 ? (
+                                <>
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="border-b border-slate-700/50">
+                                                <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
+                                                <th className="text-center py-4 px-4 text-slate-300 font-semibold">Email</th>
+                                                <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
+                                                <th className="text-center py-4 px-4 text-slate-300 font-semibold">Duration</th>
+                                                <th className="text-center py-4 px-4 text-slate-300 font-semibold">IP</th>
+                                                <th className="text-center py-4 px-4 text-slate-300 font-semibold">HTTPS/Port</th>
+                                                <th className="text-center py-4 px-4 text-slate-300 font-semibold">SOCKS5/Port</th>
+                                                <th className="text-center py-4 px-4 text-slate-300 font-semibold">User</th>
+                                                <th className="text-center py-4 px-4 text-slate-300 font-semibold">Password</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {paginatedProxyData.map((record, index) => (
+                                                <tr
+                                                    key={record.id}
+                                                    className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
+                                                        }`}
+                                                >
+                                                    <td className="py-4 px-6">
+                                                        <div className="flex items-center justify-center">
+                                                            <button
+                                                                onClick={() => handleProxyInfoClickWrapper(record)}
+                                                                className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
+                                                                title="View Information"
+                                                            >
+                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 px-6 text-white text-center">{record.email}</td>
+                                                    <td className="py-4 px-6 text-center">
+                                                        <span className="text-emerald-400 font-semibold">${formatProxyPrice(record.price)}</span>
+                                                    </td>
+                                                    <td className="py-4 px-6 text-white text-center">{record.duration}</td>
+                                                    <td className="py-4 px-6">
+                                                        <div className="font-mono text-white text-center">
+                                                            {record.ip}
+                                                            <button
+                                                                onClick={() => handleCopyProxyFieldWrapper(record.ip, `ip-${record.id}`)}
+                                                                className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                                                                title={copiedProxyFields[`ip-${record.id}`] ? "Copied!" : "Copy IP"}
+                                                            >
+                                                                {copiedProxyFields[`ip-${record.id}`] ? (
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                                                                     </svg>
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-4 px-6 text-center">
-                                                            <span className="text-emerald-400 font-semibold">${formatProxyPrice(record.price)}</span>
-                                                        </td>
-                                                        <td className="py-4 px-6 text-white text-center">{record.duration}</td>
-                                                        <td className="py-4 px-6">
-                                                            <div className="font-mono text-white text-center">
-                                                                {record.ip}
-                                                                <button
-                                                                    onClick={() => handleCopyProxyFieldWrapper(record.ip, `ip-${record.id}`)}
-                                                                    className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
-                                                                    title={copiedProxyFields[`ip-${record.id}`] ? "Copied!" : "Copy IP"}
-                                                                >
-                                                                    {copiedProxyFields[`ip-${record.id}`] ? (
-                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                                                        </svg>
-                                                                    ) : (
-                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                                        </svg>
-                                                                    )}
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-4 px-6">
-                                                            <div className="font-mono text-white text-center">
-                                                                {record.httpsPort}
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-4 px-6">
-                                                            <div className="font-mono text-white text-center">
-                                                                {record.socks5Port}
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-4 px-6">
-                                                            <div className="font-mono text-white text-center">
-                                                                {record.user}
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-4 px-6">
-                                                            <div className="font-mono text-white text-center">
-                                                                {record.password}
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                                ) : (
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                    </svg>
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 px-6">
+                                                        <div className="font-mono text-white text-center">
+                                                            {record.httpsPort}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 px-6">
+                                                        <div className="font-mono text-white text-center">
+                                                            {record.socks5Port}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 px-6">
+                                                        <div className="font-mono text-white text-center">
+                                                            {record.user}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 px-6">
+                                                        <div className="font-mono text-white text-center">
+                                                            {record.password}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
 
-                                        {/* Proxies Pagination */}
-                                        {totalProxyPages > 1 && (
-                                            <div className="mt-6">
-                                                <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
-                                                    Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, filteredProxyData.length)} of {filteredProxyData.length} results
+                                    {/* Proxies Pagination */}
+                                    {totalProxyPages > 1 && (
+                                        <div className="mt-6">
+                                            <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
+                                                Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, cachedProxiesData.length)} of {cachedProxiesData.length} results
+                                            </div>
+
+                                            <div className="flex items-center justify-between">
+                                                <div className="hidden md:block text-sm text-slate-400">
+                                                    Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, cachedProxiesData.length)} of {cachedProxiesData.length} results
                                                 </div>
 
-                                                <div className="flex items-center justify-between">
-                                                    <div className="hidden md:block text-sm text-slate-400">
-                                                        Showing {proxyStartIndex + 1} to {Math.min(proxyEndIndex, filteredProxyData.length)} of {filteredProxyData.length} results
+                                                <div className="flex items-center space-x-2 mx-auto md:mx-0">
+                                                    {/* Previous Button */}
+                                                    <button
+                                                        onClick={() => setCurrentProxyPage(prev => Math.max(prev - 1, 1))}
+                                                        disabled={currentProxyPage === 1}
+                                                        className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                                        </svg>
+                                                    </button>
+
+                                                    {/* Page Numbers */}
+                                                    <div className="flex space-x-1">
+                                                        {Array.from({ length: totalProxyPages }, (_, i) => i + 1).map((page) => (
+                                                            <button
+                                                                key={page}
+                                                                onClick={() => setCurrentProxyPage(page)}
+                                                                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentProxyPage === page
+                                                                    ? 'bg-emerald-500 text-white'
+                                                                    : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                                                                    }`}
+                                                            >
+                                                                {page}
+                                                            </button>
+                                                        ))}
                                                     </div>
 
-                                                    <div className="flex items-center space-x-2 mx-auto md:mx-0">
-                                                        {/* Previous Button */}
-                                                        <button
-                                                            onClick={() => setCurrentProxyPage(prev => Math.max(prev - 1, 1))}
-                                                            disabled={currentProxyPage === 1}
-                                                            className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                                                            </svg>
-                                                        </button>
-
-                                                        {/* Page Numbers */}
-                                                        <div className="flex space-x-1">
-                                                            {[currentProxyPage, currentProxyPage + 1].filter(page => page <= totalProxyPages).map((page) => (
-                                                                <button
-                                                                    key={page}
-                                                                    onClick={() => setCurrentProxyPage(page)}
-                                                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentProxyPage === page
-                                                                        ? 'bg-emerald-500 text-white'
-                                                                        : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
-                                                                        }`}
-                                                                >
-                                                                    {page}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-
-                                                        {/* Next Button */}
-                                                        <button
-                                                            onClick={() => setCurrentProxyPage(prev => Math.min(prev + 1, totalProxyPages))}
-                                                            disabled={currentProxyPage === totalProxyPages}
-                                                            className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                                            </svg>
-                                                        </button>
-                                                    </div>
+                                                    {/* Next Button */}
+                                                    <button
+                                                        onClick={() => setCurrentProxyPage(prev => Math.min(prev + 1, totalProxyPages))}
+                                                        disabled={currentProxyPage === totalProxyPages}
+                                                        className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                                        </svg>
+                                                    </button>
                                                 </div>
                                             </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    /* Empty State for Proxies */
-                                    <div className="text-center py-16">
-                                        <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
-                                            <svg className="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                            </svg>
                                         </div>
-                                        <h1 className="text-xl font-bold text-slate-300 mb-3">No Proxies Found</h1>
-                                        <p className="text-slate-400 text-lg">No proxies match your current filters</p>
+                                    )}
+                                </>
+                            ) : (
+                                /* Empty State for Proxies */
+                                <div className="text-center py-16">
+                                    <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
+                                        <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                        </svg>
                                     </div>
-                                )}
-                            </div>
-                        </>
+                                    <h1 className="text-xl font-bold text-slate-300 mb-3">No Proxies Found</h1>
+                                    <p className="text-slate-400 text-lg">No proxies have been purchased</p>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
             </div>
@@ -2654,14 +2551,6 @@ const HistoryTest: React.FC = () => {
                                     <span className="text-slate-300">Expiration Date: </span>
                                     <span className="text-emerald-400">{selectedRecord.expirationDate}</span>
                                 </div>
-                                {selectedRecord.fullsms && selectedRecord.fullsms.trim() !== '' && (
-                                    <div className="pt-2 border-t border-slate-700/50">
-                                        <span className="text-slate-300 block mb-1">Full SMS: </span>
-                                        <div className="text-emerald-400 whitespace-pre-wrap break-words text-justify">
-                                            {selectedRecord.fullsms}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                             <div className="flex justify-center mt-6">
                                 <button
@@ -2676,62 +2565,32 @@ const HistoryTest: React.FC = () => {
                 </div>
             )}
 
-            {/* VoIP Info Modal */}
-            {showVoipInfoModal && selectedVoipRecord && (
+            {/* Full SMS Modal */}
+            {showFullSmsModal && selectedFullSms && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
                     <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
-                        <div className="text-center mb-4">
-                            <div className="w-12 h-12 mx-auto flex items-center justify-center mb-2">
-                                <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
+                        <div className="text-center">
+                            <div className="mb-4">
+                                <div className="w-12 h-12 mx-auto flex items-center justify-center">
+                                    <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
+                                </div>
                             </div>
-                            <h3 className="text-lg font-semibold text-white">Information</h3>
-                        </div>
-                        <div className="space-y-3 text-left">
-                            <div>
-                                <span className="text-slate-300">Order ID: </span>
-                                <span className="text-emerald-400 break-all">{selectedVoipRecord.orderId}
-                                    <button
-                                        onClick={handleCopyVoipId}
-                                        className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
-                                        title={isVoipIdCopied ? "Copied!" : "Copy Order ID"}
-                                    >
-                                        {isVoipIdCopied ? (
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        ) : (
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                            </svg>
-                                        )}
-                                    </button>
-                                </span>
+                            <h3 className="text-lg font-medium text-white mb-4">Full SMS</h3>
+                            <div className="bg-slate-800/50 rounded-lg p-4 mb-6 max-h-60 overflow-y-auto">
+                                <p className="text-white whitespace-pre-wrap break-words" style={{ textAlign: 'justify' }}>{selectedFullSms}</p>
                             </div>
-                            <div>
-                                <span className="text-slate-300">Sent On: </span>
-                                <span className="text-emerald-400">{selectedVoipRecord.createdAt.toLocaleString('en-US', {
-                                    year: 'numeric', month: 'numeric', day: 'numeric',
-                                    hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
-                                })}</span>
+                            <div className="flex justify-center">
+                                <button
+                                    onClick={() => setShowFullSmsModal(false)}
+                                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
+                                >
+                                    Ok
+                                </button>
                             </div>
-                            <div>
-                                <span className="text-slate-300">Number Type: </span>
-                                <span className="text-emerald-400">{selectedVoipRecord.type}</span>
-                            </div>
-                        </div>
-                        <div className="mt-5 flex justify-center">
-                            <button
-                                onClick={() => { setShowVoipInfoModal(false); setSelectedVoipRecord(null); }}
-                                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
-                            >
-                                Close
-                            </button>
                         </div>
                     </div>
                 </div>
             )}
-
-
 
             {/* Proxy Information Modal */}
             {showProxyInfoModal && selectedProxyRecord && (
@@ -2774,6 +2633,10 @@ const HistoryTest: React.FC = () => {
                                     <span className="text-emerald-400">{selectedProxyRecord.expirationDate}</span>
                                 </div>
                                 <div>
+                                    <span className="text-slate-300">Duration: </span>
+                                    <span className="text-emerald-400">{selectedProxyRecord.duration}</span>
+                                </div>
+                                <div>
                                     <span className="text-slate-300">USA State: </span>
                                     <span className="text-emerald-400">Random State</span>
                                 </div>
@@ -2791,10 +2654,60 @@ const HistoryTest: React.FC = () => {
                 </div>
             )}
 
+            {/* VoIP Information Modal */}
+            {showVoipInfoModal && selectedVoipRecord && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+                    <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+                        <div className="text-center">
+                            <div className="mb-4">
+                                <div className="w-12 h-12 mx-auto flex items-center justify-center">
+                                    <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
+                                </div>
+                            </div>
+                            <h3 className="text-lg font-medium text-white mb-2">Information</h3>
+                            <div className="space-y-4 text-left">
+                                <div>
+                                    <span className="text-slate-300">Order ID: </span>
+                                    <span className="text-emerald-400 break-all">{selectedVoipRecord.orderId}
+                                        <button
+                                            onClick={handleCopyVoipId}
+                                            className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                                            title={isVoipIdCopied ? "Copied!" : "Copy Order ID"}
+                                        >
+                                            {isVoipIdCopied ? (
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-300">Sent on: </span>
+                                    <span className="text-emerald-400">{selectedVoipRecord.createdAt}</span>
+                                </div>
+                            </div>
+                            <div className="flex justify-center mt-6">
+                                <button
+                                    onClick={() => setShowVoipInfoModal(false)}
+                                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Error Modal */}
             {showErrorModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
-                    <div className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80 max-w-md">
+                    <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80 max-w-md">
                         <div className="text-center">
                             <div className="mb-4">
                                 <div className="w-12 h-12 mx-auto flex items-center justify-center bg-red-500/20 rounded-full">
@@ -2824,4 +2737,4 @@ const HistoryTest: React.FC = () => {
     );
 };
 
-export default HistoryTest;
+export default MajorHistoryTest;

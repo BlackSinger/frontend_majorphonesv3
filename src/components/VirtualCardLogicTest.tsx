@@ -5,10 +5,12 @@ export interface VirtualCardRecord {
     id: string;
     purchaseDate: string;
     price: number;
+    totalPrice?: number;
     cardNumber: string;
     expirationDate: string;
     cvv: string;
-    funds: number;
+    initialFunds: number;
+    balance: number;
     email: string;
     cardHolderName: string;
     status: string;
@@ -48,15 +50,15 @@ export const handleCopyCardNumber = async (
 export const filterVirtualCards = (
     cards: VirtualCardRecord[],
     searchTerm: string,
-    fundsFilter: string
+    initialFundsFilter: string
 ): VirtualCardRecord[] => {
     return cards.filter(card => {
         const matchesSearch = card.cardNumber.replace(/\s/g, '').includes(searchTerm.replace(/\s/g, ''));
         let matchesFunds = true;
-        if (fundsFilter.trim() !== '') {
-            const filterNum = parseFloat(fundsFilter);
+        if (initialFundsFilter.trim() !== '') {
+            const filterNum = parseFloat(initialFundsFilter);
             if (!isNaN(filterNum)) {
-                matchesFunds = card.funds === filterNum;
+                matchesFunds = card.initialFunds === filterNum;
             }
         }
 
@@ -77,29 +79,48 @@ export const formatCardNumber = (cardNumber: string): string => {
 };
 
 export const formatExpirationDate = (expirationDate: string): string => {
+    if (!expirationDate || expirationDate === 'N/A') return 'N/A';
+
+    let cleaned = expirationDate.replace(/[\s\/]/g, '');
+
+    if (cleaned.length === 6) {
+        return `${cleaned.substring(0, 2)}/${cleaned.substring(4, 6)}`;
+    }
+    if (cleaned.length === 4) {
+        return `${cleaned.substring(0, 2)}/${cleaned.substring(2, 4)}`;
+    }
+
     if (expirationDate.includes('/')) {
-        return expirationDate;
+        const parts = expirationDate.split('/');
+        if (parts.length === 2 && parts[1].length === 4) {
+            return `${parts[0]}/${parts[1].substring(2, 4)}`;
+        }
     }
-    if (expirationDate.length === 4) {
-        return `${expirationDate.substring(0, 2)}/${expirationDate.substring(2, 4)}`;
-    }
+
     return expirationDate;
 };
 
 export const convertVCCDocumentToRecord = (doc: VCCOrderDocument): VirtualCardRecord => {
-    const createdAt = doc.createdAt?.toDate ? doc.createdAt.toDate() : new Date(doc.createdAt);
-
-    let totalPrice = typeof doc.totalPrice === 'number' ? doc.totalPrice : parseFloat(doc.totalPrice);
-    if (isNaN(totalPrice)) {
-        totalPrice = typeof doc.price === 'number' ? doc.price : parseFloat(doc.price);
-        if (isNaN(totalPrice)) totalPrice = 0;
+    let createdAt: Date;
+    if (doc.createdAt?.toDate) {
+        createdAt = doc.createdAt.toDate();
+    } else if (doc.createdAt && typeof doc.createdAt === 'object' && '_seconds' in doc.createdAt) {
+        createdAt = new Date(doc.createdAt._seconds * 1000);
+    } else {
+        createdAt = new Date(doc.createdAt);
     }
+
+    let priceVal = typeof doc.price === 'number' ? doc.price : parseFloat(doc.price);
+    if (isNaN(priceVal)) priceVal = 0;
+
+    let totalPriceVal = typeof doc.totalPrice === 'number' ? doc.totalPrice : parseFloat(doc.totalPrice);
+    if (isNaN(totalPriceVal)) totalPriceVal = priceVal;
 
     let initialFundsVal = typeof doc.initialFunds === 'number' ? doc.initialFunds : parseFloat(doc.initialFunds);
-    if (isNaN(initialFundsVal)) {
-        initialFundsVal = typeof doc.balance === 'number' ? doc.balance : parseFloat(doc.balance);
-        if (isNaN(initialFundsVal)) initialFundsVal = 0;
-    }
+    if (isNaN(initialFundsVal)) initialFundsVal = 0;
+
+    let balanceVal = typeof doc.balance === 'number' ? doc.balance : parseFloat(doc.balance);
+    if (isNaN(balanceVal)) balanceVal = 0;
 
     return {
         id: doc.orderId,
@@ -112,11 +133,13 @@ export const convertVCCDocumentToRecord = (doc: VCCOrderDocument): VirtualCardRe
             second: '2-digit',
             hour12: true
         }),
-        price: totalPrice,
+        price: priceVal,
+        totalPrice: totalPriceVal,
         cardNumber: formatCardNumber(doc.cardNumber),
         expirationDate: formatExpirationDate(doc.expirationDate),
         cvv: doc.cvv,
-        funds: initialFundsVal,
+        initialFunds: initialFundsVal,
+        balance: balanceVal,
         email: doc.email || 'N/A',
         cardHolderName: doc.cardHolderName || 'N/A',
         status: doc.status || 'Active'
