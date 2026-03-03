@@ -1,0 +1,17 @@
+﻿
+> react-app@0.1.0 build
+> react-scripts build
+
+Creating an optimized production build...
+Failed to compile.
+
+TS2304: Cannot find name 'setIsFreezingCard'.
+  [0m [90m 300 |[39m         }
+   [90m 301 |[39m
+  [31m[1m>[22m[39m[90m 302 |[39m         setIsFreezingCard([36mtrue[39m)[33m;[39m
+   [90m     |[39m         [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   [90m 303 |[39m
+   [90m 304 |[39m         [36mtry[39m {
+   [90m 305 |[39m             [36mconst[39m idToken [33m=[39m [36mawait[39m currentUser[33m.[39mgetIdToken()[33m;[39m[0m
+
+

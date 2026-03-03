@@ -4,7 +4,7 @@ import { getAuth } from 'firebase/auth';
 
 const VirtualCardTest: React.FC = () => {
     const navigate = useNavigate();
-    const [amount, setAmount] = useState(0);
+    const [amount, setAmount] = useState(0.5);
     const [isPurchasing, setIsPurchasing] = useState(false);
     const [isPurchaseDisabled, setIsPurchaseDisabled] = useState(false);
     const [showErrorModal, setShowErrorModal] = useState(false);
@@ -37,7 +37,7 @@ const VirtualCardTest: React.FC = () => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    amount: finalPrice,
+                    amount: amount,
                     name: cardName
                 })
             });
@@ -46,6 +46,7 @@ const VirtualCardTest: React.FC = () => {
 
             if (response.ok) {
                 navigate('/history?tab=virtualCards');
+                console.log('Buy card success:', data);
             } else {
                 let errorMsg = 'An unknown error occurred';
                 let shouldKeepDisabled = false;
@@ -73,6 +74,7 @@ const VirtualCardTest: React.FC = () => {
                     errorMsg = 'Please contact our customer support';
                 }
 
+                console.log('Buy card error:', response.status, data);
                 setErrorMessage(errorMsg);
                 setShowErrorModal(true);
                 setIsPurchasing(false);
@@ -82,6 +84,7 @@ const VirtualCardTest: React.FC = () => {
                 }
             }
         } catch (error) {
+            console.log('Buy card catch error:', error);
             setErrorMessage('Please contact our customer support');
             setShowErrorModal(true);
             setIsPurchasing(false);
@@ -91,7 +94,7 @@ const VirtualCardTest: React.FC = () => {
 
     const handleAmountChange = (value: number) => {
         // Forzar rango y paso
-        let clamped = Math.min(20, Math.max(0, value));
+        let clamped = Math.min(20, Math.max(0.5, value));
         // Redondear al 0.5 más cercano
         clamped = Math.round(clamped * 2) / 2;
         setAmount(clamped);
@@ -137,10 +140,12 @@ const VirtualCardTest: React.FC = () => {
                             <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these cards:</p>
                             <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                                 <li>• They are randomly assigned as VISA or MasterCard, you can't choose the type of card</li>
-                                <li>• They can be chosen with pre-loaded funds ($3) or with no funds ($0)</li>
-                                <li>• If you want a card with more funds, contact us on <a href="mailto:support@majorphones.com" className="text-blue-400 hover:text-blue-300 underline font-semibold">email</a> or open a <Link to="/tickets" className="text-blue-400 hover:text-blue-300 underline font-semibold">ticket</Link></li>
-                                <li>• They can be used with any name and in multiple sites, but may not work in some</li>
+                                <li>• They can be chosen with pre-loaded funds, starting from $0.5 up to $20</li>
+                                <li>• You need to add a cardholder name</li>
+                                <li>• They can be used in multiple sites, but may not work in some</li>
                                 <li>• They can't be refunded once purchased</li>
+                                <li>• They can be frozen/unfrozen once purchased</li>
+                                <li>• You can add extra funds to the card</li>
                                 <li>• Expiration date varies depending on the card assigned, it can't be chosen</li>
                                 <li>• You can't have a physical card shipped or withdraw funds as cash</li>
                             </ul>
@@ -171,7 +176,7 @@ const VirtualCardTest: React.FC = () => {
                                             </label>
                                             <input
                                                 type="range"
-                                                min="0"
+                                                min="0.5"
                                                 max="20"
                                                 step="0.5"
                                                 value={amount}
@@ -179,12 +184,12 @@ const VirtualCardTest: React.FC = () => {
                                                 disabled={isPurchasing}
                                                 className="w-full h-2 rounded-full appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                                 style={{
-                                                    background: `linear-gradient(to right, #10b981 0%, #10b981 ${(amount / 20) * 100}%, #334155 ${(amount / 20) * 100}%, #334155 100%)`,
+                                                    background: `linear-gradient(to right, #10b981 0%, #10b981 ${((amount - 0.5) / (20 - 0.5)) * 100}%, #334155 ${((amount - 0.5) / (20 - 0.5)) * 100}%, #334155 100%)`,
                                                     accentColor: '#10b981',
                                                 }}
                                             />
                                             <div className="flex justify-between text-sm text-slate-400 mt-1">
-                                                <span>$0</span>
+                                                <span>$0.5</span>
                                                 <span className="text-emerald-400 font-bold text-base">${amount.toFixed(2)}</span>
                                                 <span>$20</span>
                                             </div>
