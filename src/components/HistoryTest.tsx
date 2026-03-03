@@ -799,7 +799,6 @@ const HistoryTest: React.FC = () => {
             const createdAt = docData.createdAt?.toDate ? docData.createdAt.toDate() : new Date(docData.createdAt);
             const expiry = docData.expiry?.toDate ? docData.expiry.toDate() : new Date(docData.expiry);
 
-            // Normalize type for duration calculation
             const rawType = String(docData.type || 'Short').toLowerCase().trim();
             let normalizedTypeForDuration = 'Short';
             if (rawType === 'short') {
@@ -830,7 +829,6 @@ const HistoryTest: React.FC = () => {
 
             const validatedStatus = allowedStatuses.includes(statusValue as any) ? statusValue as typeof allowedStatuses[number] : 'Pending';
 
-            // Normalize Firestore type to lowercase then map to display format
             const typeLower = String(docData.type || '').toLowerCase().trim();
 
             let validatedType: 'Short' | 'Middle' | 'Long' | 'Empty simcard' = '-' as any;
@@ -844,7 +842,6 @@ const HistoryTest: React.FC = () => {
                 validatedType = 'Empty simcard';
             }
 
-            // Determine service name
             let serviceName = docData.serviceName || 'N/A';
             if (validatedType === 'Empty simcard') {
                 serviceName = 'Empty SIM card';
@@ -1383,7 +1380,6 @@ const HistoryTest: React.FC = () => {
                     {/* Numbers Tab Content */}
                     {activeTab === 'numbers' && (
                         <>
-                            {/* Check if any operation is in progress */}
                             {(() => {
                                 const isProcessing = cancellingOrderId !== null || /* reusingOrderId !== null || */ activatingOrderId !== null;
 

@@ -20,6 +20,7 @@ export interface VCCOrderDocument {
     price: any;
     totalPrice?: any;
     balance?: any;
+    initialFunds?: any;
     cardNumber: string;
     expirationDate: string;
     cvv: string;
@@ -94,8 +95,11 @@ export const convertVCCDocumentToRecord = (doc: VCCOrderDocument): VirtualCardRe
         if (isNaN(totalPrice)) totalPrice = 0;
     }
 
-    let balance = typeof doc.balance === 'number' ? doc.balance : parseFloat(doc.balance);
-    if (isNaN(balance)) balance = 0;
+    let initialFundsVal = typeof doc.initialFunds === 'number' ? doc.initialFunds : parseFloat(doc.initialFunds);
+    if (isNaN(initialFundsVal)) {
+        initialFundsVal = typeof doc.balance === 'number' ? doc.balance : parseFloat(doc.balance);
+        if (isNaN(initialFundsVal)) initialFundsVal = 0;
+    }
 
     return {
         id: doc.orderId,
@@ -112,7 +116,7 @@ export const convertVCCDocumentToRecord = (doc: VCCOrderDocument): VirtualCardRe
         cardNumber: formatCardNumber(doc.cardNumber),
         expirationDate: formatExpirationDate(doc.expirationDate),
         cvv: doc.cvv,
-        funds: balance,
+        funds: initialFundsVal,
         email: doc.email || 'N/A',
         cardHolderName: doc.cardHolderName || 'N/A',
         status: doc.status || 'Active'
