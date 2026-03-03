@@ -714,6 +714,14 @@ const Dashboard: React.FC = () => {
   const newsItems = [
     {
       id: 1,
+      title: "Get Virtual Debit Cards",
+      description: "Add funds to it, freeze/unfreeze it, check its transactions",
+      time: "03/03/26",
+      type: "products",
+      urgent: true
+    },
+    {
+      id: 2,
       title: "Reuse feature",
       description: "Now you can reuse a short number for 10 minutes",
       time: "28/02/26",
@@ -721,7 +729,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 2,
+      id: 3,
       title: "Send SMS worldwide",
       description: "Now you can send SMS to any number worldwide",
       time: "22/02/26",
@@ -729,7 +737,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 3,
+      id: 4,
       title: "New Payment Methods",
       description: "From China and Africa",
       time: "30/01/26",
@@ -737,7 +745,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 4,
+      id: 5,
       title: "Get 1 free number",
       description: "Deposit $10 or more through Crypto or Payeer",
       time: "10/07/25",
@@ -745,7 +753,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 5,
+      id: 6,
       title: "Extended Middle Term Duration",
       description: "Get middle term numbers for more than just 1 day",
       time: "10/07/25",
@@ -753,7 +761,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 6,
+      id: 7,
       title: "API Available",
       description: "Integrate with our service using our new API endpoints",
       time: "10/07/25",
@@ -770,14 +778,6 @@ const Dashboard: React.FC = () => {
     },*/
     {
       id: 8,
-      title: "Virtual Debit Cards",
-      description: "VCC for all kinds of verification purposes",
-      time: "10/07/25",
-      type: "products",
-      urgent: true
-    },
-    {
-      id: 9,
       title: "Extended Number Duration",
       description: "Try our long numberd and entire SIM cards",
       time: "10/07/25",

@@ -371,8 +371,7 @@ const History: React.FC = () => {
   const [copiedCardNumbers, setCopiedCardNumbers] = useState<{ [key: string]: boolean }>({});
 
   const [cardNumberSearch, setCardNumberSearch] = useState<string>('');
-  const [fundsFilter, setFundsFilter] = useState<string>('All');
-  const [isFundsDropdownOpen, setIsFundsDropdownOpen] = useState(false);
+  const [fundsFilter, setFundsFilter] = useState<string>('');
 
   const [selectedProxyState, setSelectedProxyState] = useState('All States');
   const [selectedProxyDuration, setSelectedProxyDuration] = useState('All Durations');
@@ -391,7 +390,6 @@ const History: React.FC = () => {
   const serviceTypeDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const numberTypeDropdownRef = useRef<HTMLDivElement>(null);
-  const fundsDropdownRef = useRef<HTMLDivElement>(null);
   const actionMenuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const [firestoreData, setFirestoreData] = useState<HistoryRecord[]>([]);
@@ -801,7 +799,6 @@ const History: React.FC = () => {
       const createdAt = docData.createdAt?.toDate ? docData.createdAt.toDate() : new Date(docData.createdAt);
       const expiry = docData.expiry?.toDate ? docData.expiry.toDate() : new Date(docData.expiry);
 
-      // Normalize type for duration calculation
       const rawType = String(docData.type || 'Short').toLowerCase().trim();
       let normalizedTypeForDuration = 'Short';
       if (rawType === 'short') {
@@ -832,7 +829,6 @@ const History: React.FC = () => {
 
       const validatedStatus = allowedStatuses.includes(statusValue as any) ? statusValue as typeof allowedStatuses[number] : 'Pending';
 
-      // Normalize Firestore type to lowercase then map to display format
       const typeLower = String(docData.type || '').toLowerCase().trim();
 
       let validatedType: 'Short' | 'Middle' | 'Long' | 'Empty simcard' = '-' as any;
@@ -846,7 +842,6 @@ const History: React.FC = () => {
         validatedType = 'Empty simcard';
       }
 
-      // Determine service name
       let serviceName = docData.serviceName || 'N/A';
       if (validatedType === 'Empty simcard') {
         serviceName = 'Empty SIM card';
@@ -1385,7 +1380,6 @@ const History: React.FC = () => {
           {/* Numbers Tab Content */}
           {activeTab === 'numbers' && (
             <>
-              {/* Check if any operation is in progress */}
               {(() => {
                 const isProcessing = cancellingOrderId !== null || /* reusingOrderId !== null || */ activatingOrderId !== null;
 
@@ -1892,43 +1886,29 @@ const History: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Funds Filter */}
+                  {/* Initial Funds Filter */}
                   <div className="flex-1">
                     <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
                       Initial Funds
                     </label>
-                    <div className="relative group" ref={fundsDropdownRef}>
-                      <div
-                        onClick={() => checkingCardId === null && setIsFundsDropdownOpen(!isFundsDropdownOpen)}
-                        className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${checkingCardId !== null ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-slate-500/50'}`}
-                      >
-                        <span>{fundsFilter === 'All' ? 'All Funds' : fundsFilter}</span>
-                      </div>
-
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={fundsFilter}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9.]/g, '');
+                          setFundsFilter(val);
+                          setCurrentVirtualCardPage(1);
+                        }}
+                        disabled={checkingCardId !== null}
+                        placeholder="Enter amount"
+                        className={`w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 ${checkingCardId !== null ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-500/50'}`}
+                      />
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isFundsDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                       </div>
-
-                      {/* Custom Dropdown Options */}
-                      {isFundsDropdownOpen && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
-                          {['All', '$0', '$3'].map((option) => (
-                            <div
-                              key={option}
-                              onClick={() => {
-                                setFundsFilter(option);
-                                setIsFundsDropdownOpen(false);
-                                setCurrentVirtualCardPage(1);
-                              }}
-                              className="px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 text-white first:rounded-t-2xl last:rounded-b-2xl text-left"
-                            >
-                              {option === 'All' ? 'All Funds' : option}
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -1955,7 +1935,9 @@ const History: React.FC = () => {
                           <th className="text-center py-4 px-6 text-slate-300 font-semibold">Card Number</th>
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">Expiration Date</th>
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">CVV</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Cardholder</th>
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">Initial Funds</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Status</th>
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">Actions</th>
                         </tr>
                       </thead>
@@ -2006,12 +1988,18 @@ const History: React.FC = () => {
                             </td>
                             <td className="py-4 px-6 text-white text-center">{record.expirationDate}</td>
                             <td className="py-4 px-6 text-white text-center font-mono">{record.cvv}</td>
+                            <td className="py-4 px-6 text-white text-center">{record.cardHolderName}</td>
                             <td className="py-4 px-6 text-center">
-                              <span className="text-emerald-400 font-semibold">${record.funds}</span>
+                              <span className="text-emerald-400 font-semibold">${record.initialFunds || 0}</span>
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              <span className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold border ${record.status === 'Active' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
+                                {record.status}
+                              </span>
                             </td>
                             <td className="py-4 px-6 text-center">
                               <button
-                                onClick={() => handleCheckCard(record.id, setCheckingCardId, setErrorMessage, setShowErrorModal)}
+                                onClick={() => handleCheckCard(record.id, record.status, setCheckingCardId, setErrorMessage, setShowErrorModal, navigate)}
                                 disabled={checkingCardId !== null}
                                 className={`px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm min-w-[120px] ${checkingCardId !== null ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
                               >
@@ -2093,7 +2081,11 @@ const History: React.FC = () => {
                       </svg>
                     </div>
                     <h1 className="text-xl font-bold text-slate-300 mb-3">No Virtual Cards Found</h1>
-                    <p className="text-slate-400 text-lg">You haven't purchased any virtual debit cards yet</p>
+                    <p className="text-slate-400 text-lg">
+                      {vccData.length === 0
+                        ? "You haven't purchased any virtual debit cards yet"
+                        : "You haven't purchased any virtual debit cards with these filters"}
+                    </p>
                   </div>
                 )}
               </div>

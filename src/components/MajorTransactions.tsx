@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut, getAuth } from 'firebase/auth';
+import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 
 interface TransactionRecord {
   id: string;
@@ -10,7 +11,23 @@ interface TransactionRecord {
   status: string;
   amount: number;
   transactionId: string;
+  isVcc?: boolean;
+  cardNumber?: string;
+  expirationDate?: string;
+  cvv?: string;
+  cardHolderName?: string;
+  initialFunds?: number;
 }
+
+const renderExpirationDate = (exp: string | undefined) => {
+  if (!exp) return '';
+  if (exp.length === 4 && !exp.includes('/')) return `${exp.substring(0, 2)}/${exp.substring(2, 4)}`;
+  if (exp.includes('/')) {
+    const [m, y] = exp.split('/');
+    if (y && y.length === 4) return `${m}/${y.substring(2, 4)}`;
+  }
+  return exp;
+};
 
 const MajorTransactions: React.FC = () => {
   const navigate = useNavigate();
@@ -28,6 +45,29 @@ const MajorTransactions: React.FC = () => {
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const paymentMethodDropdownRef = useRef<HTMLDivElement>(null);
   // const staticWalletDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [showVccInfoModal, setShowVccInfoModal] = useState(false);
+  const [selectedVccInfo, setSelectedVccInfo] = useState<TransactionRecord | null>(null);
+  const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
+  const [isCardNumberCopied, setIsCardNumberCopied] = useState(false);
+
+  const handleCopyOrderId = async () => {
+    if (!selectedVccInfo?.transactionId) return;
+    try {
+      await navigator.clipboard.writeText(selectedVccInfo.transactionId);
+      setIsInfoIdCopied(true);
+      setTimeout(() => setIsInfoIdCopied(false), 2000);
+    } catch (err) { }
+  };
+
+  const handleCopyCardNumber = async () => {
+    if (!selectedVccInfo?.cardNumber) return;
+    try {
+      await navigator.clipboard.writeText(selectedVccInfo.cardNumber.replace(/\s/g, ''));
+      setIsCardNumberCopied(true);
+      setTimeout(() => setIsCardNumberCopied(false), 2000);
+    } catch (err) { }
+  };
 
   const itemsPerPage = 10;
 
@@ -64,79 +104,125 @@ const MajorTransactions: React.FC = () => {
 
         const idToken = await currentUser.getIdToken();
         console.log(idToken);
-        const response = await fetch('https://getlastrecharges-ezeznlhr5a-uc.a.run.app', {
-          method: 'GET',
-          headers: {
-            'authorization': `${idToken}`,
-            'Content-Type': 'application/json'
-          }
-        });
 
-        const data = await response.json();
+        const [rechargesResponse, vccResponse] = await Promise.all([
+          fetch('https://getlastrecharges-ezeznlhr5a-uc.a.run.app', {
+            method: 'GET',
+            headers: {
+              'authorization': `${idToken}`,
+              'Content-Type': 'application/json'
+            }
+          }),
+          fetch('https://getVCCTransactions-ezeznlhr5a-uc.a.run.app', {
+            method: 'GET',
+            headers: {
+              'authorization': `${idToken}`,
+              'Content-Type': 'application/json'
+            }
+          })
+        ]);
 
-        if (!response.ok) {
-          if (data.message === 'Forbidden') {
+        const rechargesData = await rechargesResponse.json();
+        const vccData = await vccResponse.json();
+
+        if (!rechargesResponse.ok || !vccResponse.ok) {
+          if (rechargesData.message === 'Forbidden' || vccData.message === 'Forbidden') {
             // Sign out user immediately
             const auth = getAuth();
             await signOut(auth);
             navigate('/signin');
             return;
-          } else if (data.message === 'Internal Server Error') {
-            setErrorMessage('Please refresh');
+          } else {
+            setErrorMessage('There was a problem getting all transactions');
             setShowErrorModal(true);
             setLoading(false);
             return;
           }
         }
 
-        // Log response for debugging
-        console.log('Backend response:', data);
+        // Parse Recharges Data
+        const rechargesArray = rechargesData.recharges || rechargesData;
+        let formattedRecharges: any[] = [];
 
-        // Check if data has a recharges property (array)
-        const rechargesArray = data.recharges || data;
+        if (Array.isArray(rechargesArray)) {
+          formattedRecharges = rechargesArray.map((item: any) => {
+            let formattedDate = 'N/A';
+            if (item.createdAt && item.createdAt._seconds) {
+              const date = new Date(item.createdAt._seconds * 1000);
+              formattedDate = date.toLocaleString('en-US', {
+                month: '2-digit',
+                day: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+              });
+            }
 
-        // Verify it's an array
-        if (!Array.isArray(rechargesArray)) {
-          console.error('Expected array but got:', rechargesArray);
-          setTransactionData([]);
-          setLoading(false);
-          return;
+            return {
+              id: item.orderId,
+              email: item.email || 'N/A',
+              option: item.paymentMethod || 'N/A',
+              date: formattedDate,
+              status: item.status || 'N/A',
+              amount: item.amount || 0,
+              transactionId: item.orderId || 'N/A'
+            };
+          });
         }
 
-        // Format the data
-        const formattedData = rechargesArray.map((item: any) => {
-          // Format date from Firestore Timestamp to readable format
-          let formattedDate = 'N/A';
-          if (item.createdAt && item.createdAt._seconds) {
-            // Convert Firestore Timestamp to JavaScript Date
-            const date = new Date(item.createdAt._seconds * 1000);
-            formattedDate = date.toLocaleString('en-US', {
-              month: '2-digit',
-              day: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: true
-            });
-          }
+        // Parse VCC Data
+        let formattedVCC: any[] = [];
+        if (vccData.message === "Transactions found" && Array.isArray(vccData.transactions)) {
+          formattedVCC = vccData.transactions.map((item: any) => {
+            let formattedDate = 'N/A';
+            if (item.createdAt && item.createdAt._seconds) {
+              const date = new Date(item.createdAt._seconds * 1000);
+              formattedDate = date.toLocaleString('en-US', {
+                month: '2-digit',
+                day: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+              });
+            }
 
-          return {
-            id: item.orderId,
-            email: item.email || 'N/A',
-            option: item.paymentMethod || 'N/A',
-            date: formattedDate,
-            status: item.status || 'N/A',
-            amount: item.amount || 0,
-            transactionId: item.orderId || 'N/A'
-          };
-        });
+            const optionVal = item.type === 'Load Funds' ? 'Load Funds to VCC' : (item.type || 'N/A');
 
-        setTransactionData(formattedData);
+            let initialFundsVal = typeof item.initialFunds === 'number' ? item.initialFunds : parseFloat(item.initialFunds);
+            if (isNaN(initialFundsVal)) {
+              initialFundsVal = typeof item.balance === 'number' ? item.balance : parseFloat(item.balance);
+              if (isNaN(initialFundsVal)) initialFundsVal = 0;
+            }
+
+            return {
+              id: item.orderId || Math.random().toString(),
+              email: item.email || 'N/A',
+              option: optionVal,
+              date: formattedDate,
+              status: item.status || 'N/A',
+              amount: item.totalPrice || item.initialFunds || 0,
+              transactionId: item.orderId || 'N/A',
+              isVcc: true,
+              cardNumber: item.cardNumber || '',
+              expirationDate: item.expirationDate || '',
+              cvv: item.cvv || '',
+              cardHolderName: item.cardHolderName || 'N/A',
+              initialFunds: initialFundsVal
+            };
+          });
+        }
+
+        // Combine Data
+        const combinedData = [...formattedRecharges, ...formattedVCC];
+        setTransactionData(combinedData);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching transactions:', error);
-        setErrorMessage('Please refresh');
+        setErrorMessage('There was a problem getting all transactions');
         setShowErrorModal(true);
         setLoading(false);
       }
@@ -250,7 +336,7 @@ const MajorTransactions: React.FC = () => {
                   {/* Custom Dropdown Options */}
                   {isPaymentMethodDropdownOpen && (
                     <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
-                      {['All', 'Admin Update', 'Amazon Pay', 'Cryptomus', 'Static Wallets', 'Alipay (China)', 'PayNow (Singapore)', 'VietQR (Vietnam)', 'Credit Card (South Africa)', 'Bank Card (Nigeria)', 'Bank Transfer (Nigeria)', 'Airtel Money (Kenya)', 'MTN Mobile Money (Rwanda)', 'Airtel Money (Rwanda)', 'Tigo Pesa (Tanzania)', 'MTN Mobile Money (Uganda)', 'Airtel Money (Uganda)', 'Credit Card (South Korea)', 'PAYCO (South Korea)', 'Samsung Pay (South Korea)', 'KakaoPay (South Korea)'].map((method) => (
+                      {['All', 'Admin Update', 'Amazon Pay', 'Cryptomus', 'Static Wallets', 'Load Funds to VCC', 'Alipay (China)', 'PayNow (Singapore)', 'VietQR (Vietnam)', 'Credit Card (South Africa)', 'Bank Card (Nigeria)', 'Bank Transfer (Nigeria)', 'Airtel Money (Kenya)', 'MTN Mobile Money (Rwanda)', 'Airtel Money (Rwanda)', 'Tigo Pesa (Tanzania)', 'MTN Mobile Money (Uganda)', 'Airtel Money (Uganda)', 'Credit Card (South Korea)', 'PAYCO (South Korea)', 'Samsung Pay (South Korea)', 'KakaoPay (South Korea)'].map((method) => (
                         <div
                           key={method}
                           onClick={() => {
@@ -387,8 +473,26 @@ const MajorTransactions: React.FC = () => {
                       <td className="py-4 px-6">
                         <span className="text-emerald-400 font-semibold">${record.amount.toFixed(2)}</span>
                       </td>
-                      <td className="py-4 px-6">
-                        <span className="font-mono text-blue-500 font-semibold">{record.transactionId}</span>
+                      <td className="py-4 px-6 text-center">
+                        {record.isVcc ? (
+                          <div className="flex items-center justify-center">
+                            <button
+                              onClick={() => {
+                                setSelectedVccInfo(record);
+                                setShowVccInfoModal(true);
+                              }}
+                              className="p-2 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
+                              title="View VCC Info"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="font-mono text-blue-500 font-semibold">{record.transactionId}</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -492,6 +596,89 @@ const MajorTransactions: React.FC = () => {
                   Ok
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VCC Info Modal */}
+      {showVccInfoModal && selectedVccInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 mx-auto flex items-center justify-center mb-2">
+                <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
+              </div>
+              <h3 className="text-lg font-semibold text-white">VCC Info</h3>
+            </div>
+            <div className="space-y-3 text-left">
+              <div>
+                <span className="text-slate-300">Transaction ID: </span>
+                <span className="text-emerald-400 break-all">{selectedVccInfo.transactionId}
+                  <button
+                    onClick={handleCopyOrderId}
+                    className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                    title={isInfoIdCopied ? "Copied!" : "Copy Transaction ID"}
+                  >
+                    {isInfoIdCopied ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-300">Card Number: </span>
+                <span className="text-emerald-400 font-mono">{(selectedVccInfo.cardNumber?.replace(/\s/g, '').match(/.{1,4}/g)?.join(' ')) || selectedVccInfo.cardNumber}
+                  <button
+                    onClick={handleCopyCardNumber}
+                    className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                    title={isCardNumberCopied ? "Copied!" : "Copy Card Number"}
+                  >
+                    {isCardNumberCopied ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-300">Expiration Date: </span>
+                <span className="text-emerald-400">{renderExpirationDate(selectedVccInfo.expirationDate)}</span>
+              </div>
+              <div>
+                <span className="text-slate-300">CVV: </span>
+                <span className="text-emerald-400 font-mono">{selectedVccInfo.cvv}</span>
+              </div>
+              <div>
+                <span className="text-slate-300">Cardholder name: </span>
+                <span className="text-emerald-400">{selectedVccInfo.cardHolderName}</span>
+              </div>
+              <div>
+                <span className="text-slate-300">Initial Funds: </span>
+                <span className="text-emerald-400 font-semibold">${(selectedVccInfo.initialFunds || 0).toFixed(2)}</span>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-center">
+              <button
+                onClick={() => {
+                  setShowVccInfoModal(false);
+                  setSelectedVccInfo(null);
+                }}
+                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

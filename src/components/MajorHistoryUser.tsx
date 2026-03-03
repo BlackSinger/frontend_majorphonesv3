@@ -38,6 +38,12 @@ import {
   handleCopyProxyId
 } from './ProxyLogic';
 
+import {
+  type VirtualCardRecord,
+  convertVCCDocumentToRecord,
+  handleCopyCardNumber
+} from './VirtualCardLogic';
+
 interface HistoryRecord {
   id: string;
   date: string;
@@ -61,15 +67,7 @@ interface HistoryRecord {
   orderId?: string;
 }
 
-interface VirtualCardRecord {
-  id: string;
-  purchaseDate: string;
-  price: number;
-  cardNumber: string;
-  expirationDate: string;
-  cvv: string;
-  funds: number;
-}
+
 
 const MajorHistoryUser: React.FC = () => {
   const navigate = useNavigate();
@@ -91,6 +89,12 @@ const MajorHistoryUser: React.FC = () => {
   const [selectedRecord, setSelectedRecord] = useState<HistoryRecord | null>(null);
   const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
   const [isVoipIdCopied, setIsVoipIdCopied] = useState(false);
+
+  // VCC Hooks
+  const [copiedCardNumbers, setCopiedCardNumbers] = useState<{ [key: string]: boolean }>({});
+  const [currentVirtualCardPage, setCurrentVirtualCardPage] = useState(1);
+  const [cardNumberSearch, setCardNumberSearch] = useState('');
+  const [initialFundsFilter, setInitialFundsFilter] = useState('');
   const serviceTypeDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const numberTypeDropdownRef = useRef<HTMLDivElement>(null);
@@ -105,7 +109,6 @@ const MajorHistoryUser: React.FC = () => {
   const [showUuidModal, setShowUuidModal] = useState(false);
   const [selectedUuid, setSelectedUuid] = useState('');
   const [isCopied, setIsCopied] = useState(false);
-  const [copiedCardNumbers, setCopiedCardNumbers] = useState<{ [key: string]: boolean }>({});
 
   const [copiedProxyFields, setCopiedProxyFields] = useState<{ [key: string]: boolean }>({});
   const [showProxyInfoModal, setShowProxyInfoModal] = useState(false);
@@ -357,9 +360,11 @@ const MajorHistoryUser: React.FC = () => {
           body: JSON.stringify({ email: searchedEmail })
         });
 
+
         const data = await response.json();
 
         if (!response.ok) {
+          console.error('getuservccorders HTTP error:', data);
           if (data.message === 'Forbidden') {
             const auth = getAuth();
             await signOut(auth);
@@ -376,6 +381,8 @@ const MajorHistoryUser: React.FC = () => {
             setLoading(false);
             return;
           }
+        } else {
+          console.log('getuservccorders SUCCESS:', data);
         }
 
         if (data.message === 'No VCC orders found') {
@@ -395,36 +402,7 @@ const MajorHistoryUser: React.FC = () => {
         }
 
         const formattedVccData: VirtualCardRecord[] = vccOrdersArray.map((item: any) => {
-          let formattedDate = 'N/A';
-          if (item.createdAt && item.createdAt._seconds) {
-            const date = new Date(item.createdAt._seconds * 1000);
-            formattedDate = date.toLocaleString('en-US', {
-              month: '2-digit',
-              day: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: true
-            });
-          }
-
-          let funds = 0;
-          if (item.price === 4) {
-            funds = 0;
-          } else if (item.price === 9) {
-            funds = 3;
-          }
-
-          return {
-            id: item.orderId || 'N/A',
-            purchaseDate: formattedDate,
-            price: item.price || 0,
-            cardNumber: item.cardNumber || 'N/A',
-            expirationDate: item.expirationDate || 'N/A',
-            cvv: item.cvv || 'N/A',
-            funds: funds
-          };
+          return convertVCCDocumentToRecord(item);
         });
 
         setCachedVccData(formattedVccData);
@@ -739,6 +717,32 @@ const MajorHistoryUser: React.FC = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
+  const filteredVirtualCardData = useMemo(() => {
+    let filtered = cachedVccData;
+
+    if (initialFundsFilter) {
+      filtered = filtered.filter(record => {
+        const searchVal = Number(initialFundsFilter);
+        if (isNaN(searchVal)) return true;
+        return record.initialFunds === searchVal;
+      });
+    }
+
+    if (cardNumberSearch.trim() !== '') {
+      const searchNormalized = cardNumberSearch.replace(/\s+/g, '');
+      filtered = filtered.filter(record =>
+        record.cardNumber.replace(/\s+/g, '').includes(searchNormalized)
+      );
+    }
+
+    return filtered;
+  }, [cachedVccData, initialFundsFilter, cardNumberSearch]);
+
+  const totalVirtualCardPages = Math.ceil(filteredVirtualCardData.length / itemsPerPage);
+  const virtualCardStartIndex = (currentVirtualCardPage - 1) * itemsPerPage;
+  const virtualCardEndIndex = virtualCardStartIndex + itemsPerPage;
+  const paginatedVirtualCardData = filteredVirtualCardData.slice(virtualCardStartIndex, virtualCardEndIndex);
+
   const filteredVoipData = useMemo(() => {
     let filtered = cachedVoipData;
     if (voipNumberSearch.trim() !== '') {
@@ -870,16 +874,6 @@ const MajorHistoryUser: React.FC = () => {
     }
   };
 
-  const handleCopyCardNumber = async (cardNumber: string, cardId: string) => {
-    try {
-      await navigator.clipboard.writeText(cardNumber.replace(/\s/g, ''));
-      setCopiedCardNumbers(prev => ({ ...prev, [cardId]: true }));
-      setTimeout(() => {
-        setCopiedCardNumbers(prev => ({ ...prev, [cardId]: false }));
-      }, 2000);
-    } catch (err) {
-    }
-  };
 
   const handleProxyInfoClick = (record: ProxyRecord) => {
     setSelectedProxyRecord(record);
@@ -1320,74 +1314,206 @@ const MajorHistoryUser: React.FC = () => {
                     <p className="text-slate-400 text-lg">This user has not purchased VCCs</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto overflow-y-visible">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-slate-700/50">
-                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">ID</th>
-                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Purchase Date</th>
-                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
-                          <th className="text-center py-4 px-6 text-slate-300 font-semibold">Card Number</th>
-                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Expiration Date</th>
-                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">CVV</th>
-                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Initial Funds</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {cachedVccData.map((record, index) => (
-                          <tr
-                            key={record.id}
-                            className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
-                              }`}
-                          >
-                            <td className="py-4 px-6">
-                              <div className="flex items-center justify-center">
+                  <>
+                    {/* Virtual Cards Filters */}
+                    <div className="mb-6">
+                      <div className="flex flex-col lg:flex-row gap-6">
+                        {/* Card Number Search */}
+                        <div className="flex-1">
+                          <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                            Card Number Search
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={cardNumberSearch}
+                              onChange={(e) => {
+                                setCardNumberSearch(e.target.value);
+                                setCurrentVirtualCardPage(1);
+                              }}
+                              placeholder="Enter card number"
+                              className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300"
+                            />
+                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                              <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Initial Funds Filter */}
+                        <div className="flex-1">
+                          <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                            Initial Funds
+                          </label>
+                          <div className="relative group">
+                            <input
+                              type="text"
+                              value={initialFundsFilter}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9.]/g, '');
+                                setInitialFundsFilter(val);
+                                setCurrentVirtualCardPage(1);
+                              }}
+                              placeholder="Enter amount"
+                              className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 hover:border-slate-500/50"
+                            />
+                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                              <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto overflow-y-visible">
+                      {filteredVirtualCardData.length > 0 ? (
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-slate-700/50">
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">ID</th>
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">Purchase Date</th>
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
+                              <th className="text-center py-4 px-6 text-slate-300 font-semibold">Card Number</th>
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">Expiration Date</th>
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">CVV</th>
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">Cardholder</th>
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">Initial Funds</th>
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">Current Funds</th>
+                              <th className="text-center py-4 px-4 text-slate-300 font-semibold">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paginatedVirtualCardData.map((record, index) => (
+                              <tr
+                                key={record.id}
+                                className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
+                                  }`}
+                              >
+                                <td className="py-4 px-6">
+                                  <div className="flex items-center justify-center">
+                                    <button
+                                      onClick={() => handleUuidClick(record.id)}
+                                      className="p-2 text-slate-400 hover:text-blue-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
+                                      title="View UUID"
+                                    >
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-6 text-white text-center">{record.purchaseDate}</td>
+                                <td className="py-4 px-6 text-center">
+                                  <span className="text-emerald-400 font-semibold">${formatPrice(record.price !== 0 ? record.price : (record.totalPrice ?? 0))}</span>
+                                </td>
+                                <td className="py-4 px-6">
+                                  <div className="font-mono text-white text-center">
+                                    {record.cardNumber}
+                                    <button
+                                      onClick={() => handleCopyCardNumber(record.cardNumber, record.id, setCopiedCardNumbers)}
+                                      className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                                      title={copiedCardNumbers[record.id] ? "Copied!" : "Copy Card Number"}
+                                    >
+                                      {copiedCardNumbers[record.id] ? (
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                      ) : (
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                      )}
+                                    </button>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-6 text-white text-center">{record.expirationDate}</td>
+                                <td className="py-4 px-6 text-white text-center font-mono">{record.cvv}</td>
+                                <td className="py-4 px-6 text-white text-center">{record.cardHolderName || 'N/A'}</td>
+                                <td className="py-4 px-6 text-center">
+                                  <span className="text-emerald-400 font-semibold">${formatPrice(record.initialFunds || 0)}</span>
+                                </td>
+                                <td className="py-4 px-6 text-center">
+                                  <span className="text-emerald-400 font-semibold">${formatPrice(record.balance || 0)}</span>
+                                </td>
+                                <td className="py-4 px-6 text-center">
+                                  <span className={`inline-block px-3 py-1 rounded-lg text-sm font-semibold border w-24 ${record.status === 'Active' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/20' :
+                                    record.status === 'Frozen' ? 'text-blue-400 border-blue-500/30 bg-blue-500/20' :
+                                      record.status === 'Terminated' ? 'text-red-400 border-red-500/30 bg-red-500/20' :
+                                        'text-gray-400 border-gray-500/30 bg-gray-500/20'
+                                    }`}>
+                                    {record.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <div className="text-center py-16">
+                          <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
+                            <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                          </div>
+                          <h1 className="text-xl font-bold text-slate-300 mb-3">No Virtual Cards Found</h1>
+                          <p className="text-slate-400 text-lg">No virtual debit cards match your current filters</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Virtual Cards Pagination */}
+                    {totalVirtualCardPages > 1 && filteredVirtualCardData.length > 0 && (
+                      <div className="mt-6">
+                        <div className="flex items-center justify-between">
+                          <div className="hidden md:block text-sm text-slate-400">
+                            Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, filteredVirtualCardData.length)} of {filteredVirtualCardData.length} results
+                          </div>
+
+                          <div className="flex items-center space-x-2 mx-auto md:mx-0">
+                            <button
+                              onClick={() => setCurrentVirtualCardPage(prev => Math.max(prev - 1, 1))}
+                              disabled={currentVirtualCardPage === 1}
+                              className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+
+                            <div className="flex space-x-1">
+                              {[currentVirtualCardPage, currentVirtualCardPage + 1].filter(page => page <= totalVirtualCardPages).map((page) => (
                                 <button
-                                  onClick={() => handleUuidClick(record.id)}
-                                  className="p-2 text-slate-400 hover:text-blue-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
-                                  title="View UUID"
+                                  key={page}
+                                  onClick={() => setCurrentVirtualCardPage(page)}
+                                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentVirtualCardPage === page
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                                    }`}
                                 >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
+                                  {page}
                                 </button>
-                              </div>
-                            </td>
-                            <td className="py-4 px-6 text-white text-center">{record.purchaseDate}</td>
-                            <td className="py-4 px-6 text-center">
-                              <span className="text-emerald-400 font-semibold">${formatPrice(record.price)}</span>
-                            </td>
-                            <td className="py-4 px-6">
-                              <div className="font-mono text-white text-center">
-                                {record.cardNumber}
-                                <button
-                                  onClick={() => handleCopyCardNumber(record.cardNumber, record.id)}
-                                  className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
-                                  title={copiedCardNumbers[record.id] ? "Copied!" : "Copy Card Number"}
-                                >
-                                  {copiedCardNumbers[record.id] ? (
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                  ) : (
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                    </svg>
-                                  )}
-                                </button>
-                              </div>
-                            </td>
-                            <td className="py-4 px-6 text-white text-center">{record.expirationDate}</td>
-                            <td className="py-4 px-6 text-white text-center font-mono">{record.cvv}</td>
-                            <td className="py-4 px-6 text-center">
-                              <span className="text-emerald-400 font-semibold">${record.funds}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                              ))}
+                            </div>
+
+                            <button
+                              onClick={() => setCurrentVirtualCardPage(prev => Math.min(prev + 1, totalVirtualCardPages))}
+                              disabled={currentVirtualCardPage === totalVirtualCardPages}
+                              className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}

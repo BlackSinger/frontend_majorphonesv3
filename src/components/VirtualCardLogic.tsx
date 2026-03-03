@@ -5,22 +5,31 @@ export interface VirtualCardRecord {
   id: string;
   purchaseDate: string;
   price: number;
+  totalPrice?: number;
   cardNumber: string;
   expirationDate: string;
   cvv: string;
-  funds: number;
+  initialFunds: number;
+  balance: number;
   email: string;
+  cardHolderName: string;
+  status: string;
 }
 
 export interface VCCOrderDocument {
   orderId: string;
   createdAt: any;
   price: any;
+  totalPrice?: any;
+  balance?: any;
+  initialFunds?: any;
   cardNumber: string;
   expirationDate: string;
   cvv: string;
   uid: string;
   email?: string;
+  cardHolderName?: string;
+  status?: string;
 }
 
 export const handleCopyCardNumber = async (
@@ -41,13 +50,17 @@ export const handleCopyCardNumber = async (
 export const filterVirtualCards = (
   cards: VirtualCardRecord[],
   searchTerm: string,
-  fundsFilter: string
+  initialFundsFilter: string
 ): VirtualCardRecord[] => {
   return cards.filter(card => {
     const matchesSearch = card.cardNumber.replace(/\s/g, '').includes(searchTerm.replace(/\s/g, ''));
-    const matchesFunds = fundsFilter === 'All' ||
-      (fundsFilter === '$0' && card.funds === 0) ||
-      (fundsFilter === '$3' && card.funds === 3);
+    let matchesFunds = true;
+    if (initialFundsFilter.trim() !== '') {
+      const filterNum = parseFloat(initialFundsFilter);
+      if (!isNaN(filterNum)) {
+        matchesFunds = card.initialFunds === filterNum;
+      }
+    }
 
     return matchesSearch && matchesFunds;
   });
@@ -66,22 +79,48 @@ export const formatCardNumber = (cardNumber: string): string => {
 };
 
 export const formatExpirationDate = (expirationDate: string): string => {
+  if (!expirationDate || expirationDate === 'N/A') return 'N/A';
+
+  let cleaned = expirationDate.replace(/[\s\/]/g, '');
+
+  if (cleaned.length === 6) {
+    return `${cleaned.substring(0, 2)}/${cleaned.substring(4, 6)}`;
+  }
+  if (cleaned.length === 4) {
+    return `${cleaned.substring(0, 2)}/${cleaned.substring(2, 4)}`;
+  }
+
   if (expirationDate.includes('/')) {
-    return expirationDate;
+    const parts = expirationDate.split('/');
+    if (parts.length === 2 && parts[1].length === 4) {
+      return `${parts[0]}/${parts[1].substring(2, 4)}`;
+    }
   }
-  if (expirationDate.length === 4) {
-    return `${expirationDate.substring(0, 2)}/${expirationDate.substring(2, 4)}`;
-  }
+
   return expirationDate;
 };
 
 export const convertVCCDocumentToRecord = (doc: VCCOrderDocument): VirtualCardRecord => {
-  const createdAt = doc.createdAt?.toDate ? doc.createdAt.toDate() : new Date(doc.createdAt);
+  let createdAt: Date;
+  if (doc.createdAt?.toDate) {
+    createdAt = doc.createdAt.toDate();
+  } else if (doc.createdAt && typeof doc.createdAt === 'object' && '_seconds' in doc.createdAt) {
+    createdAt = new Date(doc.createdAt._seconds * 1000);
+  } else {
+    createdAt = new Date(doc.createdAt);
+  }
 
-  let priceNum = typeof doc.price === 'number' ? doc.price : parseFloat(doc.price);
-  if (isNaN(priceNum)) priceNum = 0;
+  let priceVal = typeof doc.price === 'number' ? doc.price : parseFloat(doc.price);
+  if (isNaN(priceVal)) priceVal = 0;
 
-  const funds = priceNum === 4 ? 0 : priceNum === 9 ? 3 : 0;
+  let totalPriceVal = typeof doc.totalPrice === 'number' ? doc.totalPrice : parseFloat(doc.totalPrice);
+  if (isNaN(totalPriceVal)) totalPriceVal = priceVal;
+
+  let initialFundsVal = typeof doc.initialFunds === 'number' ? doc.initialFunds : parseFloat(doc.initialFunds);
+  if (isNaN(initialFundsVal)) initialFundsVal = 0;
+
+  let balanceVal = typeof doc.balance === 'number' ? doc.balance : parseFloat(doc.balance);
+  if (isNaN(balanceVal)) balanceVal = 0;
 
   return {
     id: doc.orderId,
@@ -94,77 +133,27 @@ export const convertVCCDocumentToRecord = (doc: VCCOrderDocument): VirtualCardRe
       second: '2-digit',
       hour12: true
     }),
-    price: priceNum,
+    price: priceVal,
+    totalPrice: totalPriceVal,
     cardNumber: formatCardNumber(doc.cardNumber),
     expirationDate: formatExpirationDate(doc.expirationDate),
     cvv: doc.cvv,
-    funds: funds,
-    email: doc.email || 'N/A'
+    initialFunds: initialFundsVal,
+    balance: balanceVal,
+    email: doc.email || 'N/A',
+    cardHolderName: doc.cardHolderName || 'N/A',
+    status: doc.status || 'Active'
   };
 };
 
-export const handleCheckCard = async (
+export const handleCheckCard = (
   orderId: string,
+  status: string,
   setCheckingCardId: React.Dispatch<React.SetStateAction<string | null>>,
   setErrorMessage: React.Dispatch<React.SetStateAction<string>>,
-  setShowErrorModal: React.Dispatch<React.SetStateAction<boolean>>
+  setShowErrorModal: React.Dispatch<React.SetStateAction<boolean>>,
+  navigate: (path: string, options?: { state?: any }) => void
 ) => {
-  const auth = getAuth();
-  const currentUser2 = auth.currentUser;
-
-  if (!currentUser2) {
-    setErrorMessage('You are not authenticated or your token is invalid');
-    setShowErrorModal(true);
-    return;
-  }
-
-  setCheckingCardId(orderId);
-
-  try {
-    const idToken = await currentUser2.getIdToken();
-
-    const response = await fetch('https://getcard-ezeznlhr5a-uc.a.run.app', {
-      method: 'POST',
-      headers: {
-        'authorization': `${idToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ orderId })
-    });
-
-    const data = await response.json();
-    console.log("Backend response:", data);
-
-    if (response.ok) {
-      setCheckingCardId(null);
-    } else {
-      let errorMsg = 'An unknown error occurred';
-
-      if (response.status === 400) {
-        if (data.error === 'Missing parameters') {
-          errorMsg = 'Please try again or contact our customer support';
-        } else if (data.error === 'Failed to get card details') {
-          errorMsg = 'Please refresh and try again';
-        } else if (data.error === 'Unauthorized') {
-          errorMsg = 'You are not authenticated or your token is invalid';
-        } else if (data.error === 'User not found') {
-          errorMsg = 'You cannot check this information';
-        } else if (data.error === 'Order not found') {
-          errorMsg = 'Please contact our customer support';
-        }
-      } else if (response.status === 500) {
-        if (data.error === 'Internal Error') {
-          errorMsg = 'Please contact our customer support';
-        }
-      }
-
-      setErrorMessage(errorMsg);
-      setShowErrorModal(true);
-      setCheckingCardId(null);
-    }
-  } catch (error) {
-    setErrorMessage('Please contact our customer support');
-    setShowErrorModal(true);
-    setCheckingCardId(null);
-  }
+  // Redirigir inmediatamente a VccConfig pasando el estado por router history state
+  navigate(`/vcc-config?orderId=${orderId}`, { state: { status } });
 };

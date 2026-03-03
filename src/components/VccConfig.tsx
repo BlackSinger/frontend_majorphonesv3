@@ -492,7 +492,7 @@ const VccConfig: React.FC = () => {
                                     </button>
                                 ) : (
                                     <button
-                                        onClick={() => navigate('/history-test?tab=virtualCards')}
+                                        onClick={() => navigate('/history?tab=virtualCards')}
                                         className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
                                     >
                                         <svg className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -45,7 +45,8 @@ import {
 import {
   type VirtualCardRecord,
   handleCopyCardNumber as handleCopyCardNumberVC,
-  formatPrice as formatVCCPrice
+  formatPrice as formatVCCPrice,
+  formatExpirationDate
 } from './VirtualCardLogic';
 
 import {
@@ -372,11 +373,9 @@ const MajorHistory: React.FC = () => {
   const [cachedProxiesData, setCachedProxiesData] = useState<ProxyRecord[]>([]);
 
   const [cardNumberSearch, setCardNumberSearch] = useState('');
-  const [fundsFilter, setFundsFilter] = useState<string>('All');
-  const [isFundsDropdownOpen, setIsFundsDropdownOpen] = useState(false);
+  const [initialFundsFilter, setInitialFundsFilter] = useState<string>('');
   const [currentVirtualCardPage, setCurrentVirtualCardPage] = useState(1);
   const [copiedCardNumbers, setCopiedCardNumbers] = useState<{ [key: string]: boolean }>({});
-  const fundsDropdownRef = useRef<HTMLDivElement>(null);
 
   const [currentProxyPage, setCurrentProxyPage] = useState(1);
   const [showProxyInfoModal, setShowProxyInfoModal] = useState(false);
@@ -441,7 +440,8 @@ const MajorHistory: React.FC = () => {
     return record.status;
   };
 
-  const formatPrice = (price: number): string => {
+  const formatPrice = (price: number | undefined | null): string => {
+    if (price == null || isNaN(price)) return '0.00';
     return price % 1 === 0 ? price.toString() : price.toFixed(2);
   };
 
@@ -578,9 +578,6 @@ const MajorHistory: React.FC = () => {
       if (numberTypeDropdownRef.current && !numberTypeDropdownRef.current.contains(event.target as Node)) {
         setIsNumberTypeDropdownOpen(false);
       }
-      if (fundsDropdownRef.current && !fundsDropdownRef.current.contains(event.target as Node)) {
-        setIsFundsDropdownOpen(false);
-      }
       if (voipStatusDropdownRef.current && !voipStatusDropdownRef.current.contains(event.target as Node)) {
         setIsVoipStatusDropdownOpen(false);
       }
@@ -670,18 +667,21 @@ const MajorHistory: React.FC = () => {
     let filtered = cachedVccData;
 
     if (cardNumberSearch.trim()) {
+      const searchNormalized = cardNumberSearch.replace(/\s+/g, '');
       filtered = filtered.filter(record =>
-        record.cardNumber.toLowerCase().includes(cardNumberSearch.toLowerCase())
+        record.cardNumber.replace(/\s+/g, '').toLowerCase().includes(searchNormalized.toLowerCase())
       );
     }
 
-    if (fundsFilter !== 'All') {
-      const fundsValue = fundsFilter === '$0' ? 0 : 3;
-      filtered = filtered.filter(record => record.funds === fundsValue);
+    if (initialFundsFilter.trim() !== '') {
+      const filterNum = parseFloat(initialFundsFilter);
+      if (!isNaN(filterNum)) {
+        filtered = filtered.filter(record => record.initialFunds === filterNum);
+      }
     }
 
     return filtered;
-  }, [cardNumberSearch, fundsFilter, cachedVccData]);
+  }, [cardNumberSearch, initialFundsFilter, cachedVccData]);
 
   const totalVirtualCardPages = Math.ceil(filteredVirtualCardData.length / itemsPerPage);
   const virtualCardStartIndex = (currentVirtualCardPage - 1) * itemsPerPage;
@@ -927,6 +927,7 @@ const MajorHistory: React.FC = () => {
           const data = await response.json();
 
           if (!response.ok) {
+            console.error('Error in getvccorders:', data);
             if (data.message === 'Forbidden') {
               const auth = getAuth();
               await signOut(auth);
@@ -940,6 +941,8 @@ const MajorHistory: React.FC = () => {
             }
           }
 
+
+          console.log('Success in getvccorders:', data);
 
           let vccOrdersArray = [];
 
@@ -971,22 +974,19 @@ const MajorHistory: React.FC = () => {
               });
             }
 
-            let funds = 0;
-            if (item.price === 4) {
-              funds = 0;
-            } else if (item.price === 9) {
-              funds = 3;
-            }
-
             return {
               id: item.id || 'N/A',
               purchaseDate: formattedDate,
-              price: item.price,
+              price: typeof item.price === 'number' ? item.price : parseFloat(item.price || '0'),
+              totalPrice: typeof item.totalPrice === 'number' ? item.totalPrice : parseFloat(item.totalPrice || item.price || '0'),
               cardNumber: item.cardNumber || 'N/A',
-              expirationDate: item.expirationDate || 'N/A',
+              expirationDate: formatExpirationDate(item.expirationDate || 'N/A'),
               cvv: item.cvv || 'N/A',
-              funds: funds,
-              email: item.email || 'N/A'
+              initialFunds: typeof item.initialFunds === 'number' ? item.initialFunds : parseFloat(item.initialFunds || '0'),
+              balance: typeof item.balance === 'number' ? item.balance : parseFloat(item.balance || '0'),
+              email: item.email || 'N/A',
+              cardHolderName: item.cardHolderName || 'N/A',
+              status: item.status || 'Active'
             };
           });
 
@@ -994,6 +994,7 @@ const MajorHistory: React.FC = () => {
           setVccDataFetched(true);
           setIsLoading(false);
         } catch (error) {
+          console.error('Catch error in getvccorders:', error);
           setErrorMessage('Please refresh');
           setShowErrorModal(true);
           setIsLoading(false);
@@ -1884,38 +1885,23 @@ const MajorHistory: React.FC = () => {
                     <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
                       Initial Funds
                     </label>
-                    <div className="relative group" ref={fundsDropdownRef}>
-                      <div
-                        onClick={() => setIsFundsDropdownOpen(!isFundsDropdownOpen)}
-                        className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
-                      >
-                        <span>{fundsFilter === 'All' ? 'All Funds' : fundsFilter}</span>
-                      </div>
-
+                    <div className="relative group">
+                      <input
+                        type="text"
+                        value={initialFundsFilter}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9.]/g, '');
+                          setInitialFundsFilter(val);
+                          setCurrentVirtualCardPage(1);
+                        }}
+                        placeholder="Enter amount"
+                        className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 hover:border-slate-500/50"
+                      />
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isFundsDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                       </div>
-
-                      {/* Custom Dropdown Options */}
-                      {isFundsDropdownOpen && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
-                          {['All', '$0', '$3'].map((option) => (
-                            <div
-                              key={option}
-                              onClick={() => {
-                                setFundsFilter(option);
-                                setIsFundsDropdownOpen(false);
-                                setCurrentVirtualCardPage(1);
-                              }}
-                              className="px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 text-white first:rounded-t-2xl last:rounded-b-2xl text-left"
-                            >
-                              {option === 'All' ? 'All Funds' : option}
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -1943,7 +1929,10 @@ const MajorHistory: React.FC = () => {
                           <th className="text-center py-4 px-6 text-slate-300 font-semibold">Card Number</th>
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">Expiration Date</th>
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">CVV</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Cardholder</th>
                           <th className="text-center py-4 px-4 text-slate-300 font-semibold">Initial Funds</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Current Funds</th>
+                          <th className="text-center py-4 px-4 text-slate-300 font-semibold">Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1970,7 +1959,7 @@ const MajorHistory: React.FC = () => {
                             <td className="py-4 px-6 text-white text-center">{record.email}</td>
                             <td className="py-4 px-6 text-white text-center">{record.purchaseDate}</td>
                             <td className="py-4 px-6 text-center">
-                              <span className="text-emerald-400 font-semibold">${formatPrice(record.price)}</span>
+                              <span className="text-emerald-400 font-semibold">${formatPrice(record.price != null && record.price !== 0 ? record.price : (record.totalPrice || 0))}</span>
                             </td>
                             <td className="py-4 px-6">
                               <div className="font-mono text-white text-center">
@@ -1994,8 +1983,22 @@ const MajorHistory: React.FC = () => {
                             </td>
                             <td className="py-4 px-6 text-white text-center">{record.expirationDate}</td>
                             <td className="py-4 px-6 text-white text-center font-mono">{record.cvv}</td>
+                            <td className="py-4 px-6 text-slate-300 text-center">{record.cardHolderName}</td>
                             <td className="py-4 px-6 text-center">
-                              <span className="text-emerald-400 font-semibold">${record.funds}</span>
+                              <span className="text-emerald-400 font-semibold">${formatPrice(record.initialFunds || 0)}</span>
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              <span className="text-emerald-400 font-semibold">${formatPrice(record.balance || 0)}</span>
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              <span style={{ width: '100px' }} className={`inline-block text-center px-3 py-1 rounded-lg text-sm font-semibold border ${record.status === 'Completed' || record.status === 'Active'
+                                ? 'text-green-400 border-green-500/30 bg-green-500/20'
+                                : record.status === 'Failed' || record.status === 'Inactive'
+                                  ? 'text-red-400 border-red-500/30 bg-red-500/20'
+                                  : 'text-gray-400 border-gray-500/30 bg-gray-500/20'
+                                }`}>
+                                {record.status}
+                              </span>
                             </td>
                           </tr>
                         ))}
@@ -2028,7 +2031,7 @@ const MajorHistory: React.FC = () => {
 
                             {/* Page Numbers */}
                             <div className="flex space-x-1">
-                              {Array.from({ length: totalVirtualCardPages }, (_, i) => i + 1).map((page) => (
+                              {[currentVirtualCardPage, currentVirtualCardPage + 1].filter(page => page <= totalVirtualCardPages).map((page) => (
                                 <button
                                   key={page}
                                   onClick={() => setCurrentVirtualCardPage(page)}
@@ -2204,7 +2207,7 @@ const MajorHistory: React.FC = () => {
                             </td>
                             {/* Price */}
                             <td className="py-4 px-6 text-center">
-                              <span className="text-emerald-400 font-semibold">${record.price.toFixed(2)}</span>
+                              <span className="text-emerald-400 font-semibold">${(record.price || 0).toFixed(2)}</span>
                             </td>
                             {/* Status */}
                             <td className="py-4 px-6 text-center">
