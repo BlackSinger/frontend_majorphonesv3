@@ -36,7 +36,9 @@ import MajorHistoryUser from './components/MajorHistoryUser';
 import MajorHistoryUserTest from './components/MajorHistoryUserTest';
 import MajorModeration from './components/MajorModeration';
 import MajorTransactions from './components/MajorTransactions';
+import MajorTransactionsTest from './components/MajorTransactionsTest';
 import MajorTransactionsUser from './components/MajorTransactionsUser';
+import MajorTransactionsUserTest from './components/MajorTransactionsUserTest';
 import MajorUser from './components/MajorUser';
 import MajorTickets from './components/MajorTickets';
 import MajorVccStock from './components/MajorVccStock';
@@ -90,7 +92,9 @@ function App() {
             <Route path="/major-user-history-test" element={<PrivateRoute><MajorDashboardLayout><MajorHistoryUserTest /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-moderation" element={<PrivateRoute><MajorDashboardLayout><MajorModeration /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-transactions" element={<PrivateRoute><MajorDashboardLayout><MajorTransactions /></MajorDashboardLayout></PrivateRoute>} />
+            <Route path="/major-transactions-test" element={<PrivateRoute><MajorDashboardLayout><MajorTransactionsTest /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-user-transactions" element={<PrivateRoute><MajorDashboardLayout><MajorTransactionsUser /></MajorDashboardLayout></PrivateRoute>} />
+            <Route path="/major-user-transactions-test" element={<PrivateRoute><MajorDashboardLayout><MajorTransactionsUserTest /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-user" element={<PrivateRoute><MajorDashboardLayout><MajorUser /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-tickets" element={<PrivateRoute><MajorDashboardLayout><MajorTickets /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-vcc" element={<PrivateRoute><MajorDashboardLayout><MajorVccStock /></MajorDashboardLayout></PrivateRoute>} />
