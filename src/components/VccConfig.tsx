@@ -624,7 +624,7 @@ const VccConfig: React.FC = () => {
                                             </div>
 
                                             {/* Billing Address Section */}
-                                            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-[0_0_15px_rgba(59,130,246,0.3)] shadow-blue-500/25 border border-slate-600/50 border-blue-500/50 transition-all duration-300 transform hover:scale-[1.01]">
+                                            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-[0_0_15px_rgba(59,130,246,0.3)] shadow-blue-500/25 border border-slate-600/50 border-blue-500/50 transition-all duration-300 transform">
                                                 <div className="flex flex-wrap items-center gap-4 text-sm sm:text-base">
                                                     <span className="inline-flex items-center gap-3 text-white font-semibold">
                                                         <svg className="w-5 h-5 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
