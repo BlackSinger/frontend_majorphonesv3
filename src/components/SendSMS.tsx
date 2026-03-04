@@ -815,7 +815,7 @@ const SendSMS: React.FC = () => {
                     <p className="text-center text-sm">
                         <span className="text-emerald-300 font-bold">NEW</span>
                         <span className="text-slate-300 mx-2">—</span>
-                        <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes or more</span>, go to <Link to="/short" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Short Numbers</Link>!</span>
+                        <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes</span> and choose <span className="text-emerald-400 font-semibold">Area Code/Carrier</span>, go to <Link to="/short" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Short Numbers</Link>!</span>
                     </p>
                 </div>
 

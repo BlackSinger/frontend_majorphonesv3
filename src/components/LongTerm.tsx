@@ -395,7 +395,7 @@ const LongTerm: React.FC = () => {
                   <li>• Their duration can only be extended before they expire</li>
                   <li>• After purchased, some can be cancelled and some can't</li>
                   <li>• Users that deposit through Amazon Pay can't purchase them</li>
-                  <li>• If you want to reuse a number for 9-10 minutes or more, go to <Link to="/short" className="text-blue-400 hover:text-blue-300 underline font-semibold">Short Numbers</Link></li>
+                  <li>• If you want to reuse a number for 9-10 minutes or choose area code/carrier, go to <Link to="/short" className="text-blue-400 hover:text-blue-300 underline font-semibold">Short Numbers</Link></li>
                   <li>• If you want to verify 1 service for a shorter period, go to <Link to="/middle" className="text-blue-400 hover:text-blue-300 underline font-semibold">Middle Numbers</Link></li>
                   <li>• If you want to verify more than 1 service with the same number, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
                 </ul>
@@ -408,7 +408,7 @@ const LongTerm: React.FC = () => {
             <p className="text-center text-sm">
               <span className="text-emerald-300 font-bold">NEW</span>
               <span className="text-slate-300 mx-2">—</span>
-              <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes or more</span>, go to <Link to="/short" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Short Numbers</Link>!</span>
+              <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes</span> and choose <span className="text-emerald-400 font-semibold">Area Code/Carrier</span>, go to <Link to="/short" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Short Numbers</Link>!</span>
             </p>
           </div>
 
@@ -563,7 +563,7 @@ const LongTerm: React.FC = () => {
                   <li>• Their duration can only be extended before they expire</li>
                   <li>• After purchased, some can be cancelled and some can't</li>
                   <li>• Users that deposit through Amazon Pay can't purchase them</li>
-                  <li>• If you want to reuse a number for 9-10 minutes or more, go to <Link to="/short" className="text-blue-400 hover:text-blue-300 underline font-semibold">Short Numbers</Link></li>
+                  <li>• If you want to reuse a number for 9-10 minutes or choose area code/carrier, go to <Link to="/short" className="text-blue-400 hover:text-blue-300 underline font-semibold">Short Numbers</Link></li>
                   <li>• If you want to verify 1 service for a shorter period, go to <Link to="/middle" className="text-blue-400 hover:text-blue-300 underline font-semibold">Middle Numbers</Link></li>
                   <li>• If you want to verify more than 1 service with the same number, go to <Link to="/emptysimcard" className="text-blue-400 hover:text-blue-300 underline font-semibold">Empty SIM cards</Link></li>
                 </ul>
@@ -576,7 +576,7 @@ const LongTerm: React.FC = () => {
             <p className="text-center text-sm">
               <span className="text-emerald-300 font-bold">NEW</span>
               <span className="text-slate-300 mx-2">—</span>
-              <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes or more</span>, go to <Link to="/short" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Short Numbers</Link>!</span>
+              <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes</span>, go to <Link to="/short" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Short Numbers</Link>!</span>
             </p>
           </div>
 

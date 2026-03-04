@@ -46,7 +46,6 @@ const VirtualCard: React.FC = () => {
 
       if (response.ok) {
         navigate('/history?tab=virtualCards');
-        console.log('Buy card success:', data);
       } else {
         let errorMsg = 'An unknown error occurred';
         let shouldKeepDisabled = false;
@@ -74,7 +73,6 @@ const VirtualCard: React.FC = () => {
           errorMsg = 'Please contact our customer support';
         }
 
-        console.log('Buy card error:', response.status, data);
         setErrorMessage(errorMsg);
         setShowErrorModal(true);
         setIsPurchasing(false);
@@ -93,9 +91,7 @@ const VirtualCard: React.FC = () => {
   };
 
   const handleAmountChange = (value: number) => {
-    // Forzar rango y paso
     let clamped = Math.min(20, Math.max(0.5, value));
-    // Redondear al 0.5 más cercano
     clamped = Math.round(clamped * 2) / 2;
     setAmount(clamped);
   };

@@ -16,12 +16,9 @@ import EmptySimcard from './components/EmptySimcard';
 import SendSMS from './components/SendSMS';
 import VirtualCard from './components/VirtualCard';
 import VccConfig from './components/VccConfig';
-import VirtualCardTest from './components/VirtualCardTest';
 import Proxies from './components/Proxies';
 import History from './components/History';
-import HistoryTest from './components/HistoryTest';
 import Transactions from './components/Transactions';
-import TransactionsTest from './components/TransactionsTest';
 import Tickets from './components/Tickets';
 import Profile from './components/Profile';
 import AddFunds from './components/AddFunds';
@@ -31,14 +28,10 @@ import PaymentReview from './components/PaymentReview';
 /**/
 import MajorDashboardLayout from './components/MajorDashboardLayout';
 import MajorHistory from './components/MajorHistory';
-import MajorHistoryTest from './components/MajorHistoryTest';
 import MajorHistoryUser from './components/MajorHistoryUser';
-import MajorHistoryUserTest from './components/MajorHistoryUserTest';
 import MajorModeration from './components/MajorModeration';
 import MajorTransactions from './components/MajorTransactions';
-import MajorTransactionsTest from './components/MajorTransactionsTest';
 import MajorTransactionsUser from './components/MajorTransactionsUser';
-import MajorTransactionsUserTest from './components/MajorTransactionsUserTest';
 import MajorUser from './components/MajorUser';
 import MajorTickets from './components/MajorTickets';
 import MajorVccStock from './components/MajorVccStock';
@@ -69,16 +62,12 @@ function App() {
             <Route path="/middle" element={<PrivateRoute><DashboardLayout><Middle /></DashboardLayout></PrivateRoute>} />
             <Route path="/long" element={<PrivateRoute><DashboardLayout><LongTerm /></DashboardLayout></PrivateRoute>} />
             <Route path="/emptysimcard" element={<PrivateRoute><DashboardLayout><EmptySimcard /></DashboardLayout></PrivateRoute>} />
-            {/* <Route path="/sendmessage" element={<PrivateRoute><DashboardLayout><SendMessage /></DashboardLayout></PrivateRoute>} /> */}
             <Route path="/send-sms" element={<PrivateRoute><DashboardLayout><SendSMS /></DashboardLayout></PrivateRoute>} />
             <Route path="/virtualcard" element={<PrivateRoute><DashboardLayout><VirtualCard /></DashboardLayout></PrivateRoute>} />
             <Route path="/vcc-config" element={<PrivateRoute><DashboardLayout><VccConfig /></DashboardLayout></PrivateRoute>} />
-            <Route path="/test" element={<PrivateRoute><DashboardLayout><VirtualCardTest /></DashboardLayout></PrivateRoute>} />
             <Route path="/proxies" element={<PrivateRoute><DashboardLayout><Proxies /></DashboardLayout></PrivateRoute>} />
             <Route path="/history" element={<PrivateRoute><DashboardLayout><History /></DashboardLayout></PrivateRoute>} />
-            <Route path="/history-test" element={<PrivateRoute><DashboardLayout><HistoryTest /></DashboardLayout></PrivateRoute>} />
             <Route path="/transactions" element={<PrivateRoute><DashboardLayout><Transactions /></DashboardLayout></PrivateRoute>} />
-            <Route path="/transactions-test" element={<PrivateRoute><DashboardLayout><TransactionsTest /></DashboardLayout></PrivateRoute>} />
             <Route path="/tickets" element={<PrivateRoute><DashboardLayout><Tickets /></DashboardLayout></PrivateRoute>} />
             <Route path="/profile" element={<PrivateRoute><DashboardLayout><Profile /></DashboardLayout></PrivateRoute>} />
             <Route path="/add-funds" element={<PrivateRoute><DashboardLayout><AddFunds /></DashboardLayout></PrivateRoute>} />
@@ -87,14 +76,10 @@ function App() {
             <Route path="/payment-return" element={<PrivateRoute><DashboardLayout><PaymentReturn /></DashboardLayout></PrivateRoute>} />
 
             <Route path="/major-history" element={<PrivateRoute><MajorDashboardLayout><MajorHistory /></MajorDashboardLayout></PrivateRoute>} />
-            <Route path="/major-history-test" element={<PrivateRoute><MajorDashboardLayout><MajorHistoryTest /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-user-history" element={<PrivateRoute><MajorDashboardLayout><MajorHistoryUser /></MajorDashboardLayout></PrivateRoute>} />
-            <Route path="/major-user-history-test" element={<PrivateRoute><MajorDashboardLayout><MajorHistoryUserTest /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-moderation" element={<PrivateRoute><MajorDashboardLayout><MajorModeration /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-transactions" element={<PrivateRoute><MajorDashboardLayout><MajorTransactions /></MajorDashboardLayout></PrivateRoute>} />
-            <Route path="/major-transactions-test" element={<PrivateRoute><MajorDashboardLayout><MajorTransactionsTest /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-user-transactions" element={<PrivateRoute><MajorDashboardLayout><MajorTransactionsUser /></MajorDashboardLayout></PrivateRoute>} />
-            <Route path="/major-user-transactions-test" element={<PrivateRoute><MajorDashboardLayout><MajorTransactionsUserTest /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-user" element={<PrivateRoute><MajorDashboardLayout><MajorUser /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-tickets" element={<PrivateRoute><MajorDashboardLayout><MajorTickets /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-vcc" element={<PrivateRoute><MajorDashboardLayout><MajorVccStock /></MajorDashboardLayout></PrivateRoute>} />

@@ -154,6 +154,5 @@ export const handleCheckCard = (
   setShowErrorModal: React.Dispatch<React.SetStateAction<boolean>>,
   navigate: (path: string, options?: { state?: any }) => void
 ) => {
-  // Redirigir inmediatamente a VccConfig pasando el estado por router history state
   navigate(`/vcc-config?orderId=${orderId}`, { state: { status } });
 };

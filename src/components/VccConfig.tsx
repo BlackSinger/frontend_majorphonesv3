@@ -17,8 +17,8 @@ const VccConfig: React.FC = () => {
     const [showInfoModal, setShowInfoModal] = useState(false);
     const [selectedRecord, setSelectedRecord] = useState<any>(null);
     const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
+    const [isAddressCopied, setIsAddressCopied] = useState(false);
 
-    // Load Funds View State
     const [isLoadFundsView, setIsLoadFundsView] = useState(false);
     const [amount, setAmount] = useState(0.5);
     const [isLoadingFunds, setIsLoadingFunds] = useState(false);
@@ -26,20 +26,16 @@ const VccConfig: React.FC = () => {
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
 
-    // Transactions list
     const [vccTransactions, setVccTransactions] = useState<any[]>([]);
 
-    //Esto maneja el estado de congelacion de la tarjeta, inicializado desde Firestore en el useEffect
     const [vccFrozen, setVccFrozen] = useState(false);
     const [isFreezingCard, setIsFreezingCard] = useState(false);
     const [areCardActionsDisabled, setAreCardActionsDisabled] = useState(false);
 
-    // Cloud function loading states
     const [isLoadingVccData, setIsLoadingVccData] = useState(!!orderIdFromUrl);
     const [vccDataError, setVccDataError] = useState(false);
     const [vccCardInfo, setVccCardInfo] = useState<any>(null);
 
-    // Fetch card data and transactions when orderId is in URL
     useEffect(() => {
         if (!orderIdFromUrl) return;
 
@@ -56,8 +52,6 @@ const VccConfig: React.FC = () => {
             try {
                 const idToken = await currentUser.getIdToken();
 
-                console.log('Enviando body a getcard y gettransactionscard:', { orderId: orderIdFromUrl });
-
                 const headers = {
                     'authorization': `${idToken}`,
                     'Content-Type': 'application/json'
@@ -68,7 +62,7 @@ const VccConfig: React.FC = () => {
                     if (docSnap.exists()) {
                         setVccFrozen(docSnap.data().status === 'Frozen');
                     }
-                }).catch(err => console.log('Error fetching doc status:', err));
+                }).catch(() => { });
 
                 const [cardResult, transactionsResult] = await Promise.allSettled([
                     fetch('https://getcard-ezeznlhr5a-uc.a.run.app', { method: 'POST', headers, body }),
@@ -84,9 +78,6 @@ const VccConfig: React.FC = () => {
                     cardStatus = cardResult.value.status;
                     cardOk = cardResult.value.ok;
                     cardData = await cardResult.value.json();
-                    console.log('getcard response:', cardData);
-                } else {
-                    console.log('getcard fetch error:', cardResult.reason);
                 }
 
                 let transactionsData: any = null;
@@ -97,9 +88,6 @@ const VccConfig: React.FC = () => {
                     transactionsStatus = transactionsResult.value.status;
                     transactionsOk = transactionsResult.value.ok;
                     transactionsData = await transactionsResult.value.json();
-                    console.log('gettransactionscard response:', transactionsData);
-                } else {
-                    console.log('gettransactionscard fetch error:', transactionsResult.reason);
                 }
 
                 if (cardOk && transactionsOk) {
@@ -140,7 +128,6 @@ const VccConfig: React.FC = () => {
                     setVccDataError(true);
                 }
             } catch (error) {
-                console.log('fetchVccData catch error:', error);
                 setErrorMessage('Please contact our customer support');
                 setShowErrorModal(true);
                 setIsLoadingVccData(false);
@@ -177,7 +164,6 @@ const VccConfig: React.FC = () => {
         setShowErrorModal(false);
     };
 
-    //MODIFICAR AL DEPOSITAR EN QUACKR
     const handleLoadFunds = async () => {
         const currentUser = getAuth().currentUser;
 
@@ -208,7 +194,6 @@ const VccConfig: React.FC = () => {
             const data = await response.json();
 
             if (response.ok) {
-                console.log('Load funds success:', data);
                 setIsLoadingFunds(false);
                 setIsLoadingFundsDisabled(false);
                 setSuccessMessage('You have correctly added funds to your VCC');
@@ -242,7 +227,6 @@ const VccConfig: React.FC = () => {
                     errorMsg = 'Please contact our customer support';
                 }
 
-                console.log('Load funds error:', response.status, data);
                 setErrorMessage(errorMsg);
                 setShowErrorModal(true);
                 setIsLoadingFunds(false);
@@ -288,7 +272,6 @@ const VccConfig: React.FC = () => {
             const data = await response.json();
 
             if (response.ok) {
-                console.log('Freeze card success:', data);
                 setIsFreezingCard(false);
                 setVccFrozen(true);
                 setSuccessMessage('This VCC has been frozen successfully');
@@ -319,7 +302,6 @@ const VccConfig: React.FC = () => {
                     }
                 }
 
-                console.log('Freeze card error:', response.status, data);
                 setErrorMessage(errorMsg);
                 setShowErrorModal(true);
                 setIsFreezingCard(false);
@@ -368,7 +350,6 @@ const VccConfig: React.FC = () => {
             const data = await response.json();
 
             if (response.ok) {
-                console.log('Unfreeze card success:', data);
                 setIsFreezingCard(false);
                 setVccFrozen(false);
                 setSuccessMessage('This VCC has been unfrozen successfully');
@@ -399,7 +380,6 @@ const VccConfig: React.FC = () => {
                     }
                 }
 
-                console.log('Unfreeze card error:', response.status, data);
                 setErrorMessage(errorMsg);
                 setShowErrorModal(true);
                 setIsFreezingCard(false);
@@ -641,142 +621,180 @@ const VccConfig: React.FC = () => {
                                                         </div>
                                                     </div>
                                                 </div>
+                                            </div>
 
-                                                <div className="text-left mb-7">
-                                                    <h1 className="text-xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">Transactions</h1>
+                                            {/* Billing Address Section */}
+                                            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-[0_0_15px_rgba(59,130,246,0.3)] shadow-blue-500/25 border border-slate-600/50 border-blue-500/50 transition-all duration-300 transform hover:scale-[1.01]">
+                                                <div className="flex flex-wrap items-center gap-4 text-sm sm:text-base">
+                                                    <span className="inline-flex items-center gap-3 text-white font-semibold">
+                                                        <svg className="w-5 h-5 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        </svg>
+                                                        We recommended you to use this Billing Address:
+                                                    </span>
+                                                    <span className="text-slate-300">
+                                                        20 Nathan Road, Tsim Sha Tsui, Kowloon, Hong Kong 999077
+                                                        <button
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await navigator.clipboard.writeText('20 Nathan Road, Tsim Sha Tsui, Kowloon, Hong Kong 999077');
+                                                                    setIsAddressCopied(true);
+                                                                    setTimeout(() => setIsAddressCopied(false), 2000);
+                                                                } catch (err) { /* ignore */ }
+                                                            }}
+                                                            className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center shrink-0"
+                                                            title={isAddressCopied ? 'Copied!' : 'Copy Address'}
+                                                        >
+                                                            {isAddressCopied ? (
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                                                </svg>
+                                                            ) : (
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                </svg>
+                                                            )}
+                                                        </button>
+                                                    </span>
                                                 </div>
+                                            </div>
 
-                                                {/* Virtual Cards Table */}
-                                                <div className="overflow-x-auto overflow-y-visible mt-6">
-                                                    {vccTransactions.length > 0 ? (
-                                                        <>
-                                                            <table className="w-full">
-                                                                <thead>
-                                                                    <tr className="border-b border-slate-700/50">
-                                                                        <th className="text-center py-4 px-4 text-slate-300 font-semibold">ID</th>
-                                                                        <th className="text-center py-4 px-4 text-slate-300 font-semibold">Date</th>
-                                                                        <th className="text-center py-4 px-4 text-slate-300 font-semibold">Amount</th>
-                                                                        <th className="text-center py-4 px-4 text-slate-300 font-semibold">Merchant</th>
-                                                                        <th className="text-center py-4 px-4 text-slate-300 font-semibold">Status</th>
+                                            <div className="text-left mb-7">
+                                                <h1 className="text-xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">Transactions</h1>
+                                            </div>
+
+                                            {/* Virtual Cards Table */}
+                                            <div className="overflow-x-auto overflow-y-visible mt-6">
+                                                {vccTransactions.length > 0 ? (
+                                                    <>
+                                                        <table className="w-full">
+                                                            <thead>
+                                                                <tr className="border-b border-slate-700/50">
+                                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">ID</th>
+                                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Date</th>
+                                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Amount</th>
+                                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Merchant</th>
+                                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Status</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {paginatedVirtualCardData.map((record, index) => (
+                                                                    <tr
+                                                                        key={record.id}
+                                                                        className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
+                                                                            }`}
+                                                                    >
+                                                                        <td className="py-4 px-6">
+                                                                            <div className="flex items-center justify-center">
+                                                                                <button
+                                                                                    onClick={() => handleInfoClick(record)}
+                                                                                    className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
+                                                                                    title="View Information"
+                                                                                >
+                                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                                    </svg>
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="py-4 px-6 text-white text-center">
+                                                                            {new Date(record.timestamp).toLocaleString('en-US', {
+                                                                                month: '2-digit', day: '2-digit', year: 'numeric',
+                                                                                hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+                                                                            })}
+                                                                        </td>
+                                                                        <td className="py-4 px-6 text-center">
+                                                                            <span className="text-emerald-400 font-semibold">${Number(record.amount).toFixed(2)}</span>
+                                                                        </td>
+                                                                        <td className="py-4 px-6 text-white text-center">
+                                                                            {record.merchantName}
+                                                                        </td>
+                                                                        <td className="py-4 px-6 text-center">
+                                                                            <span style={{ width: '100px' }} className={`inline-block text-center px-3 py-1 rounded-lg text-sm font-semibold border ${record.status === 'completed'
+                                                                                ? 'text-green-400 border-green-500/30 bg-green-500/20'
+                                                                                : record.status === 'pending'
+                                                                                    ? 'text-amber-400 border-amber-500/30 bg-amber-500/20'
+                                                                                    : 'text-red-400 border-red-500/30 bg-red-500/20'
+                                                                                }`}>
+                                                                                {record.status === 'completed' ? 'Completed' : record.status === 'pending' ? 'Pending' : 'Declined'}
+                                                                            </span>
+                                                                        </td>
                                                                     </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {paginatedVirtualCardData.map((record, index) => (
-                                                                        <tr
-                                                                            key={record.id}
-                                                                            className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
-                                                                                }`}
-                                                                        >
-                                                                            <td className="py-4 px-6">
-                                                                                <div className="flex items-center justify-center">
-                                                                                    <button
-                                                                                        onClick={() => handleInfoClick(record)}
-                                                                                        className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
-                                                                                        title="View Information"
-                                                                                    >
-                                                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                                                        </svg>
-                                                                                    </button>
-                                                                                </div>
-                                                                            </td>
-                                                                            <td className="py-4 px-6 text-white text-center">
-                                                                                {new Date(record.timestamp).toLocaleString('en-US', {
-                                                                                    month: '2-digit', day: '2-digit', year: 'numeric',
-                                                                                    hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
-                                                                                })}
-                                                                            </td>
-                                                                            <td className="py-4 px-6 text-center">
-                                                                                <span className="text-emerald-400 font-semibold">${Number(record.amount).toFixed(2)}</span>
-                                                                            </td>
-                                                                            <td className="py-4 px-6 text-white text-center">
-                                                                                {record.merchantName}
-                                                                            </td>
-                                                                            <td className="py-4 px-6 text-center">
-                                                                                <span style={{ width: '100px' }} className={`inline-block text-center px-3 py-1 rounded-lg text-sm font-semibold border ${record.status === 'completed'
-                                                                                    ? 'text-green-400 border-green-500/30 bg-green-500/20'
-                                                                                    : record.status === 'pending'
-                                                                                        ? 'text-amber-400 border-amber-500/30 bg-amber-500/20'
-                                                                                        : 'text-red-400 border-red-500/30 bg-red-500/20'
-                                                                                    }`}>
-                                                                                    {record.status === 'completed' ? 'Completed' : record.status === 'pending' ? 'Pending' : 'Declined'}
-                                                                                </span>
-                                                                            </td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
 
-                                                            {/* Virtual Cards Pagination */}
-                                                            {totalVirtualCardPages > 1 && (
-                                                                <div className="mt-6">
-                                                                    <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
+                                                        {/* Virtual Cards Pagination */}
+                                                        {totalVirtualCardPages > 1 && (
+                                                            <div className="mt-6">
+                                                                <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
+                                                                    Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, vccTransactions.length)} of {vccTransactions.length} results
+                                                                </div>
+
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="hidden md:block text-sm text-slate-400">
                                                                         Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, vccTransactions.length)} of {vccTransactions.length} results
                                                                     </div>
 
-                                                                    <div className="flex items-center justify-between">
-                                                                        <div className="hidden md:block text-sm text-slate-400">
-                                                                            Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, vccTransactions.length)} of {vccTransactions.length} results
+                                                                    <div className="flex items-center space-x-2 mx-auto md:mx-0">
+                                                                        {/* Previous Button */}
+                                                                        <button
+                                                                            onClick={() => setCurrentVirtualCardPage(prev => Math.max(prev - 1, 1))}
+                                                                            disabled={currentVirtualCardPage === 1}
+                                                                            className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                        >
+                                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                                                            </svg>
+                                                                        </button>
+
+                                                                        {/* Page Numbers */}
+                                                                        <div className="flex space-x-1">
+                                                                            {[currentVirtualCardPage, currentVirtualCardPage + 1].filter(page => page <= totalVirtualCardPages).map((page) => (
+                                                                                <button
+                                                                                    key={page}
+                                                                                    onClick={() => setCurrentVirtualCardPage(page)}
+                                                                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentVirtualCardPage === page
+                                                                                        ? 'bg-emerald-500 text-white'
+                                                                                        : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                                                                                        }`}
+                                                                                >
+                                                                                    {page}
+                                                                                </button>
+                                                                            ))}
                                                                         </div>
 
-                                                                        <div className="flex items-center space-x-2 mx-auto md:mx-0">
-                                                                            {/* Previous Button */}
-                                                                            <button
-                                                                                onClick={() => setCurrentVirtualCardPage(prev => Math.max(prev - 1, 1))}
-                                                                                disabled={currentVirtualCardPage === 1}
-                                                                                className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                            >
-                                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                                                                                </svg>
-                                                                            </button>
-
-                                                                            {/* Page Numbers */}
-                                                                            <div className="flex space-x-1">
-                                                                                {[currentVirtualCardPage, currentVirtualCardPage + 1].filter(page => page <= totalVirtualCardPages).map((page) => (
-                                                                                    <button
-                                                                                        key={page}
-                                                                                        onClick={() => setCurrentVirtualCardPage(page)}
-                                                                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentVirtualCardPage === page
-                                                                                            ? 'bg-emerald-500 text-white'
-                                                                                            : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
-                                                                                            }`}
-                                                                                    >
-                                                                                        {page}
-                                                                                    </button>
-                                                                                ))}
-                                                                            </div>
-
-                                                                            {/* Next Button */}
-                                                                            <button
-                                                                                onClick={() => setCurrentVirtualCardPage(prev => Math.min(prev + 1, totalVirtualCardPages))}
-                                                                                disabled={currentVirtualCardPage === totalVirtualCardPages}
-                                                                                className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                            >
-                                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                                                                </svg>
-                                                                            </button>
-                                                                        </div>
+                                                                        {/* Next Button */}
+                                                                        <button
+                                                                            onClick={() => setCurrentVirtualCardPage(prev => Math.min(prev + 1, totalVirtualCardPages))}
+                                                                            disabled={currentVirtualCardPage === totalVirtualCardPages}
+                                                                            className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                        >
+                                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                                                            </svg>
+                                                                        </button>
                                                                     </div>
                                                                 </div>
-                                                            )}
-                                                        </>
-                                                    ) : (
-                                                        /* Empty State */
-                                                        <div className="text-center py-16">
-                                                            <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
-                                                                <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                                                                </svg>
                                                             </div>
-                                                            <h1 className="text-xl font-bold text-slate-300 mb-3">No Transactions Found</h1>
-                                                            <p className="text-slate-400 text-lg">You have not used this VCC yet</p>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    /* Empty State */
+                                                    <div className="text-center py-16">
+                                                        <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
+                                                            <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                                            </svg>
                                                         </div>
-                                                    )}
-                                                </div>
+                                                        <h1 className="text-xl font-bold text-slate-300 mb-3">No Transactions Found</h1>
+                                                        <p className="text-slate-400 text-lg">You have not used this VCC yet</p>
+                                                    </div>
+                                                )}
                                             </div>
+
                                         </div>
                                     ) : (
                                         /* Load Funds View */
@@ -852,9 +870,8 @@ const VccConfig: React.FC = () => {
                 </div>
             </div>
 
-            {/* Error Modal */}
             {showErrorModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
                         <div className="text-center">
                             <div className="mb-4">
@@ -879,7 +896,7 @@ const VccConfig: React.FC = () => {
 
             {/* Success Modal */}
             {showSuccessModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
                         <div className="text-center">
                             <div className="mb-4">
@@ -909,7 +926,7 @@ const VccConfig: React.FC = () => {
 
             {/* Information Modal */}
             {showInfoModal && selectedRecord && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
                         <div className="text-center">
                             <div className="mb-4">
