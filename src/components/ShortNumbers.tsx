@@ -1266,8 +1266,8 @@ const ShortNumbers: React.FC = () => {
                             </div>
                             <div className="flex items-center justify-between text-md">
                               <span className="text-slate-300 font-medium">Reusable:</span>
-                              <span className={`font-semibold ${option.opt === 'opt1' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {option.opt === 'opt1' ? 'Yes' : 'No'}
+                              <span className={`font-semibold ${(option.opt === 'opt1' || option.opt === 'opt10') ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {(option.opt === 'opt1' || option.opt === 'opt10') ? 'Yes' : 'No'}
                               </span>
                             </div>
                             {option.opt === 'opt1' && (
@@ -1305,8 +1305,8 @@ const ShortNumbers: React.FC = () => {
 
                         <div className="hidden md:flex md:items-center md:space-x-2 text-md">
                           <span className="text-slate-300 font-medium">Reusable:</span>
-                          <span className={`font-semibold ${option.opt === 'opt1' ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {option.opt === 'opt1' ? 'Yes' : 'No'}
+                          <span className={`font-semibold ${(option.opt === 'opt1' || option.opt === 'opt10') ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {(option.opt === 'opt1' || option.opt === 'opt10') ? 'Yes' : 'No'}
                           </span>
                         </div>
 
