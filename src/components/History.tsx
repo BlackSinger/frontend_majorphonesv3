@@ -1964,7 +1964,7 @@ const History: React.FC = () => {
                             </td>
                             <td className="py-4 px-6 text-white text-center">{record.purchaseDate}</td>
                             <td className="py-4 px-6 text-center">
-                              <span className="text-emerald-400 font-semibold">${formatPrice(record.price)}</span>
+                              <span className="text-emerald-400 font-semibold">${formatPrice(record.balance)}</span>
                             </td>
                             <td className="py-4 px-6">
                               <div className="font-mono text-white text-center">
