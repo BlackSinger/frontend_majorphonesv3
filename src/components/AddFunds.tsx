@@ -1354,7 +1354,7 @@ const AddFunds: React.FC = () => {
                           <div className="text-sm text-slate-400">
                             <span>Minimum: ${selectedPaymentMethod.minAmount}</span>
                             {selectedMethod === 'amazon' && (
-                              <span className="ml-4">Fee: $0.3</span>
+                              <span className="ml-4">(Fees may be applied)</span>
                             )}
                             {(selectedMethod === 'alipay_cn' || selectedMethod === 'paynow_sg' || selectedMethod === 'vietqr_vn' || selectedMethod === 'africaPayments' || selectedMethod === 'koreaPayments') && (
                               <span className="ml-4">(Fees may be applied)</span>
