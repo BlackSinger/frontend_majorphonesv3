@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase/config';
@@ -92,19 +92,14 @@ const Middle: React.FC = () => {
       setSearchTerm('');
       setIsServiceDropdownOpen(false);
 
-      const servicesRef = collection(db, 'middleTargetsUSA');
-      const querySnapshot = await getDocs(servicesRef);
+      const catalogRef = doc(db, 'allCatalog', 'catalog');
+      const catalogSnap = await getDoc(catalogRef);
+      const catalogData = catalogSnap.data();
+      const middleUSANames: string[] = catalogData?.middleUSA || [];
 
-      const servicesList: ServiceOption[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        servicesList.push({
-          id: doc.id,
-          name: data.name || doc.id
-        });
-      });
-
-      servicesList.sort((a, b) => a.name.localeCompare(b.name));
+      const servicesList: ServiceOption[] = middleUSANames
+        .map(name => ({ id: name, name }))
+        .sort((a, b) => a.name.localeCompare(b.name));
 
       setServices(servicesList);
       setFilteredServices(servicesList);
@@ -244,7 +239,7 @@ const Middle: React.FC = () => {
       if (response.ok && data.success) {
         navigate('/history');
       } else {
-        let errorMsg = 'An unknown error occurred';
+        let errorMsg = 'We ran out of SIM cards, try again later';
 
         if (data.message === 'Unauthorized') {
           errorMsg = 'You are not authenticated or your token is invalid';

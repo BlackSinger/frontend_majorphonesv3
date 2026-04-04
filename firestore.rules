@@ -50,32 +50,9 @@ service cloud.firestore {
       allow write: if false; // No write access
     }
 
-    // Users can read stnTargetsUSA collection for service selection (read-only)
-    match /stnTargetsUSA/{serviceId} {
-      allow read: if request.auth != null;
-      allow write: if false; // No write access
-    }
 
-    // Users can read stnTargetsUK collection for service selection (read-only)
-    match /stnTargetsUK/{serviceId} {
-      allow read: if request.auth != null;
-      allow write: if false; // No write access
-    }
-
-    // Users can read stnTargetsIndia collection for service selection (read-only)
-    match /stnTargetsIndia/{serviceId} {
-      allow read: if request.auth != null;
-      allow write: if false; // No write access
-    }
-
-    // Users can read stnTargetsGermany collection for service selection (read-only)
-    match /stnTargetsGermany/{serviceId} {
-      allow read: if request.auth != null;
-      allow write: if false; // No write access
-    }
-
-    // Users can read stnTargetsFrance collection for service selection (read-only)
-    match /stnTargetsFrance/{serviceId} {
+    // Users can read allCatalog/catalog document for service selection (read-only)
+    match /allCatalog/catalog {
       allow read: if request.auth != null;
       allow write: if false; // No write access
     }
@@ -140,12 +117,6 @@ service cloud.firestore {
       }
     }
 
-    // Users can read middleTargetsUSA collection for service selection (read-only)
-    match /middleTargetsUSA/{serviceId} {
-      allow read: if request.auth != null;
-      allow write: if false; // No write access
-    }
-
     // Users can read middleUSA collection and its subcollections for number search (read-only)
     match /middleUSA/{optionId} {
       allow read: if request.auth != null;
@@ -156,12 +127,6 @@ service cloud.firestore {
         allow read: if request.auth != null;
         allow write: if false; // No write access
       }
-    }
-
-    // Users can read longTargetsUSA collection for service selection (read-only)
-    match /longTargetsUSA/{serviceId} {
-      allow read: if request.auth != null;
-      allow write: if false; // No write access
     }
 
     // Users can read longUSA collection and its subcollections for number search (read-only)

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase/config';
@@ -124,22 +124,6 @@ const ShortNumbers: React.FC = () => {
   const areaCodeDropdownRef = useRef<HTMLDivElement>(null);
   const carrierDropdownRef = useRef<HTMLDivElement>(null);
 
-  const getCollectionNameForCountry = (countryName: string): string => {
-    switch (countryName) {
-      case 'United States':
-        return 'stnTargetsUSA';
-      case 'United Kingdom':
-        return 'stnTargetsUK';
-      case 'India':
-        return 'stnTargetsIndia';
-      case 'Germany':
-        return 'stnTargetsGermany';
-      case 'France':
-        return 'stnTargetsFrance';
-      default:
-        return 'stnTargetsUSA';
-    }
-  };
 
   const countries = [
     {
@@ -212,7 +196,7 @@ const ShortNumbers: React.FC = () => {
     }
   ];
 
-  const loadServices = async (collectionName: string) => {
+  const loadServices = async () => {
     try {
       setIsLoadingServices(true);
       setHasError(false);
@@ -222,26 +206,55 @@ const ShortNumbers: React.FC = () => {
       setSearchTerm('');
       setIsServiceDropdownOpen(false);
 
-      const servicesRef = collection(db, collectionName);
-      const querySnapshot = await getDocs(servicesRef);
+      let finalServicesList: ServiceOption[] = [];
 
-      const servicesList: ServiceOption[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        servicesList.push({
-          id: doc.id,
-          name: data.name || doc.id
-        });
-      });
-
-      servicesList.sort((a, b) => a.name.localeCompare(b.name));
-
-      let finalServicesList = servicesList;
       if (selectedCountry === 'India') {
+        const catalogRef = doc(db, 'allCatalog', 'catalog');
+        const catalogSnap = await getDoc(catalogRef);
+        const catalogData = catalogSnap.data();
+        const stnIndiaNames: string[] = catalogData?.stnIndia || [];
+
         const restrictedServicesIndia = ['whatsapp'];
-        finalServicesList = servicesList.filter(service =>
-          !restrictedServicesIndia.includes(service.name.toLowerCase())
-        );
+        finalServicesList = stnIndiaNames
+          .filter(name => !restrictedServicesIndia.includes(name.toLowerCase()))
+          .map(name => ({ id: name, name }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      } else if (selectedCountry === 'Germany') {
+        const catalogRef = doc(db, 'allCatalog', 'catalog');
+        const catalogSnap = await getDoc(catalogRef);
+        const catalogData = catalogSnap.data();
+        const stnGermanyNames: string[] = catalogData?.stnGermany || [];
+
+        finalServicesList = stnGermanyNames
+          .map(name => ({ id: name, name }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      } else if (selectedCountry === 'United Kingdom') {
+        const catalogRef = doc(db, 'allCatalog', 'catalog');
+        const catalogSnap = await getDoc(catalogRef);
+        const catalogData = catalogSnap.data();
+        const stnUKNames: string[] = catalogData?.stnUK || [];
+
+        finalServicesList = stnUKNames
+          .map(name => ({ id: name, name }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      } else if (selectedCountry === 'France') {
+        const catalogRef = doc(db, 'allCatalog', 'catalog');
+        const catalogSnap = await getDoc(catalogRef);
+        const catalogData = catalogSnap.data();
+        const stnFranceNames: string[] = catalogData?.stnFrance || [];
+
+        finalServicesList = stnFranceNames
+          .map(name => ({ id: name, name }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      } else {
+        const catalogRef = doc(db, 'allCatalog', 'catalog');
+        const catalogSnap = await getDoc(catalogRef);
+        const catalogData = catalogSnap.data();
+        const stnUSANames: string[] = catalogData?.stnUSA || [];
+
+        finalServicesList = stnUSANames
+          .map(name => ({ id: name, name }))
+          .sort((a, b) => a.name.localeCompare(b.name));
       }
 
       setServices(finalServicesList);
@@ -274,14 +287,12 @@ const ShortNumbers: React.FC = () => {
   };
 
   useEffect(() => {
-    const collectionName = getCollectionNameForCountry(selectedCountry);
-    loadServices(collectionName);
+    loadServices();
   }, []);
 
   useEffect(() => {
     if (selectedCountry) {
-      const collectionName = getCollectionNameForCountry(selectedCountry);
-      loadServices(collectionName);
+      loadServices();
     }
   }, [selectedCountry]);
 
@@ -343,7 +354,7 @@ const ShortNumbers: React.FC = () => {
       if (response.ok && data.success) {
         navigate('/history');
       } else {
-        let errorMsg = 'An unknown error occurred';
+        let errorMsg = 'We ran out of SIM cards, try again later';
 
         if (data.message === 'Unauthorized') {
           errorMsg = 'You are not authenticated or your token is invalid';
@@ -399,7 +410,7 @@ const ShortNumbers: React.FC = () => {
       if (response.ok && data.success) {
         navigate('/history');
       } else {
-        let errorMsg = 'An unknown error occurred';
+        let errorMsg = 'We ran out of SIM cards, try again later';
 
         if (data.message === 'Unauthorized') {
           errorMsg = 'You are not authenticated or your token is invalid';
@@ -455,7 +466,7 @@ const ShortNumbers: React.FC = () => {
       if (response.ok && data.success) {
         navigate('/history');
       } else {
-        let errorMsg = 'An unknown error occurred';
+        let errorMsg = 'We ran out of SIM cards, try again later';
 
         if (data.message === 'Unauthorized') {
           errorMsg = 'You are not authenticated or your token is invalid';
@@ -511,7 +522,7 @@ const ShortNumbers: React.FC = () => {
       if (response.ok && data.success) {
         navigate('/history');
       } else {
-        let errorMsg = 'An unknown error occurred';
+        let errorMsg = 'We ran out of SIM cards, try again later';
 
         if (data.message === 'Unauthorized') {
           errorMsg = 'You are not authenticated or your token is invalid';
@@ -567,7 +578,7 @@ const ShortNumbers: React.FC = () => {
       if (response.ok && data.success) {
         navigate('/history');
       } else {
-        let errorMsg = 'An unknown error occurred';
+        let errorMsg = 'We ran out of SIM cards, try again later';
 
         if (data.message === 'Unauthorized') {
           errorMsg = 'You are not authenticated or your token is invalid';
@@ -692,7 +703,7 @@ const ShortNumbers: React.FC = () => {
       if (response.ok && data.success) {
         navigate('/history');
       } else {
-        let errorMsg = 'An unknown error occurred';
+        let errorMsg = 'We ran out of SIM cards, try again later';
 
         if (data.message === 'Unauthorized') {
           errorMsg = 'You are not authenticated or your token is invalid';
