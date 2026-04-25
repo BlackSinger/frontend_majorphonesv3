@@ -354,6 +354,7 @@ const MajorHistory: React.FC = () => {
   const [isCopied, setIsCopied] = useState(false);
   const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
   const [isVoipIdCopied, setIsVoipIdCopied] = useState(false);
+  const [copiedNumbers, setCopiedNumbers] = useState<{ [key: string]: boolean }>({});
   const [openActionMenus, setOpenActionMenus] = useState<{ [key: string]: boolean }>({});
   const serviceTypeDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
@@ -1293,6 +1294,16 @@ const MajorHistory: React.FC = () => {
     }
   };
 
+  const handleCopyNumber = async (number: string, id: string) => {
+    const numberToCopy = number.startsWith('+') ? number : '+' + number;
+    try {
+      await navigator.clipboard.writeText(numberToCopy);
+      setCopiedNumbers(prev => ({ ...prev, [id]: true }));
+      setTimeout(() => setCopiedNumbers(prev => ({ ...prev, [id]: false })), 2000);
+    } catch (err) {
+    }
+  };
+
   const handleProxyInfoClickWrapper = (record: ProxyRecord) => {
     setSelectedProxyRecord(record);
     setShowProxyInfoModal(true);
@@ -1643,7 +1654,24 @@ const MajorHistory: React.FC = () => {
                                   </div>
                                 </td>
                                 <td className="py-4 px-6">
-                                  <div className="font-mono text-white">{record.number.startsWith('+') ? record.number : '+' + record.number}</div>
+                                  <div className="font-mono text-white flex items-center whitespace-nowrap">
+                                    {record.number.startsWith('+') ? record.number : '+' + record.number}
+                                    <button
+                                      onClick={() => handleCopyNumber(record.number, record.id)}
+                                      className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded"
+                                      title="Copy number"
+                                    >
+                                      {copiedNumbers[record.id] ? (
+                                        <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                      ) : (
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                      )}
+                                    </button>
+                                  </div>
                                 </td>
                                 <td className="py-4 px-6 text-white">{getServiceTypeDisplayName(record.serviceType)}</td>
                                 <td className="py-4 px-6">

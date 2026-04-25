@@ -369,6 +369,7 @@ const History: React.FC = () => {
   const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
   const [isVoipIdCopied, setIsVoipIdCopied] = useState(false);
   const [copiedCardNumbers, setCopiedCardNumbers] = useState<{ [key: string]: boolean }>({});
+  const [copiedNumbers, setCopiedNumbers] = useState<{ [key: string]: boolean }>({});
 
   const [cardNumberSearch, setCardNumberSearch] = useState<string>('');
   const [fundsFilter, setFundsFilter] = useState<string>('');
@@ -1220,6 +1221,16 @@ const History: React.FC = () => {
     }
   };
 
+  const handleCopyNumber = async (number: string, recordId: string) => {
+    const numberWithPlus = number.startsWith('+') ? number : '+' + number;
+    try {
+      await navigator.clipboard.writeText(numberWithPlus);
+      setCopiedNumbers(prev => ({ ...prev, [recordId]: true }));
+      setTimeout(() => setCopiedNumbers(prev => ({ ...prev, [recordId]: false })), 2000);
+    } catch (err) {
+    }
+  };
+
   const handleCopyVoipId = async () => {
     if (selectedVoipRecord) {
       try {
@@ -1579,7 +1590,24 @@ const History: React.FC = () => {
                                   </div>
                                 </td>
                                 <td className="py-4 px-6">
-                                  <div className="font-mono text-white">{record.number.startsWith('+') ? record.number : '+' + record.number}</div>
+                                  <div className="font-mono text-white flex items-center whitespace-nowrap">
+                                    {record.number.startsWith('+') ? record.number : '+' + record.number}
+                                    <button
+                                      onClick={() => handleCopyNumber(record.number, record.id)}
+                                      className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
+                                      title={copiedNumbers[record.id] ? "Copied!" : "Copy Number"}
+                                    >
+                                      {copiedNumbers[record.id] ? (
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                      ) : (
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                      )}
+                                    </button>
+                                  </div>
                                 </td>
                                 <td className="py-4 px-6 text-white">{getServiceTypeDisplayName(record.serviceType)}</td>
                                 <td className="py-4 px-6">
