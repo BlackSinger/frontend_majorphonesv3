@@ -109,7 +109,7 @@ const Sidebar: React.FC = () => {
         </svg>
       ),
       path: '/send-sms'
-    },
+    },/*
     {
       name: 'Virtual Debit Cards',
       icon: (
@@ -118,7 +118,7 @@ const Sidebar: React.FC = () => {
         </svg>
       ),
       path: '/virtualcard'
-    },
+    },*/
     /*{
       name: 'Proxies',
       icon: (

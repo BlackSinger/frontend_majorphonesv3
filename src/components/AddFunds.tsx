@@ -8,6 +8,7 @@ import { getAuth } from 'firebase/auth';
 import AfricaLogo from '../AfricaLogo.svg';
 import KoreaLogo from '../KoreaLogo.svg';
 import AlipayLogo from '../AlipayLogoBlack.svg';
+import AfterpayLogo from '../AfterpayLogo.png';
 import CreditCardsKoreaLogo from '../CreditCardsLogo.svg';
 import PaycoLogo from '../PAYCOLogo.svg';
 import SamsungPayKoreaLogo from '../SamsungPayKoreaLogo.svg';
@@ -37,7 +38,7 @@ import BtcLogo from '../BtcLogo.svg';
 
 interface PaymentMethod {
   id: string;
-  name: 'Alipay' | 'PayNow' | 'VietQR' | 'Africa Payment Methods' | 'South Korea Payment Methods' | 'Cryptomus' | 'Amazon Pay' | 'Binance Pay' | 'Static Wallets';
+  name: 'Afterpay' | 'Alipay' | 'PayNow' | 'VietQR' | 'Africa Payment Methods' | 'South Korea Payment Methods' | 'Cryptomus' | 'Amazon Pay' | 'Binance Pay' | 'Static Wallets';
   icon: React.ReactNode;
   description: string;
   minAmount: number;
@@ -68,10 +69,12 @@ const AddFunds: React.FC = () => {
   const [showCryptomusErrorModal, setShowCryptomusErrorModal] = useState(false);
   const [cryptomusErrorMessage, setCryptomusErrorMessage] = useState('');
   const [isCryptomusProcessing, setIsCryptomusProcessing] = useState(false);
-
   const [isAlipayProcessing, setIsAlipayProcessing] = useState(false);
   const [showAlipayErrorModal, setShowAlipayErrorModal] = useState(false);
   const [alipayErrorMessage, setAlipayErrorMessage] = useState('');
+  const [isAfterpayProcessing, setIsAfterpayProcessing] = useState(false);
+  const [showAfterpayErrorModal, setShowAfterpayErrorModal] = useState(false);
+  const [afterpayErrorMessage, setAfterpayErrorMessage] = useState('');
   const [isPaynowProcessing, setIsPaynowProcessing] = useState(false);
   const [showPaynowErrorModal, setShowPaynowErrorModal] = useState(false);
   const [paynowErrorMessage, setPaynowErrorMessage] = useState('');
@@ -126,6 +129,15 @@ const AddFunds: React.FC = () => {
   const koreaPaymentsMethodsSectionRef = useRef<HTMLDivElement>(null);
 
   const paymentMethods: PaymentMethod[] = [
+    {
+      id: 'afterpay_us',
+      name: 'Afterpay',
+      icon: (
+        <img src={AfterpayLogo} alt="Afterpay" className="w-9 h-9" />
+      ),
+      description: 'Australian buy now, pay later payment method',
+      minAmount: 2
+    },
     {
       id: 'alipay_cn',
       name: 'Alipay',
@@ -487,6 +499,11 @@ const AddFunds: React.FC = () => {
   const handleKoreaPaymentsErrorModalClose = () => {
     setShowKoreaPaymentsErrorModal(false);
     setKoreaPaymentsErrorMessage('');
+  };
+
+  const handleAfterpayErrorModalClose = () => {
+    setShowAfterpayErrorModal(false);
+    setAfterpayErrorMessage('');
   };
 
   const handleAlipayErrorModalClose = () => {
@@ -1051,6 +1068,15 @@ const AddFunds: React.FC = () => {
           window.location.href = orderData.url;
           return;
         }
+      } else if (selectedMethod === 'afterpay_us') {
+        setIsAfterpayProcessing(true);
+        setIsUnauthorized(false);
+        const numAmount = parseFloat(amount);
+        const orderData = await createOrderPayssion(numAmount, 'afterpay_us');
+        if (orderData.success && orderData.url) {
+          window.location.href = orderData.url;
+          return;
+        }
       } else if (selectedMethod === 'alipay_cn') {
         setIsAlipayProcessing(true);
         setIsUnauthorized(false);
@@ -1113,6 +1139,14 @@ const AddFunds: React.FC = () => {
         }
         setCryptomusErrorMessage(error.message);
         setShowCryptomusErrorModal(true);
+      } else if (selectedMethod === 'afterpay_us' && error instanceof Error) {
+        setIsAfterpayProcessing(false);
+        const isAuthError = (error as any).isAuthError;
+        if (isAuthError) {
+          setIsUnauthorized(true);
+        }
+        setAfterpayErrorMessage(error.message);
+        setShowAfterpayErrorModal(true);
       } else if (selectedMethod === 'alipay_cn' && error instanceof Error) {
         setIsAlipayProcessing(false);
         const isAuthError = (error as any).isAuthError;
@@ -1169,6 +1203,9 @@ const AddFunds: React.FC = () => {
       setIsCryptomusProcessing(false);
     }
 
+    if (selectedMethod === 'afterpay_us') {
+      setIsAfterpayProcessing(false);
+    }
     if (selectedMethod === 'alipay_cn') {
       setIsAlipayProcessing(false);
     }
@@ -1302,7 +1339,7 @@ const AddFunds: React.FC = () => {
                             ) : (
                               <button
                                 type="button"
-                                disabled={isCryptomusProcessing || isAlipayProcessing || isPaynowProcessing || isVietqrProcessing || isAfricaPaymentsProcessing || isKoreaPaymentsProcessing || isUnauthorized || isAnyWalletLoading}
+                                disabled={isCryptomusProcessing || isAfterpayProcessing || isAlipayProcessing || isPaynowProcessing || isVietqrProcessing || isAfricaPaymentsProcessing || isKoreaPaymentsProcessing || isUnauthorized || isAnyWalletLoading}
                                 onClick={() => {
                                   if (selectedMethod === method.id) {
                                     setSelectedMethod('');
@@ -1322,7 +1359,7 @@ const AddFunds: React.FC = () => {
                                     }
                                   }
                                 }}
-                                className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 w-20 sm:w-20 w-full ${isCryptomusProcessing || isAlipayProcessing || isPaynowProcessing || isVietqrProcessing || isAfricaPaymentsProcessing || isKoreaPaymentsProcessing || isUnauthorized || isAnyWalletLoading
+                                className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-300 flex-shrink-0 w-20 sm:w-20 w-full ${isCryptomusProcessing || isAfterpayProcessing || isAlipayProcessing || isPaynowProcessing || isVietqrProcessing || isAfricaPaymentsProcessing || isKoreaPaymentsProcessing || isUnauthorized || isAnyWalletLoading
                                   ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed border border-slate-700/30'
                                   : selectedMethod === method.id
                                     ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
@@ -1356,7 +1393,7 @@ const AddFunds: React.FC = () => {
                             {selectedMethod === 'amazon' && (
                               <span className="ml-4">(Fees may be applied)</span>
                             )}
-                            {(selectedMethod === 'alipay_cn' || selectedMethod === 'paynow_sg' || selectedMethod === 'vietqr_vn' || selectedMethod === 'africaPayments' || selectedMethod === 'koreaPayments') && (
+                            {(selectedMethod === 'afterpay_us' || selectedMethod === 'alipay_cn' || selectedMethod === 'paynow_sg' || selectedMethod === 'vietqr_vn' || selectedMethod === 'africaPayments' || selectedMethod === 'koreaPayments') && (
                               <span className="ml-4">(Fees may be applied)</span>
                             )}
                           </div>
@@ -1734,6 +1771,31 @@ const AddFunds: React.FC = () => {
                   </div>
                 )}
 
+                {/* Afterpay Error Modal */}
+                {showAfterpayErrorModal && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+                    <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+                      <div className="text-center">
+                        <div className="mb-4">
+                          <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-medium text-white mb-2">Payment Error</h3>
+                        <p className="text-blue-200 mb-4">{afterpayErrorMessage}</p>
+                        <button
+                          onClick={handleAfterpayErrorModalClose}
+                          className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+                        >
+                          OK
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* PayNow Error Modal */}
                 {showPaynowErrorModal && (
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
@@ -1983,8 +2045,8 @@ const AddFunds: React.FC = () => {
                   <div ref={submitButtonRef} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 group/section">
                     <button
                       type="submit"
-                      disabled={isProcessing || (selectedMethod === 'cryptomus' && isUnauthorized) || (selectedMethod === 'africaPayments' && isUnauthorized) || (selectedMethod === 'koreaPayments' && isUnauthorized) || (selectedMethod === 'alipay_cn' && isUnauthorized) || (selectedMethod === 'paynow_sg' && isUnauthorized) || (selectedMethod === 'vietqr_vn' && isUnauthorized)}
-                      className={`w-full font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform shadow-xl ${isProcessing || (selectedMethod === 'cryptomus' && isUnauthorized) || (selectedMethod === 'africaPayments' && isUnauthorized) || (selectedMethod === 'koreaPayments' && isUnauthorized) || (selectedMethod === 'alipay_cn' && isUnauthorized) || (selectedMethod === 'paynow_sg' && isUnauthorized) || (selectedMethod === 'vietqr_vn' && isUnauthorized)
+                      disabled={isProcessing || (selectedMethod === 'cryptomus' && isUnauthorized) || (selectedMethod === 'africaPayments' && isUnauthorized) || (selectedMethod === 'koreaPayments' && isUnauthorized) || (selectedMethod === 'afterpay_us' && isUnauthorized) || (selectedMethod === 'alipay_cn' && isUnauthorized) || (selectedMethod === 'paynow_sg' && isUnauthorized) || (selectedMethod === 'vietqr_vn' && isUnauthorized)}
+                      className={`w-full font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform shadow-xl ${isProcessing || (selectedMethod === 'cryptomus' && isUnauthorized) || (selectedMethod === 'africaPayments' && isUnauthorized) || (selectedMethod === 'koreaPayments' && isUnauthorized) || (selectedMethod === 'afterpay_us' && isUnauthorized) || (selectedMethod === 'alipay_cn' && isUnauthorized) || (selectedMethod === 'paynow_sg' && isUnauthorized) || (selectedMethod === 'vietqr_vn' && isUnauthorized)
                         ? 'bg-slate-700/50 text-slate-400 cursor-not-allowed'
                         : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white hover:scale-[1.02]'
                         }`}

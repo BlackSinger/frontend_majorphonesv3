@@ -714,20 +714,28 @@ const Dashboard: React.FC = () => {
   const newsItems = [
     {
       id: 1,
+      title: "New payment method added!",
+      description: "Try our new payment method, Afterpay",
+      time: "05/03/26",
+      type: "products",
+      urgent: true
+    },
+    {
+      id: 2,
       title: "Choose Area Code/Carrier",
       description: "Custom short numbers with area code and/or carrier",
       time: "04/03/26",
       type: "products",
       urgent: true
     },
-    {
+    /*{
       id: 2,
       title: "Get Virtual Debit Cards",
       description: "Add funds to it, freeze/unfreeze it, check transactions",
       time: "03/03/26",
       type: "products",
       urgent: true
-    },
+    },*/
     {
       id: 3,
       title: "Reuse feature",
