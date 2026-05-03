@@ -110,7 +110,7 @@ const VirtualCard: React.FC = () => {
     return fee;
   };
 
-  const finalPrice = amount + calculateFee(amount);
+  const finalPrice = amount + calculateFee(amount) + 5;
 
   return (
     <>
@@ -135,6 +135,7 @@ const VirtualCard: React.FC = () => {
             <div className="text-center">
               <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these cards:</p>
               <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
+                <li>• They have a creation one-time fee of $5</li>
                 <li>• They are randomly assigned as VISA or MasterCard, you can't choose the type of card</li>
                 <li>• They can be chosen with pre-loaded funds, starting from $0.5 up to $20</li>
                 <li>• You need to add a cardholder name</li>
@@ -212,6 +213,9 @@ const VirtualCard: React.FC = () => {
                       />
                       <p className="text-xs text-slate-500 text-center mt-1">
                         {cardName.length}/30 characters — Letters only
+                      </p>
+                      <p className="text-md font-semibold text-slate-400 tracking-wider text-center mt-2">
+                        Card creation <span className="font-bold text-green-400">one-time</span> fee: <span className="text-green-400 font-bold">$5</span>
                       </p>
                     </div>
 
