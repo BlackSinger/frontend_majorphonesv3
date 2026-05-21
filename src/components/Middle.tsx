@@ -653,7 +653,7 @@ const Middle: React.FC = () => {
         <p className="text-center text-sm">
           <span className="text-emerald-300 font-bold">NEW</span>
           <span className="text-slate-300 mx-2">—</span>
-          <span className="text-slate-200">Now you can configure <span className="text-emerald-400 font-semibold">Middle Numbers</span> by choosing <span className="text-emerald-400 font-semibold">Area Code</span></span>
+          <span className="text-slate-200">Now you can configure <span className="text-emerald-400 font-semibold">Middle Numbers</span> by choosing <span className="text-emerald-400 font-semibold">Area Code</span> and <Link to="/emptysimcard" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">UK Empty SIM Cards</Link>!</span>
         </p>
       </div>
 

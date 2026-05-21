@@ -810,12 +810,12 @@ const SendSMS: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Middle Numbers, Area Code Configuration Announcement */}
+                {/* Middle Numbers, Area Code Configuration and UK Empty SIM Cards Announcement */}
                 <div className="bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 mb-6">
                     <p className="text-center text-sm">
                         <span className="text-emerald-300 font-bold">NEW</span>
                         <span className="text-slate-300 mx-2">—</span>
-                        <span className="text-slate-200">Now you can configure <span className="text-emerald-400 font-semibold">Middle Numbers</span> by choosing <span className="text-emerald-400 font-semibold">Area Code</span>, go to <Link to="/middle" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Middle Numbers</Link>!</span>
+                        <span className="text-slate-200">Now you can purchase <Link to="/middle" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Middle Numbers</Link> by <span className="text-emerald-400 font-semibold">area code</span> and <Link to="/emptysimcard" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">UK Empty SIM Cards</Link>!</span>
                     </p>
                 </div>
 
