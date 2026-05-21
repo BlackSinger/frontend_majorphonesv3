@@ -398,12 +398,12 @@ const LongTerm: React.FC = () => {
             </div>
           </div>
 
-          {/* Reuse Announcement */}
+          {/* Middle Numbers, Area Code Configuration Announcement */}
           <div className="bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 mb-6">
             <p className="text-center text-sm">
               <span className="text-emerald-300 font-bold">NEW</span>
               <span className="text-slate-300 mx-2">—</span>
-              <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes</span> and choose <span className="text-emerald-400 font-semibold">Area Code/Carrier</span>, go to <Link to="/short" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Short Numbers</Link>!</span>
+              <span className="text-slate-200">Now you can configure <span className="text-emerald-400 font-semibold">Middle Numbers</span> by choosing <span className="text-emerald-400 font-semibold">Area Code</span>, go to <Link to="/middle" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Middle Numbers</Link>!</span>
             </p>
           </div>
 
@@ -566,12 +566,12 @@ const LongTerm: React.FC = () => {
             </div>
           </div>
 
-          {/* Reuse Announcement */}
+          {/* Middle Numbers, Area Code Configuration Announcement */}
           <div className="bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 mb-6">
             <p className="text-center text-sm">
               <span className="text-emerald-300 font-bold">NEW</span>
               <span className="text-slate-300 mx-2">—</span>
-              <span className="text-slate-200">Now you can reuse a USA short number within <span className="text-emerald-400 font-semibold">10 minutes</span>, go to <Link to="/short" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Short Numbers</Link>!</span>
+              <span className="text-slate-200">Now you can configure <span className="text-emerald-400 font-semibold">Middle Numbers</span> by choosing <span className="text-emerald-400 font-semibold">Area Code</span>, go to <Link to="/middle" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Middle Numbers</Link>!</span>
             </p>
           </div>
 
