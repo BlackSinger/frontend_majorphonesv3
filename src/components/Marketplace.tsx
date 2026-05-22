@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase/config';
 
 const globalSearchData = {
-  serviceName: ''
+  serviceName: '',
+  variantId: ''
 };
 
 interface AccountVariant {
+  id?: string | null;
   country?: string | null;
   creation_year?: number | string | null;
   email_included?: boolean | null;
@@ -23,6 +26,7 @@ interface ServiceOption {
 
 const Marketplace: React.FC = () => {
   const [user] = useAuthState(auth);
+  const navigate = useNavigate();
 
   const formatPrice = (price: any): string => {
     const numPrice = parseFloat(Number(price).toFixed(2));
@@ -42,6 +46,8 @@ const Marketplace: React.FC = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [hasError, setHasError] = useState(false);
+
+  const [purchasingVariantId, setPurchasingVariantId] = useState<string | null>(null);
 
   const serviceDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -129,12 +135,12 @@ const Marketplace: React.FC = () => {
     );
 
     if (filtered.length === 0) {
-      setFilteredServices([{ id: 'not-listed', name: 'Service not listed' }]);
+      setFilteredServices([]);
+      setIsServiceDropdownOpen(false);
     } else {
       setFilteredServices(filtered);
+      setIsServiceDropdownOpen(true);
     }
-
-    setIsServiceDropdownOpen(true);
   };
 
   const handleServiceSelect = (service: ServiceOption) => {
@@ -150,8 +156,61 @@ const Marketplace: React.FC = () => {
     }
   };
 
-  const handlePurchaseClick = (_variant: AccountVariant) => {
-    // Purchase logic to be implemented
+  const handlePurchaseClick = async (variant: AccountVariant) => {
+    if (!user || !variant.id || purchasingVariantId) return;
+
+    globalSearchData.variantId = variant.id;
+    setPurchasingVariantId(variant.id);
+
+    try {
+      const idToken = await user.getIdToken();
+
+      const response = await fetch('https://us-central1-majorphonesv3.cloudfunctions.net/buyMarketplaceAccount', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          serviceName: globalSearchData.serviceName,
+          variantId: globalSearchData.variantId
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok && data?.success !== false) {
+        console.log('buyMarketplaceAccount response:', data);
+        navigate('/history');
+        return;
+      }
+
+      console.log('buyMarketplaceAccount error:', data);
+
+      const serverError = data?.message || data?.error || '';
+      let userErrorMessage = 'An error occurred while processing your purchase, please try again';
+
+      if (['Missing parameters in request body', 'Invalid variant price', 'Service not found', 'Invalid variant id'].includes(serverError)) {
+        userErrorMessage = 'Please refresh the page and try again';
+      } else if (serverError === 'Insufficient balance') {
+        userErrorMessage = 'You do not have enough balance to make the purchase';
+      } else if (serverError === 'Service unavailable') {
+        userErrorMessage = 'We ran out of accounts for this option, try another one';
+      } else if (serverError === 'Unauthorized') {
+        userErrorMessage = 'You are not authenticated or your token is invalid';
+      } else if (serverError === 'Internal Server Error') {
+        userErrorMessage = 'Please contact our customer support';
+      }
+
+      setErrorMessage(userErrorMessage);
+      setShowErrorModal(true);
+    } catch (error) {
+      console.log('buyMarketplaceAccount network error:', error);
+      setErrorMessage('Network connection error, please check your internet connection');
+      setShowErrorModal(true);
+    } finally {
+      setPurchasingVariantId(null);
+    }
   };
 
   const handleSearch = async () => {
@@ -237,6 +296,15 @@ const Marketplace: React.FC = () => {
             </ul>
           </div>
         </div>
+      </div>
+
+      {/* 2FA Announcement */}
+      <div className="bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 mb-6">
+        <p className="text-center text-sm">
+          <span className="text-emerald-300 font-bold">READ CAREFULLY</span>
+          <span className="text-slate-300 mx-2">—</span>
+          <span className="text-slate-200">If your account needs <span className="text-emerald-400 font-semibold">2FA codes</span>, go to <a href="https://2fa.live" target="_blank" rel="noopener noreferrer" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">2fa.live</a>, copy your 2FA secret key and generate your <span className="text-emerald-400 font-semibold">2FA code</span>!</span>
+        </p>
       </div>
 
       {/* Main Content Section */}
@@ -406,9 +474,16 @@ const Marketplace: React.FC = () => {
                       {/* Purchase Button */}
                       <button
                         onClick={() => handlePurchaseClick(variant)}
-                        className="w-full px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-emerald-500/30 hover:scale-[1.02] text-sm"
+                        disabled={purchasingVariantId !== null || !variant.id}
+                        className="w-full px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-emerald-500/30 hover:scale-[1.02] text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center"
                       >
-                        Purchase
+                        {purchasingVariantId === variant.id ? (
+                          <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        ) : (
+                          'Purchase'
+                        )}
                       </button>
                     </div>
                   ))}
