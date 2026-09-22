@@ -123,12 +123,12 @@ const Tickets: React.FC = () => {
     switch (typeValue) {
       case 'non-voip':
         return 'Non VoIP Number';
-      case 'voip':
-        return 'VoIP Number';
+      //case 'voip':
+      //return 'VoIP Number';
       case 'payment':
         return 'Payment';
-      case 'vcc':
-        return 'Virtual Debit Card';
+      //case 'vcc':
+      //return 'Virtual Debit Card';
       //case 'proxy':
       //return 'Proxy';
       case 'general':
@@ -220,8 +220,8 @@ const Tickets: React.FC = () => {
     'All Issues',
     'Payment',
     'Non VoIP Number',
-    'VoIP Number',
-    'Virtual Debit Card',
+    //'VoIP Number',
+    //'Virtual Debit Card',
     //'Proxy',
     'Other'
   ];
@@ -229,8 +229,8 @@ const Tickets: React.FC = () => {
   const issueTypeOptions = [
     'Payment',
     'Non VoIP Number',
-    'VoIP Number',
-    'Virtual Debit Card',
+    //'VoIP Number',
+    //'Virtual Debit Card',
     //'Proxy',
     'Other'
   ];
@@ -470,10 +470,10 @@ const Tickets: React.FC = () => {
         return 'ID';
       case 'Non VoIP Number':
         return 'ID';
-      case 'VoIP Number':
-        return 'ID';
-      case 'Virtual Debit Card':
-        return 'ID';
+      //case 'VoIP Number':
+      //return 'ID';
+      //case 'Virtual Debit Card':
+      //return 'ID';
       //case 'Proxy':
       //return 'ID';
       default:
@@ -731,10 +731,10 @@ const Tickets: React.FC = () => {
         return 'payment';
       case 'Non VoIP Number':
         return 'non-voip';
-      case 'VoIP Number':
-        return 'voip';
-      case 'Virtual Debit Card':
-        return 'vcc';
+      //case 'VoIP Number':
+      //return 'voip';
+      //case 'Virtual Debit Card':
+      //return 'vcc';
       //case 'Proxy':
       //return 'proxy';
       case 'Other':
@@ -1226,8 +1226,8 @@ const Tickets: React.FC = () => {
                       <div className="flex-1">
                         <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
                           {selectedIssueType === 'Non VoIP Number' && 'Enter Order ID'}
-                          {selectedIssueType === 'VoIP Number' && 'Enter Order ID'}
-                          {selectedIssueType === 'Virtual Debit Card' && 'Enter Order ID'}
+                          {/*{selectedIssueType === 'VoIP Number' && 'Enter Order ID'}*/}
+                          {/*{selectedIssueType === 'Virtual Debit Card' && 'Enter Order ID'}*/}
                           {/*{selectedIssueType === 'Proxy' && 'Enter Order ID'}*/}
                           {selectedIssueType === 'Payment' && 'Enter Payment ID'}
                           {selectedIssueType === 'Other' && 'Enter ID'}

@@ -169,31 +169,31 @@ const ShortNumbers: React.FC = () => {
         </svg>
       )
     },
-    {
-      code: 'FR',
-      name: 'France',
-      prefix: '+33',
-      flag: (
-        <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
-          <rect width="20" height="40" fill="#002395" />
-          <rect width="20" height="40" x="20" fill="white" />
-          <rect width="20" height="40" x="40" fill="#ED2939" />
-        </svg>
-      )
-    },
-    {
-      code: 'IN',
-      name: 'India',
-      prefix: '+91',
-      flag: (
-        <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
-          <rect width="60" height="13" fill="#FF9933" />
-          <rect width="60" height="14" y="13" fill="white" />
-          <rect width="60" height="13" y="27" fill="#138808" />
-          <circle cx="30" cy="20" r="6" fill="none" stroke="#000080" strokeWidth="1" />
-        </svg>
-      )
-    }
+    // {
+    //   code: 'FR',
+    //   name: 'France',
+    //   prefix: '+33',
+    //   flag: (
+    //     <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
+    //       <rect width="20" height="40" fill="#002395" />
+    //       <rect width="20" height="40" x="20" fill="white" />
+    //       <rect width="20" height="40" x="40" fill="#ED2939" />
+    //     </svg>
+    //   )
+    // },
+    // {
+    //   code: 'IN',
+    //   name: 'India',
+    //   prefix: '+91',
+    //   flag: (
+    //     <svg className="w-5 h-4 inline-block mr-2" viewBox="0 0 60 40">
+    //       <rect width="60" height="13" fill="#FF9933" />
+    //       <rect width="60" height="14" y="13" fill="white" />
+    //       <rect width="60" height="13" y="27" fill="#138808" />
+    //       <circle cx="30" cy="20" r="6" fill="none" stroke="#000080" strokeWidth="1" />
+    //     </svg>
+    //   )
+    // }
   ];
 
   const loadServices = async () => {
@@ -208,18 +208,19 @@ const ShortNumbers: React.FC = () => {
 
       let finalServicesList: ServiceOption[] = [];
 
-      if (selectedCountry === 'India') {
-        const catalogRef = doc(db, 'allCatalog', 'catalog');
-        const catalogSnap = await getDoc(catalogRef);
-        const catalogData = catalogSnap.data();
-        const stnIndiaNames: string[] = catalogData?.stnIndia || [];
+      // if (selectedCountry === 'India') {
+      //   const catalogRef = doc(db, 'allCatalog', 'catalog');
+      //   const catalogSnap = await getDoc(catalogRef);
+      //   const catalogData = catalogSnap.data();
+      //   const stnIndiaNames: string[] = catalogData?.stnIndia || [];
 
-        const restrictedServicesIndia = ['whatsapp'];
-        finalServicesList = stnIndiaNames
-          .filter(name => !restrictedServicesIndia.includes(name.toLowerCase()))
-          .map(name => ({ id: name, name }))
-          .sort((a, b) => a.name.localeCompare(b.name));
-      } else if (selectedCountry === 'Germany') {
+      //   const restrictedServicesIndia = ['whatsapp'];
+      //   finalServicesList = stnIndiaNames
+      //     .filter(name => !restrictedServicesIndia.includes(name.toLowerCase()))
+      //     .map(name => ({ id: name, name }))
+      //     .sort((a, b) => a.name.localeCompare(b.name));
+      // } else if (selectedCountry === 'Germany') {
+      if (selectedCountry === 'Germany') {
         const catalogRef = doc(db, 'allCatalog', 'catalog');
         const catalogSnap = await getDoc(catalogRef);
         const catalogData = catalogSnap.data();
@@ -237,15 +238,15 @@ const ShortNumbers: React.FC = () => {
         finalServicesList = stnUKNames
           .map(name => ({ id: name, name }))
           .sort((a, b) => a.name.localeCompare(b.name));
-      } else if (selectedCountry === 'France') {
-        const catalogRef = doc(db, 'allCatalog', 'catalog');
-        const catalogSnap = await getDoc(catalogRef);
-        const catalogData = catalogSnap.data();
-        const stnFranceNames: string[] = catalogData?.stnFrance || [];
+      // } else if (selectedCountry === 'France') {
+      //   const catalogRef = doc(db, 'allCatalog', 'catalog');
+      //   const catalogSnap = await getDoc(catalogRef);
+      //   const catalogData = catalogSnap.data();
+      //   const stnFranceNames: string[] = catalogData?.stnFrance || [];
 
-        finalServicesList = stnFranceNames
-          .map(name => ({ id: name, name }))
-          .sort((a, b) => a.name.localeCompare(b.name));
+      //   finalServicesList = stnFranceNames
+      //     .map(name => ({ id: name, name }))
+      //     .sort((a, b) => a.name.localeCompare(b.name));
       } else {
         const catalogRef = doc(db, 'allCatalog', 'catalog');
         const catalogSnap = await getDoc(catalogRef);
@@ -435,61 +436,61 @@ const ShortNumbers: React.FC = () => {
     }
   };
 
-  const handleBuyShortIndiaPurchase = async (uniqueOptionId: string) => {
-    const currentUser = getAuth().currentUser;
+  // const handleBuyShortIndiaPurchase = async (uniqueOptionId: string) => {
+  //   const currentUser = getAuth().currentUser;
 
-    if (!currentUser) {
-      setErrorMessage('You are not authenticated or your token is invalid');
-      setShowErrorModal(true);
-      return;
-    }
+  //   if (!currentUser) {
+  //     setErrorMessage('You are not authenticated or your token is invalid');
+  //     setShowErrorModal(true);
+  //     return;
+  //   }
 
-    setPurchasingOptionId(uniqueOptionId);
+  //   setPurchasingOptionId(uniqueOptionId);
 
-    try {
-      const idToken = await currentUser.getIdToken();
+  //   try {
+  //     const idToken = await currentUser.getIdToken();
 
-      const response = await fetch('https://buyshortindia-ezeznlhr5a-uc.a.run.app', {
-        method: 'POST',
-        headers: {
-          'authorization': `${idToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          serviceId: globalPurchaseData.serviceId,
-          option: globalPurchaseData.option
-        })
-      });
+  //     const response = await fetch('https://buyshortindia-ezeznlhr5a-uc.a.run.app', {
+  //       method: 'POST',
+  //       headers: {
+  //         'authorization': `${idToken}`,
+  //         'Content-Type': 'application/json'
+  //       },
+  //       body: JSON.stringify({
+  //         serviceId: globalPurchaseData.serviceId,
+  //         option: globalPurchaseData.option
+  //       })
+  //     });
 
-      const data = await response.json();
+  //     const data = await response.json();
 
-      if (response.ok && data.success) {
-        navigate('/history');
-      } else {
-        let errorMsg = 'We ran out of SIM cards, try again later';
+  //     if (response.ok && data.success) {
+  //       navigate('/history');
+  //     } else {
+  //       let errorMsg = 'We ran out of SIM cards, try again later';
 
-        if (data.message === 'Unauthorized') {
-          errorMsg = 'You are not authenticated or your token is invalid';
-        } else if (data.message === 'Missing parameters in request body') {
-          errorMsg = 'Please refresh the page and try again';
-        } else if (data.message === 'Service unavailable') {
-          errorMsg = 'We ran out of SIM cards, try again later';
-        } else if (data.message === 'Insufficient balance') {
-          errorMsg = 'You do not have enough balance to make the purchase';
-        } else if (data.message === 'Internal Server Error') {
-          errorMsg = 'Please contact our customer support';
-        }
+  //       if (data.message === 'Unauthorized') {
+  //         errorMsg = 'You are not authenticated or your token is invalid';
+  //       } else if (data.message === 'Missing parameters in request body') {
+  //         errorMsg = 'Please refresh the page and try again';
+  //       } else if (data.message === 'Service unavailable') {
+  //         errorMsg = 'We ran out of SIM cards, try again later';
+  //       } else if (data.message === 'Insufficient balance') {
+  //         errorMsg = 'You do not have enough balance to make the purchase';
+  //       } else if (data.message === 'Internal Server Error') {
+  //         errorMsg = 'Please contact our customer support';
+  //       }
 
-        setErrorMessage(errorMsg);
-        setShowErrorModal(true);
-      }
-    } catch (error) {
-      setErrorMessage('We ran out of SIM cards, try again later');
-      setShowErrorModal(true);
-    } finally {
-      setPurchasingOptionId(null);
-    }
-  };
+  //       setErrorMessage(errorMsg);
+  //       setShowErrorModal(true);
+  //     }
+  //   } catch (error) {
+  //     setErrorMessage('We ran out of SIM cards, try again later');
+  //     setShowErrorModal(true);
+  //   } finally {
+  //     setPurchasingOptionId(null);
+  //   }
+  // };
 
   const handleBuyShortGermanyPurchase = async (uniqueOptionId: string) => {
     const currentUser = getAuth().currentUser;
@@ -547,61 +548,61 @@ const ShortNumbers: React.FC = () => {
     }
   };
 
-  const handleBuyShortFrancePurchase = async (uniqueOptionId: string) => {
-    const currentUser = getAuth().currentUser;
+  // const handleBuyShortFrancePurchase = async (uniqueOptionId: string) => {
+  //   const currentUser = getAuth().currentUser;
 
-    if (!currentUser) {
-      setErrorMessage('You are not authenticated or your token is invalid');
-      setShowErrorModal(true);
-      return;
-    }
+  //   if (!currentUser) {
+  //     setErrorMessage('You are not authenticated or your token is invalid');
+  //     setShowErrorModal(true);
+  //     return;
+  //   }
 
-    setPurchasingOptionId(uniqueOptionId);
+  //   setPurchasingOptionId(uniqueOptionId);
 
-    try {
-      const idToken = await currentUser.getIdToken();
+  //   try {
+  //     const idToken = await currentUser.getIdToken();
 
-      const response = await fetch('https://buyshortfrance-ezeznlhr5a-uc.a.run.app', {
-        method: 'POST',
-        headers: {
-          'authorization': `${idToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          serviceId: globalPurchaseData.serviceId,
-          option: globalPurchaseData.option
-        })
-      });
+  //     const response = await fetch('https://buyshortfrance-ezeznlhr5a-uc.a.run.app', {
+  //       method: 'POST',
+  //       headers: {
+  //         'authorization': `${idToken}`,
+  //         'Content-Type': 'application/json'
+  //       },
+  //       body: JSON.stringify({
+  //         serviceId: globalPurchaseData.serviceId,
+  //         option: globalPurchaseData.option
+  //       })
+  //     });
 
-      const data = await response.json();
+  //     const data = await response.json();
 
-      if (response.ok && data.success) {
-        navigate('/history');
-      } else {
-        let errorMsg = 'We ran out of SIM cards, try again later';
+  //     if (response.ok && data.success) {
+  //       navigate('/history');
+  //     } else {
+  //       let errorMsg = 'We ran out of SIM cards, try again later';
 
-        if (data.message === 'Unauthorized') {
-          errorMsg = 'You are not authenticated or your token is invalid';
-        } else if (data.message === 'Missing parameters in request body') {
-          errorMsg = 'Please refresh the page and try again';
-        } else if (data.message === 'Service unavailable') {
-          errorMsg = 'We ran out of SIM cards, try again later';
-        } else if (data.message === 'Insufficient balance') {
-          errorMsg = 'You do not have enough balance to make the purchase';
-        } else if (data.message === 'Internal Server Error') {
-          errorMsg = 'Please contact our customer support';
-        }
+  //       if (data.message === 'Unauthorized') {
+  //         errorMsg = 'You are not authenticated or your token is invalid';
+  //       } else if (data.message === 'Missing parameters in request body') {
+  //         errorMsg = 'Please refresh the page and try again';
+  //       } else if (data.message === 'Service unavailable') {
+  //         errorMsg = 'We ran out of SIM cards, try again later';
+  //       } else if (data.message === 'Insufficient balance') {
+  //         errorMsg = 'You do not have enough balance to make the purchase';
+  //       } else if (data.message === 'Internal Server Error') {
+  //         errorMsg = 'Please contact our customer support';
+  //       }
 
-        setErrorMessage(errorMsg);
-        setShowErrorModal(true);
-      }
-    } catch (error) {
-      setErrorMessage('We ran out of SIM cards, try again later');
-      setShowErrorModal(true);
-    } finally {
-      setPurchasingOptionId(null);
-    }
-  };
+  //       setErrorMessage(errorMsg);
+  //       setShowErrorModal(true);
+  //     }
+  //   } catch (error) {
+  //     setErrorMessage('We ran out of SIM cards, try again later');
+  //     setShowErrorModal(true);
+  //   } finally {
+  //     setPurchasingOptionId(null);
+  //   }
+  // };
 
   const handleServiceSearch = (value: string) => {
     setSearchTerm(value);
@@ -749,9 +750,9 @@ const ShortNumbers: React.FC = () => {
         case 'opt2':
           globalPurchaseData.option = 2;
           break;
-        case 'opt5':
-          globalPurchaseData.option = 5;
-          break;
+        // case 'opt5':
+        //   globalPurchaseData.option = 5;
+        //   break;
       }
     }
 
@@ -761,12 +762,12 @@ const ShortNumbers: React.FC = () => {
       handleBuyShortUSAPurchase(uniqueOptionId);
     } else if (selectedCountry === 'United Kingdom') {
       handleBuyShortUKPurchase(uniqueOptionId);
-    } else if (selectedCountry === 'India') {
-      handleBuyShortIndiaPurchase(uniqueOptionId);
+    // } else if (selectedCountry === 'India') {
+    //   handleBuyShortIndiaPurchase(uniqueOptionId);
     } else if (selectedCountry === 'Germany') {
       handleBuyShortGermanyPurchase(uniqueOptionId);
-    } else if (selectedCountry === 'France') {
-      handleBuyShortFrancePurchase(uniqueOptionId);
+    // } else if (selectedCountry === 'France') {
+    //   handleBuyShortFrancePurchase(uniqueOptionId);
     }
   };
 
@@ -819,11 +820,12 @@ const ShortNumbers: React.FC = () => {
         allNumbers.sort((a, b) => a.price - b.price);
       } else if (selectedCountry === 'United Kingdom') {
         //const restrictedServices = ['telegram', 'paypal'];
-        const restrictedServices = ['telegram'];
+        // const restrictedServices = ['telegram'];
         //const restrictedServices: string[] = [];
-        const optionsToSearch = restrictedServices.includes(globalSearchData.serviceName.toLowerCase())
-          ? ['opt2']
-          : ['opt2', 'opt5'];
+        // const optionsToSearch = restrictedServices.includes(globalSearchData.serviceName.toLowerCase())
+        //   ? ['opt2']
+          // : ['opt2', 'opt5'];
+        const optionsToSearch = ['opt2'];
 
         const searchPromises = optionsToSearch.map(async (optDoc) => {
           const servicesRef = collection(db, 'stnUK', optDoc, 'services');
@@ -859,47 +861,48 @@ const ShortNumbers: React.FC = () => {
         allNumbers = searchResults.flat();
 
         allNumbers.sort((a, b) => a.price - b.price);
-      } else if (selectedCountry === 'India') {
-        const restrictedServicesIndia = ['whatsapp'];
-        const optionsToSearch = restrictedServicesIndia.includes(globalSearchData.serviceName.toLowerCase())
-          ? []
-          : ['opt2', 'opt5'];
-        const searchPromises = optionsToSearch.map(async (optDoc) => {
-          const servicesRef = collection(db, 'stnIndia', optDoc, 'services');
-          const querySnapshot = await getDocs(servicesRef);
+      // } else if (selectedCountry === 'India') {
+      //   const restrictedServicesIndia = ['whatsapp'];
+      //   const optionsToSearch = restrictedServicesIndia.includes(globalSearchData.serviceName.toLowerCase())
+      //     ? []
+      //     : ['opt2', 'opt5'];
+      //   const searchPromises = optionsToSearch.map(async (optDoc) => {
+      //     const servicesRef = collection(db, 'stnIndia', optDoc, 'services');
+      //     const querySnapshot = await getDocs(servicesRef);
 
-          const results: NumberOption[] = [];
-          querySnapshot.forEach((doc) => {
-            const data = doc.data();
+      //     const results: NumberOption[] = [];
+      //     querySnapshot.forEach((doc) => {
+      //       const data = doc.data();
 
-            if (data.serviceName && data.serviceName.toLowerCase() === globalSearchData.serviceName.toLowerCase()) {
-              const selectedCountryData = countries.find(c => c.name === selectedCountry);
-              const countryCode = selectedCountryData?.code || 'IN';
-              const countryPrefix = selectedCountryData?.prefix || '+91';
+      //       if (data.serviceName && data.serviceName.toLowerCase() === globalSearchData.serviceName.toLowerCase()) {
+      //         const selectedCountryData = countries.find(c => c.name === selectedCountry);
+      //         const countryCode = selectedCountryData?.code || 'IN';
+      //         const countryPrefix = selectedCountryData?.prefix || '+91';
 
-              results.push({
-                id: data.id,
-                number: `${countryPrefix}-XXXXXX`,
-                price: data.price,
-                country: selectedCountry,
-                countryCode: countryCode,
-                countryPrefix: countryPrefix,
-                // isReusable: false, // Both options are not reusable
-                opt: optDoc
-              });
-            }
-          });
+      //         results.push({
+      //           id: data.id,
+      //           number: `${countryPrefix}-XXXXXX`,
+      //           price: data.price,
+      //           country: selectedCountry,
+      //           countryCode: countryCode,
+      //           countryPrefix: countryPrefix,
+      //           // isReusable: false, // Both options are not reusable
+      //           opt: optDoc
+      //         });
+      //       }
+      //     });
 
-          return results;
-        });
+      //     return results;
+      //   });
 
-        const searchResults = await Promise.all(searchPromises);
+      //   const searchResults = await Promise.all(searchPromises);
 
-        allNumbers = searchResults.flat();
+      //   allNumbers = searchResults.flat();
 
-        allNumbers.sort((a, b) => a.price - b.price);
+      //   allNumbers.sort((a, b) => a.price - b.price);
       } else if (selectedCountry === 'Germany') {
-        const searchPromises = ['opt2', 'opt5'].map(async (optDoc) => {
+        // const searchPromises = ['opt2', 'opt5'].map(async (optDoc) => {
+        const searchPromises = ['opt2'].map(async (optDoc) => {
           const servicesRef = collection(db, 'stnGermany', optDoc, 'services');
           const querySnapshot = await getDocs(servicesRef);
 
@@ -933,41 +936,41 @@ const ShortNumbers: React.FC = () => {
         allNumbers = searchResults.flat();
 
         allNumbers.sort((a, b) => a.price - b.price);
-      } else if (selectedCountry === 'France') {
-        const searchPromises = ['opt2', 'opt5'].map(async (optDoc) => {
-          const servicesRef = collection(db, 'stnFrance', optDoc, 'services');
-          const querySnapshot = await getDocs(servicesRef);
+      // } else if (selectedCountry === 'France') {
+      //   const searchPromises = ['opt2', 'opt5'].map(async (optDoc) => {
+      //     const servicesRef = collection(db, 'stnFrance', optDoc, 'services');
+      //     const querySnapshot = await getDocs(servicesRef);
 
-          const results: NumberOption[] = [];
-          querySnapshot.forEach((doc) => {
-            const data = doc.data();
+      //     const results: NumberOption[] = [];
+      //     querySnapshot.forEach((doc) => {
+      //       const data = doc.data();
 
-            if (data.serviceName && data.serviceName.toLowerCase() === globalSearchData.serviceName.toLowerCase()) {
-              const selectedCountryData = countries.find(c => c.name === selectedCountry);
-              const countryCode = selectedCountryData?.code || 'FR';
-              const countryPrefix = selectedCountryData?.prefix || '+33';
+      //       if (data.serviceName && data.serviceName.toLowerCase() === globalSearchData.serviceName.toLowerCase()) {
+      //         const selectedCountryData = countries.find(c => c.name === selectedCountry);
+      //         const countryCode = selectedCountryData?.code || 'FR';
+      //         const countryPrefix = selectedCountryData?.prefix || '+33';
 
-              results.push({
-                id: data.id,
-                number: `${countryPrefix}-XXXXXX`,
-                price: data.price,
-                country: selectedCountry,
-                countryCode: countryCode,
-                countryPrefix: countryPrefix,
-                // isReusable: false, // Both options are not reusable
-                opt: optDoc
-              });
-            }
-          });
+      //         results.push({
+      //           id: data.id,
+      //           number: `${countryPrefix}-XXXXXX`,
+      //           price: data.price,
+      //           country: selectedCountry,
+      //           countryCode: countryCode,
+      //           countryPrefix: countryPrefix,
+      //           // isReusable: false, // Both options are not reusable
+      //           opt: optDoc
+      //         });
+      //       }
+      //     });
 
-          return results;
-        });
+      //     return results;
+      //   });
 
-        const searchResults = await Promise.all(searchPromises);
+      //   const searchResults = await Promise.all(searchPromises);
 
-        allNumbers = searchResults.flat();
+      //   allNumbers = searchResults.flat();
 
-        allNumbers.sort((a, b) => a.price - b.price);
+      //   allNumbers.sort((a, b) => a.price - b.price);
       } else {
         allNumbers = [];
       }

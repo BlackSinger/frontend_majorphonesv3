@@ -181,7 +181,7 @@ const Marketplace: React.FC = () => {
 
       if (response.ok && data?.success !== false) {
         console.log('buyMarketplaceAccount response:', data);
-        navigate('/history');
+        navigate('/history?tab=accounts');
         return;
       }
 

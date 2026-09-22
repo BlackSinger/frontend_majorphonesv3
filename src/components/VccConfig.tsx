@@ -164,85 +164,85 @@ const VccConfig: React.FC = () => {
         setShowErrorModal(false);
     };
 
-    const handleLoadFunds = async () => {
-        const currentUser = getAuth().currentUser;
+    // const handleLoadFunds = async () => {
+    //     const currentUser = getAuth().currentUser;
 
-        if (!currentUser) {
-            setErrorMessage('You are not authenticated or your token is invalid');
-            setShowErrorModal(true);
-            return;
-        }
+    //     if (!currentUser) {
+    //         setErrorMessage('You are not authenticated or your token is invalid');
+    //         setShowErrorModal(true);
+    //         return;
+    //     }
 
-        setIsLoadingFunds(true);
-        setIsLoadingFundsDisabled(true);
+    //     setIsLoadingFunds(true);
+    //     setIsLoadingFundsDisabled(true);
 
-        try {
-            const idToken = await currentUser.getIdToken();
+    //     try {
+    //         const idToken = await currentUser.getIdToken();
 
-            const response = await fetch('https://loadfundscard-ezeznlhr5a-uc.a.run.app', {
-                method: 'POST',
-                headers: {
-                    'authorization': `${idToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    orderId: orderIdFromUrl,
-                    amount: amount
-                })
-            });
+    //         const response = await fetch('https://loadfundscard-ezeznlhr5a-uc.a.run.app', {
+    //             method: 'POST',
+    //             headers: {
+    //                 'authorization': `${idToken}`,
+    //                 'Content-Type': 'application/json'
+    //             },
+    //             body: JSON.stringify({
+    //                 orderId: orderIdFromUrl,
+    //                 amount: amount
+    //             })
+    //         });
 
-            const data = await response.json();
+    //         const data = await response.json();
 
-            if (response.ok) {
-                setIsLoadingFunds(false);
-                setIsLoadingFundsDisabled(false);
-                setSuccessMessage('You have correctly added funds to your VCC');
-                setShowSuccessModal(true);
-            } else {
-                let errorMsg = 'An unknown error occurred';
-                let shouldKeepDisabled = false;
+    //         if (response.ok) {
+    //             setIsLoadingFunds(false);
+    //             setIsLoadingFundsDisabled(false);
+    //             setSuccessMessage('You have correctly added funds to your VCC');
+    //             setShowSuccessModal(true);
+    //         } else {
+    //             let errorMsg = 'An unknown error occurred';
+    //             let shouldKeepDisabled = false;
 
-                if (response.status === 400) {
-                    if (data.error === 'Missing parameters') {
-                        errorMsg = 'Please try again or contact customer support';
-                    } else if (data.error === 'Funds loaded but failed to get updated card details') {
-                        errorMsg = 'The payment was successful but the card details could not be updated, contact customer support';
-                    } else if (data.error === 'Insufficient balance') {
-                        errorMsg = "You don't have enough balance to make the purchase";
-                    } else if (data.error === 'Failed to load funds') {
-                        errorMsg = 'The payment could not be completed, please try again or contact our customer support';
-                    } else if (data.error === 'Invalid amount') {
-                        errorMsg = 'The amount is invalid, please try again';
-                        shouldKeepDisabled = true;
-                    }
-                } else if (response.status === 401) {
-                    errorMsg = 'You are not authenticated or your token is invalid';
-                    shouldKeepDisabled = true;
-                } else if (response.status === 404) {
-                    if (data.error === 'User not found' || data.error === 'Order not found') {
-                        errorMsg = 'You cannot add funds to this VCC';
-                        shouldKeepDisabled = true;
-                    }
-                } else if (response.status === 500) {
-                    errorMsg = 'Please contact our customer support';
-                }
+    //             if (response.status === 400) {
+    //                 if (data.error === 'Missing parameters') {
+    //                     errorMsg = 'Please try again or contact customer support';
+    //                 } else if (data.error === 'Funds loaded but failed to get updated card details') {
+    //                     errorMsg = 'The payment was successful but the card details could not be updated, contact customer support';
+    //                 } else if (data.error === 'Insufficient balance') {
+    //                     errorMsg = "You don't have enough balance to make the purchase";
+    //                 } else if (data.error === 'Failed to load funds') {
+    //                     errorMsg = 'The payment could not be completed, please try again or contact our customer support';
+    //                 } else if (data.error === 'Invalid amount') {
+    //                     errorMsg = 'The amount is invalid, please try again';
+    //                     shouldKeepDisabled = true;
+    //                 }
+    //             } else if (response.status === 401) {
+    //                 errorMsg = 'You are not authenticated or your token is invalid';
+    //                 shouldKeepDisabled = true;
+    //             } else if (response.status === 404) {
+    //                 if (data.error === 'User not found' || data.error === 'Order not found') {
+    //                     errorMsg = 'You cannot add funds to this VCC';
+    //                     shouldKeepDisabled = true;
+    //                 }
+    //             } else if (response.status === 500) {
+    //                 errorMsg = 'Please contact our customer support';
+    //             }
 
-                setErrorMessage(errorMsg);
-                setShowErrorModal(true);
-                setIsLoadingFunds(false);
+    //             setErrorMessage(errorMsg);
+    //             setShowErrorModal(true);
+    //             setIsLoadingFunds(false);
 
-                if (!shouldKeepDisabled) {
-                    setIsLoadingFundsDisabled(false);
-                }
-            }
-        } catch (error) {
-            console.log('Load funds catch error:', error);
-            setErrorMessage('Please contact our customer support');
-            setShowErrorModal(true);
-            setIsLoadingFunds(false);
-            setIsLoadingFundsDisabled(false);
-        }
-    };
+    //             if (!shouldKeepDisabled) {
+    //                 setIsLoadingFundsDisabled(false);
+    //             }
+    //         }
+    //     } catch (error) {
+    //         console.log('Load funds catch error:', error);
+    //         setErrorMessage('Please contact our customer support');
+    //         setShowErrorModal(true);
+    //         setIsLoadingFunds(false);
+    //         setIsLoadingFundsDisabled(false);
+    //     }
+    // };
 
     const handleFreezeCard = async () => {
         const currentUser = getAuth().currentUser;
@@ -400,11 +400,11 @@ const VccConfig: React.FC = () => {
         }
     };
 
-    const handleAmountChange = (value: number) => {
-        let clamped = Math.min(20, Math.max(0.5, value));
-        clamped = Math.round(clamped * 2) / 2;
-        setAmount(clamped);
-    };
+    // const handleAmountChange = (value: number) => {
+    //     let clamped = Math.min(20, Math.max(0.5, value));
+    //     clamped = Math.round(clamped * 2) / 2;
+    //     setAmount(clamped);
+    // };
 
     const calculateFee = (amount: number): number => {
         let fee = 0;
@@ -446,7 +446,7 @@ const VccConfig: React.FC = () => {
                             <p className="text-blue-300 text-sm font-semibold mb-3">Important information about this feature:</p>
                             <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                                 <li>• Check the entire details of your virtual debit card</li>
-                                <li>• You can add more funds to your card, which cannot be refunded</li>
+                                {/*<li>• You can add more funds to your card, which cannot be refunded</li>*/}
                                 <li>• You can freeze your card to prevent any future transactions and unfreeze it whenever you want</li>
                                 <li>• You can check all the transactions made with your card</li>
                             </ul>
@@ -610,8 +610,9 @@ const VccConfig: React.FC = () => {
                                                                         </div>
                                                                     </button>
                                                                     <button
-                                                                        onClick={() => setIsLoadFundsView(true)}
-                                                                        disabled={vccFrozen || isFreezingCard || areCardActionsDisabled}
+                                                                        // onClick={() => setIsLoadFundsView(true)}
+                                                                        // disabled={vccFrozen || isFreezingCard || areCardActionsDisabled}
+                                                                        disabled
                                                                         className="flex-1 px-4 py-2 text-white font-bold rounded-xl transition-all duration-300 shadow-lg text-sm bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                                                                     >
                                                                         Load Funds
@@ -819,8 +820,9 @@ const VccConfig: React.FC = () => {
                                                         max="20"
                                                         step="0.5"
                                                         value={amount}
-                                                        onChange={(e) => handleAmountChange(parseFloat(e.target.value))}
-                                                        disabled={isLoadingFunds || isLoadingFundsDisabled}
+                                                        // onChange={(e) => handleAmountChange(parseFloat(e.target.value))}
+                                                        // disabled={isLoadingFunds || isLoadingFundsDisabled}
+                                                        disabled
                                                         className="w-full h-2 rounded-full appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                                         style={{
                                                             background: `linear-gradient(to right, #10b981 0%, #10b981 ${((amount - 0.5) / 19.5) * 100}%, #334155 ${((amount - 0.5) / 19.5) * 100}%, #334155 100%)`,
@@ -844,8 +846,9 @@ const VccConfig: React.FC = () => {
                                                     {/* Purchase Button */}
                                                     <div className="flex justify-center sm:justify-end">
                                                         <button
-                                                            onClick={handleLoadFunds}
-                                                            disabled={isLoadingFunds || isLoadingFundsDisabled}
+                                                            // onClick={handleLoadFunds}
+                                                            // disabled={isLoadingFunds || isLoadingFundsDisabled}
+                                                            disabled
                                                             className="group w-[200px] py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-[1.02] border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                                                         >
                                                             <div className="relative z-10 flex items-center justify-center h-6">

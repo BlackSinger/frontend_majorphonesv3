@@ -288,6 +288,7 @@ const API: React.FC = () => {
                       <h4 className="text-base sm:text-lg font-semibold text-white mb-2 sm:mb-3">SMS Services</h4>
 
                       <div className="space-y-3 sm:space-y-4">
+                        {/*
                         <div className="border-l-4 border-blue-500 pl-3 sm:pl-4">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
                             <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-semibold">POST</span>
@@ -305,6 +306,7 @@ const API: React.FC = () => {
                             </pre>
                           </div>
                         </div>
+                        */}
 
                         <div className="space-y-3 sm:space-y-4">
                           <div className="border-l-4 border-blue-500 pl-3 sm:pl-4">
@@ -316,8 +318,14 @@ const API: React.FC = () => {
                             <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
                               <p className="text-xs text-slate-400 mb-1">Request Body:</p>
                               <pre className="text-xs text-slate-300 overflow-x-auto text-left">
+                                {/*
                                 <code>{`{
   "country": string // Country  "USA", "UK", "France", "Germany", "India" ),
+  "option": integer // Option: 1=high quality, 2=standard, 3=very high quality
+}`}</code>
+                                */}
+                                <code>{`{
+  "country": string // Country  "USA", "UK", "Germany" ),
   "option": integer // Option: 1=high quality, 2=standard, 3=very high quality
 }`}</code>
                               </pre>
@@ -361,8 +369,17 @@ const API: React.FC = () => {
                             <div className="bg-slate-900/50 p-2 sm:p-3 rounded-lg">
                               <p className="text-xs text-slate-400 mb-1">Request Body:</p>
                               <pre className="text-xs text-slate-300 overflow-x-auto text-left">
+                                {/*
                                 <code>{`{
   "country": string // Country  "USA", "UK", "France", "Germany", "India" ),
+  "option": integer // Option: 1=high quality, 2=standard, 3=very high quality,
+  "serviceName": string // Service Name (e.g., "google", "facebook", "twitter"),
+  "areaCode": string // Only works with option 1 (e.g., "212", "415", "777"),
+  "carrier": string // Only works with option 1 (e.g., "at&t", "tmobile")
+}`}</code>
+                                */}
+                                <code>{`{
+  "country": string // Country  "USA", "UK", "Germany" ),
   "option": integer // Option: 1=high quality, 2=standard, 3=very high quality,
   "serviceName": string // Service Name (e.g., "google", "facebook", "twitter"),
   "areaCode": string // Only works with option 1 (e.g., "212", "415", "777"),

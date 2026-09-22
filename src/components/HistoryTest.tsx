@@ -343,18 +343,15 @@ const CodeAwakeTimer: React.FC<{ codeAwakeAt: Date; recordId: string; onTimeout?
     );
 });
 
-const History: React.FC = () => {
+const HistoryTest: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
     const searchParams = new URLSearchParams(location.search);
     const tabFromUrl = searchParams.get('tab');
 
-    // const [activeTab, setActiveTab] = useState<'numbers' | 'virtualCards' | 'proxies' | 'voip' | 'accounts'>(
-    //     tabFromUrl === 'virtualCards' ? 'virtualCards' : tabFromUrl === 'proxies' ? 'proxies' : tabFromUrl === 'voip' ? 'voip' : tabFromUrl === 'accounts' ? 'accounts' : 'numbers'
-    // );
-    const [activeTab, setActiveTab] = useState<'numbers' | 'virtualCards' | 'proxies' | 'accounts'>(
-        tabFromUrl === 'virtualCards' ? 'virtualCards' : tabFromUrl === 'proxies' ? 'proxies' : tabFromUrl === 'accounts' ? 'accounts' : 'numbers'
+    const [activeTab, setActiveTab] = useState<'numbers' | 'virtualCards' | 'proxies' | 'voip' | 'accounts'>(
+        tabFromUrl === 'virtualCards' ? 'virtualCards' : tabFromUrl === 'proxies' ? 'proxies' : tabFromUrl === 'voip' ? 'voip' : tabFromUrl === 'accounts' ? 'accounts' : 'numbers'
     );
     const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('All');
     const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -372,7 +369,7 @@ const History: React.FC = () => {
     const [selectedFullSms, setSelectedFullSms] = useState('');
     const [isCopied, setIsCopied] = useState(false);
     const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
-    // const [isVoipIdCopied, setIsVoipIdCopied] = useState(false);
+    const [isVoipIdCopied, setIsVoipIdCopied] = useState(false);
     const [copiedCardNumbers, setCopiedCardNumbers] = useState<{ [key: string]: boolean }>({});
     const [copiedNumbers, setCopiedNumbers] = useState<{ [key: string]: boolean }>({});
 
@@ -409,35 +406,35 @@ const History: React.FC = () => {
     const [proxyFirestoreData, setProxyFirestoreData] = useState<ProxyRecord[]>([]);
     const [isLoadingProxies, setIsLoadingProxies] = useState(true);
 
-    // const [voipData, setVoipData] = useState<{
-    //     id: string;
-    //     orderId: string;
-    //     number: string;
-    //     country: string;
-    //     message: string;
-    //     price: number;
-    //     status: string;
-    //     type: string;
-    //     createdAt: Date;
-    // }[]>([]);
-    // const [isLoadingVoip, setIsLoadingVoip] = useState(true);
-    // const [voipNumberSearch, setVoipNumberSearch] = useState('');
-    // const [voipStatusFilter, setVoipStatusFilter] = useState('All');
-    // const [isVoipStatusDropdownOpen, setIsVoipStatusDropdownOpen] = useState(false);
-    // const [currentVoipPage, setCurrentVoipPage] = useState(1);
-    // const [showVoipInfoModal, setShowVoipInfoModal] = useState(false);
-    // const [selectedVoipRecord, setSelectedVoipRecord] = useState<{
-    //     id: string;
-    //     orderId: string;
-    //     number: string;
-    //     country: string;
-    //     message: string;
-    //     price: number;
-    //     status: string;
-    //     type: string;
-    //     createdAt: Date;
-    // } | null>(null);
-    // const voipStatusDropdownRef = useRef<HTMLDivElement>(null);
+    const [voipData, setVoipData] = useState<{
+        id: string;
+        orderId: string;
+        number: string;
+        country: string;
+        message: string;
+        price: number;
+        status: string;
+        type: string;
+        createdAt: Date;
+    }[]>([]);
+    const [isLoadingVoip, setIsLoadingVoip] = useState(true);
+    const [voipNumberSearch, setVoipNumberSearch] = useState('');
+    const [voipStatusFilter, setVoipStatusFilter] = useState('All');
+    const [isVoipStatusDropdownOpen, setIsVoipStatusDropdownOpen] = useState(false);
+    const [currentVoipPage, setCurrentVoipPage] = useState(1);
+    const [showVoipInfoModal, setShowVoipInfoModal] = useState(false);
+    const [selectedVoipRecord, setSelectedVoipRecord] = useState<{
+        id: string;
+        orderId: string;
+        number: string;
+        country: string;
+        message: string;
+        price: number;
+        status: string;
+        type: string;
+        createdAt: Date;
+    } | null>(null);
+    const voipStatusDropdownRef = useRef<HTMLDivElement>(null);
 
     interface AccountRecord {
         id: string;
@@ -668,9 +665,9 @@ const History: React.FC = () => {
             if (proxyDurationDropdownRef.current && !proxyDurationDropdownRef.current.contains(event.target as Node)) {
                 setIsProxyDurationDropdownOpen(false);
             }
-            // if (voipStatusDropdownRef.current && !voipStatusDropdownRef.current.contains(event.target as Node)) {
-            //     setIsVoipStatusDropdownOpen(false);
-            // }
+            if (voipStatusDropdownRef.current && !voipStatusDropdownRef.current.contains(event.target as Node)) {
+                setIsVoipStatusDropdownOpen(false);
+            }
             if (accountsServiceDropdownRef.current && !accountsServiceDropdownRef.current.contains(event.target as Node)) {
                 setIsAccountsServiceDropdownOpen(false);
             }
@@ -776,28 +773,28 @@ const History: React.FC = () => {
     const proxyEndIndex = proxyStartIndex + itemsPerPage;
     const paginatedProxyData = filteredProxyData.slice(proxyStartIndex, proxyEndIndex);
 
-    // const filteredVoipData = useMemo(() => {
-    //     let filtered = voipData;
-    //     if (voipNumberSearch.trim() !== '') {
-    //         filtered = filtered.filter(record =>
-    //             record.number.includes(voipNumberSearch.trim())
-    //         );
-    //     }
-    //     if (voipStatusFilter !== 'All') {
-    //         if (voipStatusFilter === 'Awaiting moderation') {
-    //             filtered = filtered.filter(record => record.status === 'Moderation');
-    //         } else {
-    //             filtered = filtered.filter(record => record.status === voipStatusFilter);
-    //         }
-    //     }
+    const filteredVoipData = useMemo(() => {
+        let filtered = voipData;
+        if (voipNumberSearch.trim() !== '') {
+            filtered = filtered.filter(record =>
+                record.number.includes(voipNumberSearch.trim())
+            );
+        }
+        if (voipStatusFilter !== 'All') {
+            if (voipStatusFilter === 'Awaiting moderation') {
+                filtered = filtered.filter(record => record.status === 'Moderation');
+            } else {
+                filtered = filtered.filter(record => record.status === voipStatusFilter);
+            }
+        }
 
-    //     return filtered;
-    // }, [voipData, voipNumberSearch, voipStatusFilter]);
+        return filtered;
+    }, [voipData, voipNumberSearch, voipStatusFilter]);
 
-    // const totalVoipPages = Math.ceil(filteredVoipData.length / itemsPerPage);
-    // const voipStartIndex = (currentVoipPage - 1) * itemsPerPage;
-    // const voipEndIndex = voipStartIndex + itemsPerPage;
-    // const paginatedVoipData = filteredVoipData.slice(voipStartIndex, voipEndIndex);
+    const totalVoipPages = Math.ceil(filteredVoipData.length / itemsPerPage);
+    const voipStartIndex = (currentVoipPage - 1) * itemsPerPage;
+    const voipEndIndex = voipStartIndex + itemsPerPage;
+    const paginatedVoipData = filteredVoipData.slice(voipStartIndex, voipEndIndex);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -1054,65 +1051,65 @@ const History: React.FC = () => {
         };
     }, [activeTab]);
 
-    // useEffect(() => {
-    //     if (activeTab !== 'voip') return;
+    useEffect(() => {
+        if (activeTab !== 'voip') return;
 
-    //     if (!currentUser) {
-    //         setIsLoadingVoip(false);
-    //         return;
-    //     }
+        if (!currentUser) {
+            setIsLoadingVoip(false);
+            return;
+        }
 
-    //     const uid = currentUser.uid;
-    //     setIsLoadingVoip(true);
-    //     let isSubscribed = true;
+        const uid = currentUser.uid;
+        setIsLoadingVoip(true);
+        let isSubscribed = true;
 
-    //     const voipOrdersRef = collection(db, 'voipOrders');
-    //     const q = query(
-    //         voipOrdersRef,
-    //         where('uid', '==', uid),
-    //         orderBy('createdAt', 'desc')
-    //     );
+        const voipOrdersRef = collection(db, 'voipOrders');
+        const q = query(
+            voipOrdersRef,
+            where('uid', '==', uid),
+            orderBy('createdAt', 'desc')
+        );
 
-    //     const unsubscribe = onSnapshot(
-    //         q,
-    //         (snapshot) => {
-    //             if (!isSubscribed) return;
-    //             const records = snapshot.docs.map(doc => {
-    //                 const data = doc.data();
-    //                 const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-    //                 return {
-    //                     id: doc.id,
-    //                     orderId: data.orderId || doc.id,
-    //                     number: String(data.number || ''),
-    //                     country: String(data.country || 'N/A'),
-    //                     message: String(data.message || ''),
-    //                     price: typeof data.price === 'number' ? data.price : parseFloat(data.price || '0'),
-    //                     status: String(data.status || ''),
-    //                     type: String(data.type || ''),
-    //                     createdAt,
-    //                 };
-    //             });
-    //             setVoipData(records);
-    //             setIsLoadingVoip(false);
-    //         },
-    //         (error: any) => {
-    //             if (!isSubscribed) return;
-    //             let errorMsg = 'An error occurred loading VoIP orders';
-    //             if (error?.code === 'permission-denied') errorMsg = 'Access denied';
-    //             else if (error?.code === 'unavailable') errorMsg = 'Service temporarily unavailable';
-    //             else if (error?.code === 'unauthenticated') errorMsg = 'You are not authenticated';
-    //             else if (error?.message) errorMsg = `Error: ${error.message}`;
-    //             setErrorMessage(errorMsg);
-    //             setShowErrorModal(true);
-    //             setIsLoadingVoip(false);
-    //         }
-    //     );
+        const unsubscribe = onSnapshot(
+            q,
+            (snapshot) => {
+                if (!isSubscribed) return;
+                const records = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+                    return {
+                        id: doc.id,
+                        orderId: data.orderId || doc.id,
+                        number: String(data.number || ''),
+                        country: String(data.country || 'N/A'),
+                        message: String(data.message || ''),
+                        price: typeof data.price === 'number' ? data.price : parseFloat(data.price || '0'),
+                        status: String(data.status || ''),
+                        type: String(data.type || ''),
+                        createdAt,
+                    };
+                });
+                setVoipData(records);
+                setIsLoadingVoip(false);
+            },
+            (error: any) => {
+                if (!isSubscribed) return;
+                let errorMsg = 'An error occurred loading VoIP orders';
+                if (error?.code === 'permission-denied') errorMsg = 'Access denied';
+                else if (error?.code === 'unavailable') errorMsg = 'Service temporarily unavailable';
+                else if (error?.code === 'unauthenticated') errorMsg = 'You are not authenticated';
+                else if (error?.message) errorMsg = `Error: ${error.message}`;
+                setErrorMessage(errorMsg);
+                setShowErrorModal(true);
+                setIsLoadingVoip(false);
+            }
+        );
 
-    //     return () => {
-    //         isSubscribed = false;
-    //         unsubscribe();
-    //     };
-    // }, [activeTab]);
+        return () => {
+            isSubscribed = false;
+            unsubscribe();
+        };
+    }, [activeTab]);
 
     useEffect(() => {
         if (activeTab !== 'proxies') {
@@ -1413,16 +1410,16 @@ const History: React.FC = () => {
         }
     };
 
-    // const handleCopyVoipId = async () => {
-    //     if (selectedVoipRecord) {
-    //         try {
-    //             await navigator.clipboard.writeText(selectedVoipRecord.orderId);
-    //             setIsVoipIdCopied(true);
-    //             setTimeout(() => setIsVoipIdCopied(false), 2000);
-    //         } catch (err) {
-    //         }
-    //     }
-    // };
+    const handleCopyVoipId = async () => {
+        if (selectedVoipRecord) {
+            try {
+                await navigator.clipboard.writeText(selectedVoipRecord.orderId);
+                setIsVoipIdCopied(true);
+                setTimeout(() => setIsVoipIdCopied(false), 2000);
+            } catch (err) {
+            }
+        }
+    };
 
     const handleCopyUuid = async () => {
         try {
@@ -1524,25 +1521,14 @@ const History: React.FC = () => {
                 </div>
             </div>
 
-            {activeTab === 'accounts' ? (
-                /* 2FA Announcement */
-                <div className="bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 mb-6">
-                    <p className="text-center text-sm">
-                        <span className="text-emerald-300 font-bold">READ CAREFULLY</span>
-                        <span className="text-slate-300 mx-2">—</span>
-                        <span className="text-slate-200">If your account needs <span className="text-emerald-400 font-semibold">2FA codes</span>, go to <a href="https://2fa.live" target="_blank" rel="noopener noreferrer" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">2fa.live</a>, copy your 2FA secret key and generate your <span className="text-emerald-400 font-semibold">2FA code</span>!</span>
-                    </p>
-                </div>
-            ) : (
-                /* Middle Numbers, Area Code Configuration and UK Empty SIM Cards Announcement */
-                <div className="bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 mb-6">
-                    <p className="text-center text-sm">
-                        <span className="text-emerald-300 font-bold">NEW</span>
-                        <span className="text-slate-300 mx-2">—</span>
-                        <span className="text-slate-200">Now you can purchase <Link to="/middle" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Middle Numbers</Link> by <span className="text-emerald-400 font-semibold">area code</span> and <Link to="/emptysimcard" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">UK Empty SIM Cards</Link>!</span>
-                    </p>
-                </div>
-            )}
+            {/* Middle Numbers, Area Code Configuration and UK Empty SIM Cards Announcement */}
+            <div className="bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 border border-emerald-500/30 rounded-2xl px-4 py-3 mb-6">
+                <p className="text-center text-sm">
+                    <span className="text-emerald-300 font-bold">NEW</span>
+                    <span className="text-slate-300 mx-2">—</span>
+                    <span className="text-slate-200">Now you can purchase <Link to="/middle" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">Middle Numbers</Link> by <span className="text-emerald-400 font-semibold">area code</span> and <Link to="/emptysimcard" className="text-emerald-400 font-semibold hover:text-emerald-300 underline">UK Empty SIM Cards</Link>!</span>
+                </p>
+            </div>
 
             {/* Tabs and Table */}
             <div className="rounded-3xl shadow-2xl border border-slate-700/50 relative">
@@ -1559,7 +1545,7 @@ const History: React.FC = () => {
                             >
                                 Non VoIP
                             </button>
-                            {/*<button
+                            <button
                                 onClick={() => { setActiveTab('voip'); setCurrentVoipPage(1); }}
                                 className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${activeTab === 'voip'
                                     ? 'text-emerald-400 border-emerald-400'
@@ -1567,7 +1553,7 @@ const History: React.FC = () => {
                                     }`}
                             >
                                 VoIP
-                            </button>*/}
+                            </button>
                             <button
                                 onClick={() => { setActiveTab('virtualCards'); setCurrentVirtualCardPage(1); }}
                                 className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${activeTab === 'virtualCards'
@@ -2334,218 +2320,216 @@ const History: React.FC = () => {
                     )}
 
                     {/* VoIP Tab Content */}
-                    {
-                    // {activeTab === 'voip' && (
-                    //     <>
-                    //         {/* VoIP Filters */}
-                    //         <div className="mb-6">
-                    //             <div className="flex flex-col lg:flex-row gap-6">
-                    //                 {/* Number Search */}
-                    //                 <div className="flex-1">
-                    //                     <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
-                    //                         Recipient Number
-                    //                     </label>
-                    //                     <div className="relative">
-                    //                         <input
-                    //                             type="text"
-                    //                             value={voipNumberSearch}
-                    //                             onChange={(e) => {
-                    //                                 const onlyNums = e.target.value.replace(/\D/g, '');
-                    //                                 setVoipNumberSearch(onlyNums);
-                    //                                 setCurrentVoipPage(1);
-                    //                             }}
-                    //                             placeholder="Enter phone number"
-                    //                             className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300"
-                    //                         />
-                    //                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    //                             <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    //                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    //                             </svg>
-                    //                         </div>
-                    //                     </div>
-                    //                 </div>
+                    {activeTab === 'voip' && (
+                        <>
+                            {/* VoIP Filters */}
+                            <div className="mb-6">
+                                <div className="flex flex-col lg:flex-row gap-6">
+                                    {/* Number Search */}
+                                    <div className="flex-1">
+                                        <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                                            Recipient Number
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={voipNumberSearch}
+                                                onChange={(e) => {
+                                                    const onlyNums = e.target.value.replace(/\D/g, '');
+                                                    setVoipNumberSearch(onlyNums);
+                                                    setCurrentVoipPage(1);
+                                                }}
+                                                placeholder="Enter phone number"
+                                                className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white placeholder-slate-400 text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300"
+                                            />
+                                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    //                 {/* Status Filter */}
-                    //                 <div className="flex-1">
-                    //                     <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
-                    //                         Status
-                    //                     </label>
-                    //                     <div className="relative group" ref={voipStatusDropdownRef}>
-                    //                         <div
-                    //                             onClick={() => setIsVoipStatusDropdownOpen(!isVoipStatusDropdownOpen)}
-                    //                             className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner cursor-pointer hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
-                    //                         >
-                    //                             <span>{voipStatusFilter === 'All' ? 'All Statuses' : voipStatusFilter}</span>
-                    //                         </div>
-                    //                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    //                             <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isVoipStatusDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    //                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                    //                             </svg>
-                    //                         </div>
-                    //                         {isVoipStatusDropdownOpen && (
-                    //                             <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] text-sm">
-                    //                                 {['All', 'Completed', 'Failed', 'Rejected', ...(!isLoadingVoip && voipData.some(record => record.status === 'Moderation') ? ['Awaiting moderation'] : [])].map((option) => (
-                    //                                     <div
-                    //                                         key={option}
-                    //                                         onClick={() => {
-                    //                                             setVoipStatusFilter(option);
-                    //                                             setIsVoipStatusDropdownOpen(false);
-                    //                                             setCurrentVoipPage(1);
-                    //                                         }}
-                    //                                         className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-                    //                                     >
-                    //                                         <span className="text-white">{option === 'All' ? 'All Statuses' : option}</span>
-                    //                                     </div>
-                    //                                 ))}
-                    //                             </div>
-                    //                         )}
-                    //                     </div>
-                    //                 </div>
-                    //             </div>
-                    //         </div>
+                                    {/* Status Filter */}
+                                    <div className="flex-1">
+                                        <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                                            Status
+                                        </label>
+                                        <div className="relative group" ref={voipStatusDropdownRef}>
+                                            <div
+                                                onClick={() => setIsVoipStatusDropdownOpen(!isVoipStatusDropdownOpen)}
+                                                className="w-full px-4 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner cursor-pointer hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                                            >
+                                                <span>{voipStatusFilter === 'All' ? 'All Statuses' : voipStatusFilter}</span>
+                                            </div>
+                                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isVoipStatusDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
+                                            {isVoipStatusDropdownOpen && (
+                                                <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] text-sm">
+                                                    {['All', 'Completed', 'Failed', 'Rejected', ...(!isLoadingVoip && voipData.some(record => record.status === 'Moderation') ? ['Awaiting moderation'] : [])].map((option) => (
+                                                        <div
+                                                            key={option}
+                                                            onClick={() => {
+                                                                setVoipStatusFilter(option);
+                                                                setIsVoipStatusDropdownOpen(false);
+                                                                setCurrentVoipPage(1);
+                                                            }}
+                                                            className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                                                        >
+                                                            <span className="text-white">{option === 'All' ? 'All Statuses' : option}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                    //         {/* VoIP Table */}
-                    //         <div className="overflow-x-auto overflow-y-visible">
-                    //             {isLoadingVoip ? (
-                    //                 <div className="flex flex-col items-center justify-center py-16">
-                    //                     <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
-                    //                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    //                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    //                     </svg>
-                    //                     <p className="text-slate-400 mt-4">Loading numbers...</p>
-                    //                 </div>
-                    //             ) : filteredVoipData.length > 0 ? (
-                    //                 <>
-                    //                     <table className="w-full">
-                    //                         <thead>
-                    //                             <tr className="border-b border-slate-700/50">
-                    //                                 <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
-                    //                                 <th className="text-center py-4 px-4 text-slate-300 font-semibold">Recipient</th>
-                    //                                 <th className="text-center py-4 px-4 text-slate-300 font-semibold">Country</th>
-                    //                                 <th className="text-center py-4 px-4 text-slate-300 font-semibold">Message</th>
-                    //                                 <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
-                    //                                 <th className="text-center py-4 px-4 text-slate-300 font-semibold">Status</th>
-                    //                             </tr>
-                    //                         </thead>
-                    //                         <tbody>
-                    //                             {paginatedVoipData.map((record, index) => (
-                    //                                 <tr
-                    //                                     key={record.id}
-                    //                                     className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'}`}
-                    //                                 >
-                    //                                     {/* Info */}
-                    //                                     <td className="py-4 px-6">
-                    //                                         <div className="flex items-center justify-center">
-                    //                                             <button
-                    //                                                 onClick={() => { setSelectedVoipRecord(record); setShowVoipInfoModal(true); setIsVoipIdCopied(false); }}
-                    //                                                 className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
-                    //                                                 title="View Information"
-                    //                                             >
-                    //                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    //                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    //                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    //                                                 </svg>
-                    //                                             </button>
-                    //                                         </div>
-                    //                                     </td>
-                    //                                     {/* Recipient */}
-                    //                                     <td className="py-4 px-6">
-                    //                                         <div className="font-mono text-white text-center">+{record.number}</div>
-                    //                                     </td>
-                    //                                     {/* Country */}
-                    //                                     <td className="py-4 px-6 text-white text-center">{record.country}</td>
-                    //                                     {/* Message */}
-                    //                                     <td className="py-4 px-6 text-white text-center max-w-xs">
-                    //                                         <span className="whitespace-normal break-words">{record.message}</span>
-                    //                                     </td>
-                    //                                     {/* Price */}
-                    //                                     <td className="py-4 px-6 text-center">
-                    //                                         <span className="text-emerald-400 font-semibold">${record.price.toFixed(2)}</span>
-                    //                                     </td>
-                    //                                     {/* Status */}
-                    //                                     <td className="py-4 px-6 text-center">
-                    //                                         <span style={{ width: '100px' }} className={`inline-block text-center px-3 py-1 rounded-lg text-sm font-semibold border ${record.status === 'Completed'
-                    //                                             ? 'text-green-400 border-green-500/30 bg-green-500/20'
-                    //                                             : record.status === 'Failed'
-                    //                                                 ? 'text-red-400 border-red-500/30 bg-red-500/20'
-                    //                                                 : record.status === 'Rejected'
-                    //                                                     ? 'text-red-400 border-red-500/30 bg-red-500/20'
-                    //                                                     : record.status === 'Moderation'
-                    //                                                         ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/20'
-                    //                                                         : 'text-gray-400 border-gray-500/30 bg-gray-500/20'
-                    //                                             }`}>
-                    //                                             {record.status === 'Moderation' ? 'Awaiting moderation' : record.status}
-                    //                                         </span>
+                            {/* VoIP Table */}
+                            <div className="overflow-x-auto overflow-y-visible">
+                                {isLoadingVoip ? (
+                                    <div className="flex flex-col items-center justify-center py-16">
+                                        <svg className="animate-spin h-12 w-12 text-white" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <p className="text-slate-400 mt-4">Loading numbers...</p>
+                                    </div>
+                                ) : filteredVoipData.length > 0 ? (
+                                    <>
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-slate-700/50">
+                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Info</th>
+                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Recipient</th>
+                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Country</th>
+                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Message</th>
+                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Price</th>
+                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedVoipData.map((record, index) => (
+                                                    <tr
+                                                        key={record.id}
+                                                        className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'}`}
+                                                    >
+                                                        {/* Info */}
+                                                        <td className="py-4 px-6">
+                                                            <div className="flex items-center justify-center">
+                                                                <button
+                                                                    onClick={() => { setSelectedVoipRecord(record); setShowVoipInfoModal(true); setIsVoipIdCopied(false); }}
+                                                                    className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
+                                                                    title="View Information"
+                                                                >
+                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                        {/* Recipient */}
+                                                        <td className="py-4 px-6">
+                                                            <div className="font-mono text-white text-center">+{record.number}</div>
+                                                        </td>
+                                                        {/* Country */}
+                                                        <td className="py-4 px-6 text-white text-center">{record.country}</td>
+                                                        {/* Message */}
+                                                        <td className="py-4 px-6 text-white text-center max-w-xs">
+                                                            <span className="whitespace-normal break-words">{record.message}</span>
+                                                        </td>
+                                                        {/* Price */}
+                                                        <td className="py-4 px-6 text-center">
+                                                            <span className="text-emerald-400 font-semibold">${record.price.toFixed(2)}</span>
+                                                        </td>
+                                                        {/* Status */}
+                                                        <td className="py-4 px-6 text-center">
+                                                            <span style={{ width: '100px' }} className={`inline-block text-center px-3 py-1 rounded-lg text-sm font-semibold border ${record.status === 'Completed'
+                                                                ? 'text-green-400 border-green-500/30 bg-green-500/20'
+                                                                : record.status === 'Failed'
+                                                                    ? 'text-red-400 border-red-500/30 bg-red-500/20'
+                                                                    : record.status === 'Rejected'
+                                                                        ? 'text-red-400 border-red-500/30 bg-red-500/20'
+                                                                        : record.status === 'Moderation'
+                                                                            ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/20'
+                                                                            : 'text-gray-400 border-gray-500/30 bg-gray-500/20'
+                                                                }`}>
+                                                                {record.status === 'Moderation' ? 'Awaiting moderation' : record.status}
+                                                            </span>
 
-                    //                                     </td>
-                    //                                 </tr>
-                    //                             ))}
-                    //                         </tbody>
-                    //                     </table>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
 
-                    //                     {/* VoIP Pagination */}
-                    //                     {totalVoipPages > 1 && (
-                    //                         <div className="mt-6">
-                    //                             <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
-                    //                                 Showing {voipStartIndex + 1} to {Math.min(voipEndIndex, filteredVoipData.length)} of {filteredVoipData.length} results
-                    //                             </div>
-                    //                             <div className="flex items-center justify-between">
-                    //                                 <div className="hidden md:block text-sm text-slate-400">
-                    //                                     Showing {voipStartIndex + 1} to {Math.min(voipEndIndex, filteredVoipData.length)} of {filteredVoipData.length} results
-                    //                                 </div>
-                    //                                 <div className="flex items-center space-x-2 mx-auto md:mx-0">
-                    //                                     <button
-                    //                                         onClick={() => setCurrentVoipPage(prev => Math.max(prev - 1, 1))}
-                    //                                         disabled={currentVoipPage === 1}
-                    //                                         className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    //                                     >
-                    //                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    //                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                    //                                         </svg>
-                    //                                     </button>
-                    //                                     <div className="flex space-x-1">
-                    //                                         {[currentVoipPage, currentVoipPage + 1].filter(page => page <= totalVoipPages).map((page) => (
-                    //                                             <button
-                    //                                                 key={page}
-                    //                                                 onClick={() => setCurrentVoipPage(page)}
-                    //                                                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentVoipPage === page
-                    //                                                     ? 'bg-emerald-500 text-white'
-                    //                                                     : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
-                    //                                                     }`}
-                    //                                             >
-                    //                                                 {page}
-                    //                                             </button>
-                    //                                         ))}
-                    //                                     </div>
-                    //                                     <button
-                    //                                         onClick={() => setCurrentVoipPage(prev => Math.min(prev + 1, totalVoipPages))}
-                    //                                         disabled={currentVoipPage === totalVoipPages}
-                    //                                         className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    //                                     >
-                    //                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    //                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                    //                                         </svg>
-                    //                                     </button>
-                    //                                 </div>
-                    //                             </div>
-                    //                         </div>
-                    //                     )}
-                    //                 </>
-                    //             ) : (
-                    //                 <div className="text-center py-16">
-                    //                     <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
-                    //                         <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    //                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    //                         </svg>
-                    //                     </div>
-                    //                     <h1 className="text-xl font-bold text-slate-300 mb-3">No VoIP Numbers Found</h1>
-                    //                     <p className="text-slate-400 text-lg">You haven't purchased any VoIP numbers yet</p>
-                    //                 </div>
-                    //             )}
-                    //         </div>
-                    //     </>
-                    // )}
-                    }
+                                        {/* VoIP Pagination */}
+                                        {totalVoipPages > 1 && (
+                                            <div className="mt-6">
+                                                <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
+                                                    Showing {voipStartIndex + 1} to {Math.min(voipEndIndex, filteredVoipData.length)} of {filteredVoipData.length} results
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="hidden md:block text-sm text-slate-400">
+                                                        Showing {voipStartIndex + 1} to {Math.min(voipEndIndex, filteredVoipData.length)} of {filteredVoipData.length} results
+                                                    </div>
+                                                    <div className="flex items-center space-x-2 mx-auto md:mx-0">
+                                                        <button
+                                                            onClick={() => setCurrentVoipPage(prev => Math.max(prev - 1, 1))}
+                                                            disabled={currentVoipPage === 1}
+                                                            className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                                            </svg>
+                                                        </button>
+                                                        <div className="flex space-x-1">
+                                                            {[currentVoipPage, currentVoipPage + 1].filter(page => page <= totalVoipPages).map((page) => (
+                                                                <button
+                                                                    key={page}
+                                                                    onClick={() => setCurrentVoipPage(page)}
+                                                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentVoipPage === page
+                                                                        ? 'bg-emerald-500 text-white'
+                                                                        : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
+                                                                        }`}
+                                                                >
+                                                                    {page}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setCurrentVoipPage(prev => Math.min(prev + 1, totalVoipPages))}
+                                                            disabled={currentVoipPage === totalVoipPages}
+                                                            className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="text-center py-16">
+                                        <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
+                                            <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                            </svg>
+                                        </div>
+                                        <h1 className="text-xl font-bold text-slate-300 mb-3">No VoIP Numbers Found</h1>
+                                        <p className="text-slate-400 text-lg">You haven't purchased any VoIP numbers yet</p>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
 
                     {/* Accounts Tab Content */}
                     {activeTab === 'accounts' && (
@@ -3150,7 +3134,7 @@ const History: React.FC = () => {
             )}
 
             {/* VoIP Info Modal */}
-            {/*{showVoipInfoModal && selectedVoipRecord && (
+            {showVoipInfoModal && selectedVoipRecord && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
                     <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
                         <div className="text-center mb-4">
@@ -3202,7 +3186,7 @@ const History: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            )}*/}
+            )}
 
 
 
@@ -3449,4 +3433,4 @@ const History: React.FC = () => {
     );
 };
 
-export default History;
+export default HistoryTest;

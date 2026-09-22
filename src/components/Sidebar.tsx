@@ -9,6 +9,7 @@ interface MenuItem {
   icon: React.ReactNode;
   path: string;
   badge?: string;
+  external?: boolean;
 }
 
 const Sidebar: React.FC = () => {
@@ -101,7 +102,7 @@ const Sidebar: React.FC = () => {
       ),
       path: '/emptysimcard'
     },
-    {
+    /*{
       name: 'Send SMS',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,8 +110,8 @@ const Sidebar: React.FC = () => {
         </svg>
       ),
       path: '/send-sms'
-    },
-    {
+    },*/
+    /*{
       name: 'Virtual Debit Cards',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,7 +119,7 @@ const Sidebar: React.FC = () => {
         </svg>
       ),
       path: '/virtualcard'
-    },
+    },*/
     /*{
       name: 'Proxies',
       icon: (
@@ -155,6 +156,16 @@ const Sidebar: React.FC = () => {
         </svg>
       ),
       path: '/tickets'
+    },
+    {
+      name: 'Email Us',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 7.89a2 2 0 002.83 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+      ),
+      path: 'mailto:support@majorphones.com',
+      external: true
     }
   ];
 
@@ -218,32 +229,33 @@ const Sidebar: React.FC = () => {
             }}>
             {menuItems.map((item) => {
               const isActive = currentPath === item.path;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300 relative overflow-hidden ${isActive
-                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg transform scale-105'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50 hover:scale-102'
-                    }`}
-                >
-                  {/* Active item glow effect */}
+              const className = `group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-300 relative overflow-hidden ${isActive
+                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg transform scale-105'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700/50 hover:scale-102'
+                }`;
+              const inner = (
+                <>
                   {isActive && (
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 to-cyan-500/30 blur-sm"></div>
                   )}
-
-                  <div className={`mr-3 transition-all duration-300 relative z-10 ${isActive ? 'text-blue-100 drop-shadow-sm' : 'text-slate-400 group-hover:text-blue-400'
-                    }`}>
+                  <div className={`mr-3 transition-all duration-300 relative z-10 ${isActive ? 'text-blue-100 drop-shadow-sm' : 'text-slate-400 group-hover:text-blue-400'}`}>
                     {item.icon}
                   </div>
-
                   <span className="flex-1 font-medium relative z-10">{item.name}</span>
-
                   {item.badge && (
                     <span className="ml-2 px-2.5 py-1 text-xs font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-full shadow-sm animate-pulse relative z-10">
                       {item.badge}
                     </span>
                   )}
+                </>
+              );
+              return item.external ? (
+                <a key={item.path} href={item.path} className={className}>
+                  {inner}
+                </a>
+              ) : (
+                <Link key={item.path} to={item.path} className={className}>
+                  {inner}
                 </Link>
               );
             })}
@@ -261,14 +273,14 @@ const Sidebar: React.FC = () => {
                 </div>
                 <span className="text-xs font-medium">API</span>
               </Link>
-              <a href="mailto:support@majorphones.com" className="flex flex-col items-center justify-center p-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all duration-300 border border-slate-600/30 hover:border-blue-500/50 hover:shadow-lg hover:scale-105 group">
+              <Link to="/marketplace" className="flex flex-col items-center justify-center p-3 text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all duration-300 border border-slate-600/30 hover:border-blue-500/50 hover:shadow-lg hover:scale-105 group">
                 <div className="w-8 h-8 bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg flex items-center justify-center mb-1 group-hover:from-blue-500 group-hover:to-cyan-500 transition-all duration-300">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 7.89a2 2 0 002.83 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
-                <span className="text-xs font-medium">Email</span>
-              </a>
+                <span className="text-xs font-medium">Marketplace</span>
+              </Link>
             </div>
 
             {/* Logout */}

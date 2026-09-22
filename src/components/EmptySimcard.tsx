@@ -107,8 +107,9 @@ const EmptySimcard: React.FC = () => {
             if (selectedCountry === 'United Kingdom') {
                 endpoint = 'https://buyemptysimcarduk-ezeznlhr5a-uc.a.run.app';
                 let durationString = '';
-                if (option.duration === 1) durationString = 'oneDay';
-                else if (option.duration === 14) durationString = 'oneWeek';
+                // if (option.duration === 1) durationString = 'oneDay';
+                // else if (option.duration === 14) durationString = 'oneWeek';
+                if (option.duration === 7) durationString = 'oneWeek';
                 else if (option.duration === 30) durationString = 'thirtyDays';
 
                 bodyData = { duration: durationString };
@@ -174,28 +175,38 @@ const EmptySimcard: React.FC = () => {
                 }
 
                 const data = docSnap.data();
-                if (!data.oneDay || !data.oneWeek || !data.thirtyDays) {
+                // if (!data.oneDay || !data.oneWeek || !data.thirtyDays) {
+                if (!data.oneWeek || !data.thirtyDays) {
                     throw new Error('Price data not available');
                 }
 
                 result = [
+                    // {
+                    //     id: 'empty-simcard-uk-1',
+                    //     number: `${countryPrefix}-XXXXXX`,
+                    //     price: Number(data.oneDay),
+                    //     country: selectedCountry,
+                    //     countryCode: countryCode,
+                    //     countryPrefix: countryPrefix,
+                    //     duration: 1
+                    // },
+                    // {
+                    //     id: 'empty-simcard-uk-14',
+                    //     number: `${countryPrefix}-XXXXXX`,
+                    //     price: Number(data.oneWeek),
+                    //     country: selectedCountry,
+                    //     countryCode: countryCode,
+                    //     countryPrefix: countryPrefix,
+                    //     duration: 14
+                    // },
                     {
-                        id: 'empty-simcard-uk-1',
-                        number: `${countryPrefix}-XXXXXX`,
-                        price: Number(data.oneDay),
-                        country: selectedCountry,
-                        countryCode: countryCode,
-                        countryPrefix: countryPrefix,
-                        duration: 1
-                    },
-                    {
-                        id: 'empty-simcard-uk-14',
+                        id: 'empty-simcard-uk-7',
                         number: `${countryPrefix}-XXXXXX`,
                         price: Number(data.oneWeek),
                         country: selectedCountry,
                         countryCode: countryCode,
                         countryPrefix: countryPrefix,
-                        duration: 14
+                        duration: 7
                     },
                     {
                         id: 'empty-simcard-uk-30',
@@ -288,7 +299,7 @@ const EmptySimcard: React.FC = () => {
                         <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
                         <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                             <li>• They can be used to verify more than 1 service</li>
-                            <li>• For USA: they are valid for 30 days, for UK: they are valid for 1, 7 or 30 days</li>
+                            <li>• For USA: they are valid for 30 days, for UK: they are valid for 7 or 30 days</li>
                             <li>• Their duration can only be extended before they expire</li>
                             <li>• After purchased, some can be cancelled and some can't</li>
                             <li>• Users that deposit through Amazon Pay can't purchase them</li>

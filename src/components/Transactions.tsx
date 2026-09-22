@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
-import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
+//import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 
 interface TransactionRecord {
   id: string;
@@ -11,23 +11,23 @@ interface TransactionRecord {
   status: string;
   amount: number;
   transactionId: string;
-  isVcc?: boolean;
-  cardNumber?: string;
-  expirationDate?: string;
-  cvv?: string;
-  cardHolderName?: string;
-  initialFunds?: number;
+  // isVcc?: boolean;
+  // cardNumber?: string;
+  // expirationDate?: string;
+  // cvv?: string;
+  // cardHolderName?: string;
+  // initialFunds?: number;
 }
 
-const renderExpirationDate = (exp: string | undefined) => {
-  if (!exp) return '';
-  if (exp.length === 4 && !exp.includes('/')) return `${exp.substring(0, 2)}/${exp.substring(2, 4)}`;
-  if (exp.includes('/')) {
-    const [m, y] = exp.split('/');
-    if (y && y.length === 4) return `${m}/${y.substring(2, 4)}`;
-  }
-  return exp;
-};
+// const renderExpirationDate = (exp: string | undefined) => {
+//   if (!exp) return '';
+//   if (exp.length === 4 && !exp.includes('/')) return `${exp.substring(0, 2)}/${exp.substring(2, 4)}`;
+//   if (exp.includes('/')) {
+//     const [m, y] = exp.split('/');
+//     if (y && y.length === 4) return `${m}/${y.substring(2, 4)}`;
+//   }
+//   return exp;
+// };
 
 const Transactions: React.FC = () => {
   const { currentUser } = useAuth();
@@ -39,35 +39,36 @@ const Transactions: React.FC = () => {
   // const [isStaticWalletDropdownOpen, setIsStaticWalletDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rechargesData, setRechargesData] = useState<TransactionRecord[]>([]);
-  const [vccTxData, setVccTxData] = useState<TransactionRecord[]>([]);
-  const transactionData = useMemo(() => [...rechargesData, ...vccTxData], [rechargesData, vccTxData]);
+  // const [vccTxData, setVccTxData] = useState<TransactionRecord[]>([]);
+  // const transactionData = useMemo(() => [...rechargesData, ...vccTxData], [rechargesData, vccTxData]);
+  const transactionData = useMemo(() => [...rechargesData], [rechargesData]);
   const [loading, setLoading] = useState(true);
-  const [showVccInfoModal, setShowVccInfoModal] = useState(false);
-  const [selectedVccInfo, setSelectedVccInfo] = useState<TransactionRecord | null>(null);
+  // const [showVccInfoModal, setShowVccInfoModal] = useState(false);
+  // const [selectedVccInfo, setSelectedVccInfo] = useState<TransactionRecord | null>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const paymentMethodDropdownRef = useRef<HTMLDivElement>(null);
   // const staticWalletDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
-  const [isCardNumberCopied, setIsCardNumberCopied] = useState(false);
+  // const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
+  // const [isCardNumberCopied, setIsCardNumberCopied] = useState(false);
 
-  const handleCopyOrderId = async () => {
-    if (!selectedVccInfo?.transactionId) return;
-    try {
-      await navigator.clipboard.writeText(selectedVccInfo.transactionId);
-      setIsInfoIdCopied(true);
-      setTimeout(() => setIsInfoIdCopied(false), 2000);
-    } catch (err) { }
-  };
+  // const handleCopyOrderId = async () => {
+  //   if (!selectedVccInfo?.transactionId) return;
+  //   try {
+  //     await navigator.clipboard.writeText(selectedVccInfo.transactionId);
+  //     setIsInfoIdCopied(true);
+  //     setTimeout(() => setIsInfoIdCopied(false), 2000);
+  //   } catch (err) { }
+  // };
 
-  const handleCopyCardNumber = async () => {
-    if (!selectedVccInfo?.cardNumber) return;
-    try {
-      await navigator.clipboard.writeText(selectedVccInfo.cardNumber.replace(/\s/g, ''));
-      setIsCardNumberCopied(true);
-      setTimeout(() => setIsCardNumberCopied(false), 2000);
-    } catch (err) { }
-  };
+  // const handleCopyCardNumber = async () => {
+  //   if (!selectedVccInfo?.cardNumber) return;
+  //   try {
+  //     await navigator.clipboard.writeText(selectedVccInfo.cardNumber.replace(/\s/g, ''));
+  //     setIsCardNumberCopied(true);
+  //     setTimeout(() => setIsCardNumberCopied(false), 2000);
+  //   } catch (err) { }
+  // };
 
   const itemsPerPage = 10;
 
@@ -99,10 +100,11 @@ const Transactions: React.FC = () => {
     setLoading(true);
 
     let rechargesLoaded = false;
-    let vccTxLoaded = false;
+    // let vccTxLoaded = false;
 
     const checkLoading = () => {
-      if (rechargesLoaded && vccTxLoaded) {
+      // if (rechargesLoaded && vccTxLoaded) {
+      if (rechargesLoaded) {
         setLoading(false);
       }
     };
@@ -166,77 +168,77 @@ const Transactions: React.FC = () => {
       }
     );
 
-    const vccTxRef = collection(db, 'vccTransactions');
-    const qVccTx = query(
-      vccTxRef,
-      where('uid', '==', currentUser.uid),
-      orderBy('createdAt', 'desc')
-    );
+    // const vccTxRef = collection(db, 'vccTransactions');
+    // const qVccTx = query(
+    //   vccTxRef,
+    //   where('uid', '==', currentUser.uid),
+    //   orderBy('createdAt', 'desc')
+    // );
 
-    const unsubscribeVccTx = onSnapshot(
-      qVccTx,
-      (querySnapshot) => {
-        const transactions: TransactionRecord[] = [];
+    // const unsubscribeVccTx = onSnapshot(
+    //   qVccTx,
+    //   (querySnapshot) => {
+    //     const transactions: TransactionRecord[] = [];
 
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
+    //     querySnapshot.forEach((doc) => {
+    //       const data = doc.data();
 
-          let formattedDate = '';
-          if (data.createdAt) {
-            const date = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-            formattedDate = date.toLocaleString('en-US', {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: true
-            }).replace(',', ', ');
-          }
+    //       let formattedDate = '';
+    //       if (data.createdAt) {
+    //         const date = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+    //         formattedDate = date.toLocaleString('en-US', {
+    //           year: 'numeric',
+    //           month: '2-digit',
+    //           day: '2-digit',
+    //           hour: '2-digit',
+    //           minute: '2-digit',
+    //           second: '2-digit',
+    //           hour12: true
+    //         }).replace(',', ', ');
+    //       }
 
-          let initialFundsVal = typeof data.initialFunds === 'number' ? data.initialFunds : parseFloat(data.initialFunds);
-          if (isNaN(initialFundsVal)) {
-            initialFundsVal = typeof data.balance === 'number' ? data.balance : parseFloat(data.balance);
-            if (isNaN(initialFundsVal)) initialFundsVal = 0;
-          }
+    //       let initialFundsVal = typeof data.initialFunds === 'number' ? data.initialFunds : parseFloat(data.initialFunds);
+    //       if (isNaN(initialFundsVal)) {
+    //         initialFundsVal = typeof data.balance === 'number' ? data.balance : parseFloat(data.balance);
+    //         if (isNaN(initialFundsVal)) initialFundsVal = 0;
+    //       }
 
-          const txStatus = data.status || 'Pending';
+    //       const txStatus = data.status || 'Pending';
 
-          transactions.push({
-            id: doc.id,
-            option: 'Load Funds to VCC',
-            date: formattedDate,
-            status: txStatus,
-            amount: data.totalPrice || 0,
-            transactionId: data.orderId || doc.id,
-            isVcc: true,
-            cardNumber: data.cardNumber || '',
-            expirationDate: data.expirationDate || '',
-            cvv: data.cvv || '',
-            cardHolderName: data.cardHolderName || 'N/A',
-            initialFunds: initialFundsVal
-          });
-        });
+    //       transactions.push({
+    //         id: doc.id,
+    //         option: 'Load Funds to VCC',
+    //         date: formattedDate,
+    //         status: txStatus,
+    //         amount: data.totalPrice || 0,
+    //         transactionId: data.orderId || doc.id,
+    //         isVcc: true,
+    //         cardNumber: data.cardNumber || '',
+    //         expirationDate: data.expirationDate || '',
+    //         cvv: data.cvv || '',
+    //         cardHolderName: data.cardHolderName || 'N/A',
+    //         initialFunds: initialFundsVal
+    //       });
+    //     });
 
-        setVccTxData(transactions);
-        if (!vccTxLoaded) {
-          vccTxLoaded = true;
-          checkLoading();
-        }
-      },
-      (error) => {
-        console.error("Error loading vccTransactions:", error);
-        if (!vccTxLoaded) {
-          vccTxLoaded = true;
-          checkLoading();
-        }
-      }
-    );
+    //     setVccTxData(transactions);
+    //     if (!vccTxLoaded) {
+    //       vccTxLoaded = true;
+    //       checkLoading();
+    //     }
+    //   },
+    //   (error) => {
+    //     console.error("Error loading vccTransactions:", error);
+    //     if (!vccTxLoaded) {
+    //       vccTxLoaded = true;
+    //       checkLoading();
+    //     }
+    //   }
+    // );
 
     return () => {
       unsubscribeRecharges();
-      unsubscribeVccTx();
+      // unsubscribeVccTx();
     };
   }, [currentUser]);
 
@@ -345,7 +347,8 @@ const Transactions: React.FC = () => {
                   {/* Custom Dropdown Options */}
                   {isPaymentMethodDropdownOpen && (
                     <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto text-sm">
-                      {['All', 'Admin Update', 'Amazon Pay', 'Cryptomus', 'Load Funds to VCC', 'Static Wallets', 'Afterpay (United States)', 'Alipay (China)', 'PayNow (Singapore)', 'VietQR (Vietnam)', 'Credit Card (South Africa)', 'Bank Card (Nigeria)', 'Bank Transfer (Nigeria)', 'Airtel Money (Kenya)', 'MTN Mobile Money (Rwanda)', 'Airtel Money (Rwanda)', 'Tigo Pesa (Tanzania)', 'MTN Mobile Money (Uganda)', 'Airtel Money (Uganda)', 'Credit Card (South Korea)', 'PAYCO (South Korea)', 'Samsung Pay (South Korea)', 'KakaoPay (South Korea)'].map((method) => (
+                      {/* {['All', 'Admin Update', 'Amazon Pay', 'Cryptomus', 'Load Funds to VCC', 'Static Wallets', 'Afterpay (United States)', 'Alipay (China)', 'PayNow (Singapore)', 'VietQR (Vietnam)', 'Credit Card (South Africa)', 'Bank Card (Nigeria)', 'Bank Transfer (Nigeria)', 'Airtel Money (Kenya)', 'MTN Mobile Money (Rwanda)', 'Airtel Money (Rwanda)', 'Tigo Pesa (Tanzania)', 'MTN Mobile Money (Uganda)', 'Airtel Money (Uganda)', 'Credit Card (South Korea)', 'PAYCO (South Korea)', 'Samsung Pay (South Korea)', 'KakaoPay (South Korea)'].map((method) => ( */}
+                      {['All', 'Admin Update', 'Amazon Pay', 'Cryptomus', 'Static Wallets', 'Afterpay (United States)', 'Alipay (China)', 'PayNow (Singapore)', 'VietQR (Vietnam)', 'Credit Card (South Africa)', 'Bank Card (Nigeria)', 'Bank Transfer (Nigeria)', 'Airtel Money (Kenya)', 'MTN Mobile Money (Rwanda)', 'Airtel Money (Rwanda)', 'Tigo Pesa (Tanzania)', 'MTN Mobile Money (Uganda)', 'Airtel Money (Uganda)', 'Credit Card (South Korea)', 'PAYCO (South Korea)', 'Samsung Pay (South Korea)', 'KakaoPay (South Korea)'].map((method) => (
                         <div
                           key={method}
                           onClick={() => {
@@ -483,7 +486,7 @@ const Transactions: React.FC = () => {
                         </span>
                       </td>
                       <td className="py-4 px-6 text-center">
-                        {record.isVcc ? (
+                        {/* {record.isVcc ? (
                           <div className="flex items-center justify-center">
                             <button
                               onClick={() => {
@@ -499,9 +502,9 @@ const Transactions: React.FC = () => {
                               </svg>
                             </button>
                           </div>
-                        ) : (
+                        ) : ( */}
                           <span className="font-mono text-blue-500 font-semibold">{record.transactionId}</span>
-                        )}
+                        {/* )} */}
                       </td>
                     </tr>
                   ))}
@@ -581,7 +584,7 @@ const Transactions: React.FC = () => {
       </div>
 
       {/* VCC Info Modal */}
-      {showVccInfoModal && selectedVccInfo && (
+      {/*{showVccInfoModal && selectedVccInfo && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
           <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
             <div className="text-center mb-4">
@@ -661,7 +664,7 @@ const Transactions: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      )}*/}
     </div>
   );
 };

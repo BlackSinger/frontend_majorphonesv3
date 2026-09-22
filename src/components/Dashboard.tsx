@@ -714,6 +714,14 @@ const Dashboard: React.FC = () => {
   const newsItems = [
     {
       id: 1,
+      title: "Our Marketplace is here!",
+      description: "You can purchase accounts from different services",
+      time: "05/23/26",
+      type: "products",
+      urgent: true
+    },
+    {
+      id: 2,
       title: "We have added a new service!",
       description: "You can now purchase UK Empty SIM Cards",
       time: "05/20/26",
@@ -721,7 +729,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 2,
+      id: 3,
       title: "New feature available!",
       description: "Now configure middle numbers with Area Code",
       time: "05/17/26",
@@ -729,7 +737,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 3,
+      id: 4,
       title: "New payment method added!",
       description: "Try our new payment method, Afterpay",
       time: "05/03/26",
@@ -737,21 +745,21 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 4,
+      id: 5,
       title: "Choose Area Code/Carrier",
       description: "Custom short numbers with area code and/or carrier",
       time: "04/03/26",
       type: "products",
       urgent: true
     },
-    {
-      id: 5,
+    /*{
+      id: 6,
       title: "Get Virtual Debit Cards",
       description: "Add funds to it, freeze/unfreeze it, check transactions",
       time: "03/03/26",
       type: "products",
       urgent: true
-    },
+    },*/
     {
       id: 6,
       title: "Reuse feature",
@@ -760,16 +768,16 @@ const Dashboard: React.FC = () => {
       type: "product",
       urgent: true
     },
-    {
-      id: 7,
+    /*{
+      id: 8,
       title: "Send SMS worldwide",
       description: "Now you can send SMS to any number worldwide",
       time: "22/02/26",
       type: "product",
       urgent: true
-    },
+    },*/
     {
-      id: 8,
+      id: 7,
       title: "New Payment Methods",
       description: "From China and Africa",
       time: "30/01/26",
@@ -777,15 +785,15 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 9,
+      id: 8,
       title: "Get 1 free number",
-      description: "Deposit $10 or more through Crypto or Payeer",
+      description: "Deposit $10 or more through Crypto",
       time: "10/07/25",
       type: "product",
       urgent: true
     },
     {
-      id: 10,
+      id: 9,
       title: "Extended Middle Term Duration",
       description: "Get middle term numbers for more than just 1 day",
       time: "10/07/25",
@@ -793,7 +801,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },
     {
-      id: 11,
+      id: 10,
       title: "API Available",
       description: "Integrate with our service using our new API endpoints",
       time: "10/07/25",
@@ -809,7 +817,7 @@ const Dashboard: React.FC = () => {
       urgent: true
     },*/
     {
-      id: 12,
+      id: 11,
       title: "Extended Number Duration",
       description: "Try our long numberd and entire SIM cards",
       time: "10/07/25",
