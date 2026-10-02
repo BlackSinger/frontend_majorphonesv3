@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, MultiFactorResolver, TotpMultiFactorGenerator, getMultiFactorResolver, RecaptchaVerifier, initializeRecaptchaConfig } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, MultiFactorResolver, TotpMultiFactorGenerator, getMultiFactorResolver, initializeRecaptchaConfig } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 import LogoMajor from '../LogoMajor.png';
@@ -20,10 +20,6 @@ const SignIn: React.FC = () => {
   const [isVerifyingTOTP, setIsVerifyingTOTP] = useState(false);
   const [totpError, setTotpError] = useState<string | null>(null);
 
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [captchaResetKey, setCaptchaResetKey] = useState(0);
-  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
-
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
@@ -37,38 +33,6 @@ const SignIn: React.FC = () => {
   useEffect(() => {
     initializeRecaptchaConfig(auth).catch(() => {});
   }, []);
-
-  // Renders the Firebase reCAPTCHA widget; changing captchaResetKey renders a fresh one
-  useEffect(() => {
-    const container = recaptchaContainerRef.current;
-    if (!container) return;
-
-    const widget = document.createElement('div');
-    container.appendChild(widget);
-
-    const verifier = new RecaptchaVerifier(auth, widget, {
-      size: 'normal',
-      theme: 'dark',
-      callback: (token: string) => setCaptchaToken(token),
-      'expired-callback': () => setCaptchaToken(null),
-      'error-callback': () => setCaptchaToken(null),
-    });
-
-    verifier.render().catch(() => {
-      setModalMessage('The captcha could not be loaded, please reload the page');
-      setShowModal(true);
-    });
-
-    return () => {
-      verifier.clear();
-      widget.remove();
-      setCaptchaToken(null);
-    };
-  }, [captchaResetKey]);
-
-  const resetCaptcha = () => {
-    setCaptchaResetKey((key) => key + 1);
-  };
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -92,12 +56,6 @@ const SignIn: React.FC = () => {
 
     if (!validateEmail(email)) {
       setModalMessage('Please enter a valid email address.');
-      setShowModal(true);
-      return;
-    }
-
-    if (!captchaToken) {
-      setModalMessage('Please complete the captcha verification.');
       setShowModal(true);
       return;
     }
@@ -161,7 +119,7 @@ const SignIn: React.FC = () => {
         case 'auth/captcha-check-failed':
         case 'auth/invalid-recaptcha-token':
         case 'auth/missing-recaptcha-token':
-          errorMessage = 'The captcha verification failed, please try again';
+          errorMessage = 'Security verification failed, please try again';
           break;
         default:
           errorMessage = 'An unexpected error occurred';
@@ -171,7 +129,6 @@ const SignIn: React.FC = () => {
       setShowModal(true);
     } finally {
       setIsLoading(false);
-      resetCaptcha();
     }
   };
 
@@ -406,11 +363,6 @@ const SignIn: React.FC = () => {
               >
                 Forgot password?
               </Link>
-            </div>
-
-            {/* Captcha */}
-            <div className="flex justify-center">
-              <div ref={recaptchaContainerRef} className="origin-center scale-90 sm:scale-100" />
             </div>
 
             {/* Sign In Button */}
