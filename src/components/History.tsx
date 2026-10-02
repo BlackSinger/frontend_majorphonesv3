@@ -2241,8 +2241,9 @@ const History: React.FC = () => {
                                                         <td className="py-4 px-6 text-center">
                                                             <button
                                                                 onClick={() => handleCheckCard(record.id, record.status, setCheckingCardId, setErrorMessage, setShowErrorModal, navigate)}
-                                                                disabled={checkingCardId !== null}
-                                                                className={`px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm min-w-[120px] ${checkingCardId !== null ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
+                                                                // disabled={checkingCardId !== null}
+                                                                disabled
+                                                                className={`px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${checkingCardId !== null ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
                                                             >
                                                                 {checkingCardId === record.id ? (
                                                                     <div className="flex items-center justify-center">

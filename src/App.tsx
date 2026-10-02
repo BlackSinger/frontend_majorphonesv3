@@ -15,7 +15,9 @@ import EmptySimcard from './components/EmptySimcard';
 //import SendMessage from './components/SendMessage';
 //import SendSMS from './components/SendSMS';
 //import VirtualCard from './components/VirtualCard';
+import VirtualCardTest from './components/VirtualCardTest';
 import VccConfig from './components/VccConfig';
+import VccConfigTest from './components/VccConfigTest';
 import Marketplace from './components/Marketplace';
 //import Proxies from './components/Proxies';
 import History from './components/History';
@@ -65,7 +67,9 @@ function App() {
             <Route path="/emptysimcard" element={<PrivateRoute><DashboardLayout><EmptySimcard /></DashboardLayout></PrivateRoute>} />
             {/*<Route path="/send-sms" element={<PrivateRoute><DashboardLayout><SendSMS /></DashboardLayout></PrivateRoute>} />*/}
             {/*<Route path="/virtualcard" element={<PrivateRoute><DashboardLayout><VirtualCard /></DashboardLayout></PrivateRoute>} />*/}
+            <Route path="/virtualcard-test" element={<PrivateRoute><DashboardLayout><VirtualCardTest /></DashboardLayout></PrivateRoute>} />
             <Route path="/vcc-config" element={<PrivateRoute><DashboardLayout><VccConfig /></DashboardLayout></PrivateRoute>} />
+            <Route path="/vcc-config-test" element={<PrivateRoute><DashboardLayout><VccConfigTest /></DashboardLayout></PrivateRoute>} />
             <Route path="/marketplace" element={<PrivateRoute><DashboardLayout><Marketplace /></DashboardLayout></PrivateRoute>} />
             {/*<Route path="/proxies" element={<PrivateRoute><DashboardLayout><Proxies /></DashboardLayout></PrivateRoute>} />*/}
             <Route path="/history" element={<PrivateRoute><DashboardLayout><History /></DashboardLayout></PrivateRoute>} />
