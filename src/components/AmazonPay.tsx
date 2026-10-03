@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { trackEvent } from '../analytics/metaPixel';
 
 declare global {
   interface Window {
@@ -182,6 +183,7 @@ const AmazonPay: React.FC<AmazonPayProps> = ({
         // Save orderId to localStorage for payment return
         localStorage.setItem('amazonPayOrderId', data.orderId);
         console.log('[createCheckoutSession] Saved orderId to localStorage:', data.orderId);
+        trackEvent('InitiateCheckout', { value: amount, currency: 'USD' }, `ic_${data.orderId}`);
 
         return {
           payload: data.payload,

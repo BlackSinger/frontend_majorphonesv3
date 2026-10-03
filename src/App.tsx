@@ -39,6 +39,7 @@ import MajorUser from './components/MajorUser';
 import MajorTickets from './components/MajorTickets';
 import MajorVccStock from './components/MajorVccStock';
 import MajorExtra from './components/MajorExtra';
+import MetaPixelTracker from './components/MetaPixelTracker';
 import './App.css';
 
 
@@ -50,6 +51,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
+        <MetaPixelTracker />
         <div className="App">
           <Routes>
             {/* Public routes - Without DashboardLayout */}

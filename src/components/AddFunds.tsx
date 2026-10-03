@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getAuth } from 'firebase/auth';
+import { trackEvent } from '../analytics/metaPixel';
 //import GlobalLogo from '../GloblLogo.svg';
 import AfricaLogo from '../AfricaLogo.svg';
 import KoreaLogo from '../KoreaLogo.svg';
@@ -963,6 +964,9 @@ const AddFunds: React.FC = () => {
     }
 
     const data = await response.json();
+    if (data.success && data.orderId) {
+      trackEvent('InitiateCheckout', { value: amount, currency: 'USD' }, `ic_${data.orderId}`);
+    }
     return data;
   };
 
@@ -1017,6 +1021,9 @@ const AddFunds: React.FC = () => {
     }
 
     const data = await response.json();
+    if (data.success && data.orderId) {
+      trackEvent('InitiateCheckout', { value: amount, currency: 'USD' }, `ic_${data.orderId}`);
+    }
     return data;
   };
 

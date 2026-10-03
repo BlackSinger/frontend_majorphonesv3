@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
+import { syncMetaContext } from '../analytics/metaPixel';
 import Sidebar from './Sidebar';
 
 interface DashboardLayoutProps {
@@ -88,6 +89,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       }
     };
   }, [hideBalanceTimeout]);
+
+  // Browser context for Meta events (registration and recharges), once per session
+  useEffect(() => {
+    if (currentUser) {
+      syncMetaContext(currentUser);
+    }
+  }, [currentUser]);
 
   const formatBalance = (amount: number | null) => {
     if (amount === null) return '-';

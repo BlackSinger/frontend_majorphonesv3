@@ -3,6 +3,10 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { captureAttribution } from './analytics/metaPixel';
+
+// Before the first render: public screens redirect and the ad URL (UTM, fbclid) would be lost
+captureAttribution();
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
