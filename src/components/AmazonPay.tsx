@@ -27,6 +27,17 @@ interface AmazonPayButtonConfig {
   };
 }
 
+const AMAZON_PAY_SDK_URL = 'https://static-na.payments-amazon.com/checkout.js';
+
+// The SDK used to be a render-blocking <script> in index.html on every route; load it only when the button mounts
+const loadAmazonPaySdk = () => {
+  if (document.querySelector(`script[src="${AMAZON_PAY_SDK_URL}"]`)) return;
+  const script = document.createElement('script');
+  script.src = AMAZON_PAY_SDK_URL;
+  script.async = true;
+  document.head.appendChild(script);
+};
+
 interface AmazonPayProps {
   amount: number;
   onSuccess?: () => void;
@@ -81,6 +92,8 @@ const AmazonPay: React.FC<AmazonPayProps> = ({
       }
       return false;
     };
+
+    loadAmazonPaySdk();
 
     // Try immediately
     if (checkSDK()) {
