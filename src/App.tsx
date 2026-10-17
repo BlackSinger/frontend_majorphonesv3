@@ -19,6 +19,7 @@ import VirtualCardTest from './components/VirtualCardTest';
 import VccConfig from './components/VccConfig';
 import VccConfigTest from './components/VccConfigTest';
 import Marketplace from './components/Marketplace';
+import TempEmail from './components/TempEmail';
 //import Proxies from './components/Proxies';
 import History from './components/History';
 import Transactions from './components/Transactions';
@@ -73,6 +74,7 @@ function App() {
             <Route path="/vcc-config" element={<PrivateRoute><DashboardLayout><VccConfig /></DashboardLayout></PrivateRoute>} />
             <Route path="/vcc-config-test" element={<PrivateRoute><DashboardLayout><VccConfigTest /></DashboardLayout></PrivateRoute>} />
             <Route path="/marketplace" element={<PrivateRoute><DashboardLayout><Marketplace /></DashboardLayout></PrivateRoute>} />
+            <Route path="/temp-email" element={<PrivateRoute><DashboardLayout><TempEmail /></DashboardLayout></PrivateRoute>} />
             {/*<Route path="/proxies" element={<PrivateRoute><DashboardLayout><Proxies /></DashboardLayout></PrivateRoute>} />*/}
             <Route path="/history" element={<PrivateRoute><DashboardLayout><History /></DashboardLayout></PrivateRoute>} />
             <Route path="/transactions" element={<PrivateRoute><DashboardLayout><Transactions /></DashboardLayout></PrivateRoute>} />
