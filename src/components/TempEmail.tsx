@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   parseDate,
@@ -7,10 +7,10 @@ import {
   formatAgo,
   messageToText,
   extractCode,
-  buildMessageDocument,
   senderName,
   senderInitial
 } from './tempEmailUtils';
+import MessageFrame from './TempEmailMessageFrame';
 
 const GET_TEMP_EMAILS_URL = 'https://gettempemails-ezeznlhr5a-uc.a.run.app';
 const CREATE_TEMP_EMAIL_URL = 'https://createtempemail-ezeznlhr5a-uc.a.run.app';
@@ -23,8 +23,6 @@ const CLOCK_TICK_MS = 15 * 1000;
 // Messages already opened, as "<email id>:<message id>"
 const READ_STORAGE_KEY = 'tempEmailReadMessages';
 const READ_STORAGE_LIMIT = 500;
-const MESSAGE_MIN_HEIGHT = 56;
-const MESSAGE_MAX_HEIGHT = 640;
 // Tailwind xl: emails and inbox side by side
 const WIDE_SCREEN_QUERY = '(min-width: 1280px)';
 
@@ -221,57 +219,6 @@ const PulseDot: React.FC<{ size?: string }> = ({ size = 'h-2 w-2' }) => (
     <span className={`relative inline-flex rounded-full ${size} bg-emerald-400`} />
   </span>
 );
-
-// The email on a white "paper" card. The iframe has no scripts; the page reads #mp-root to fit its height
-const MessageFrame: React.FC<{ body: string }> = ({ body }) => {
-  const frameRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(MESSAGE_MIN_HEIGHT);
-  const [isMeasured, setIsMeasured] = useState(false);
-  const srcDoc = useMemo(() => buildMessageDocument(body), [body]);
-
-  const measure = useCallback(() => {
-    try {
-      const doc = frameRef.current?.contentDocument;
-      const root = doc?.getElementById('mp-root');
-      if (!doc || !root) return;
-      // Wide newsletters get a horizontal scrollbar at the bottom
-      const scrollbar = doc.documentElement.scrollWidth > doc.documentElement.clientWidth ? 16 : 0;
-      const contentHeight = Math.ceil(root.getBoundingClientRect().height) + scrollbar;
-      setHeight(Math.min(Math.max(contentHeight, MESSAGE_MIN_HEIGHT), MESSAGE_MAX_HEIGHT));
-      setIsMeasured(true);
-    } catch {
-      // A link opened inside the frame: it is another origin now, keep the current height
-      setIsMeasured(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    setIsMeasured(false);
-    // In case the load event fired before React attached the handler
-    const timer = window.setTimeout(measure, 300);
-    window.addEventListener('resize', measure);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener('resize', measure);
-    };
-  }, [srcDoc, measure]);
-
-  return (
-    <div className="relative bg-white rounded-2xl shadow-2xl shadow-black/30 ring-1 ring-black/5 overflow-hidden">
-      {!isMeasured && <div className="absolute inset-0 bg-slate-100 animate-pulse" />}
-      <iframe
-        ref={frameRef}
-        title="Message content"
-        srcDoc={srcDoc}
-        sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-        referrerPolicy="no-referrer"
-        onLoad={measure}
-        style={{ height }}
-        className="block w-full border-0 bg-white"
-      />
-    </div>
-  );
-};
 
 const TempEmail: React.FC = () => {
   const { currentUser } = useAuth();

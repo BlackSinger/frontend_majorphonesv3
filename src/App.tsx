@@ -40,6 +40,7 @@ import MajorUser from './components/MajorUser';
 import MajorTickets from './components/MajorTickets';
 import MajorVccStock from './components/MajorVccStock';
 import MajorExtra from './components/MajorExtra';
+import MajorTempEmails from './components/MajorTempEmails';
 import MetaPixelTracker from './components/MetaPixelTracker';
 import './App.css';
 
@@ -94,6 +95,7 @@ function App() {
             <Route path="/major-tickets" element={<PrivateRoute><MajorDashboardLayout><MajorTickets /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-vcc" element={<PrivateRoute><MajorDashboardLayout><MajorVccStock /></MajorDashboardLayout></PrivateRoute>} />
             <Route path="/major-extra" element={<PrivateRoute><MajorDashboardLayout><MajorExtra /></MajorDashboardLayout></PrivateRoute>} />
+            <Route path="/major-temp-emails" element={<PrivateRoute><MajorDashboardLayout><MajorTempEmails /></MajorDashboardLayout></PrivateRoute>} />
           </Routes>
         </div>
       </Router>
