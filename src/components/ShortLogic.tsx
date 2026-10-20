@@ -77,6 +77,9 @@ export const calculateShortDuration = (createdAt: Date, expiry: Date, opt?: numb
   return `Single use for ${durationMinutes} minutes`;
 };
 
+// Regular numbers (SMSKody) can be cancelled at any time while no SMS has arrived
+const REGULAR_OPTION = 777;
+
 export const getShortAvailableActions = (record: HistoryRecord): string[] => {
   const { status, code, createdAt, opt } = record;
   const hasSms = code && code.trim() !== '';
@@ -87,7 +90,7 @@ export const getShortAvailableActions = (record: HistoryRecord): string[] => {
   }
 
   if (status === 'Pending') {
-    if (!hasSms && hasTwoFortyFiveMinutesPassed(createdAt)) {
+    if (!hasSms && (opt === REGULAR_OPTION || hasTwoFortyFiveMinutesPassed(createdAt))) {
       return ['Cancel'];
     }
   }
