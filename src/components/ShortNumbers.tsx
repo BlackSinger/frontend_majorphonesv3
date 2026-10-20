@@ -286,6 +286,14 @@ const ShortNumbers: React.FC = () => {
         const catalogData = catalogSnap.data();
         const regularNames: string[] = catalogData?.stnUSARegular || [];
 
+        // Without a published catalog every search would fall back to "Service not listed"
+        if (regularNames.length === 0) {
+          setHasError(true);
+          setErrorMessage('Regular numbers are temporarily unavailable, please try Premium numbers');
+          setShowErrorModal(true);
+          return;
+        }
+
         finalServicesList = regularNames
           .map(name => ({ id: name, name }))
           .sort((a, b) => a.name.localeCompare(b.name));

@@ -168,6 +168,18 @@ describe('regular numbers', () => {
     expect(screen.getByText('Confirm your number')).toBeInTheDocument();
   });
 
+  test('without a published regular catalog it says so instead of offering "Service not listed"', async () => {
+    mockDocs['allCatalog/catalog'] = { stnUSA: ['Telegram'] };
+    await goToSearch();
+    expect(await screen.findByText('Regular numbers are temporarily unavailable, please try Premium numbers')).toBeInTheDocument();
+    expect(await serviceInput()).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+    await chooseType('Premium');
+    continueToSearch();
+    expect(await serviceInput()).toBeEnabled();
+  });
+
   test('a service without an SMSKody price is not offered', async () => {
     delete mockDocs['stnUSA/opt777/services/Whatsapp'];
     await goToSearch();
