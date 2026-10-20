@@ -30,6 +30,20 @@ interface ServiceOption {
   name: string;
 }
 
+// Regular: single-SMS US numbers at the lowest price (SMSKody, option 777 of buyShortUSA)
+// Premium: the existing options (reusable, area code/carrier, more countries)
+type NumberType = 'regular' | 'premium';
+
+interface RegularOffer {
+  id: string;
+  serviceName: string;
+  price: number;
+}
+
+const REGULAR_OPTION = 777;
+// buyShortUSA waits 5 minutes for the SMS, then cancels and refunds
+const REGULAR_EXPIRATION_MINUTES = 5;
+
 const ShortNumbers: React.FC = () => {
   const navigate = useNavigate();
   const [user] = useAuthState(auth);
@@ -56,6 +70,10 @@ const ShortNumbers: React.FC = () => {
   const [hasError, setHasError] = useState(false);
 
   const [purchasingOptionId, setPurchasingOptionId] = useState<string | null>(null);
+
+  const [numberType, setNumberType] = useState<NumberType | null>(null);
+  const [isSetupComplete, setIsSetupComplete] = useState(false);
+  const [regularOffer, setRegularOffer] = useState<RegularOffer | null>(null);
 
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [pendingOpt1Option, setPendingOpt1Option] = useState<NumberOption | null>(null);
@@ -196,6 +214,48 @@ const ShortNumbers: React.FC = () => {
     // }
   ];
 
+  // Regular numbers only exist in the United States; premium keeps every country above
+  const availableCountries = numberType === 'regular' ? countries.filter(c => c.code === 'US') : countries;
+
+  const formatCountryList = (names: string[]) => names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names.join('');
+
+  const numberTypeOptions: {
+    type: NumberType;
+    title: string;
+    tagline: string;
+    taglineClass: string;
+    iconClass: string;
+    icon: React.ReactNode;
+    features: string[];
+  }[] = [
+    {
+      type: 'regular',
+      title: 'Regular',
+      tagline: 'Lowest price',
+      taglineClass: 'text-emerald-400',
+      iconClass: 'bg-emerald-500/15 text-emerald-400',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+        </svg>
+      ),
+      features: ['United States numbers', 'Receives 1 SMS', `Active for ${REGULAR_EXPIRATION_MINUTES} minutes`]
+    },
+    {
+      type: 'premium',
+      title: 'Premium',
+      tagline: 'More options',
+      taglineClass: 'text-blue-300',
+      iconClass: 'bg-blue-500/15 text-blue-300',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+        </svg>
+      ),
+      features: [formatCountryList(countries.map(c => c.name)), 'Reusable numbers available', 'Choose area code and carrier']
+    }
+  ];
+
   const loadServices = async () => {
     try {
       setIsLoadingServices(true);
@@ -220,7 +280,16 @@ const ShortNumbers: React.FC = () => {
       //     .map(name => ({ id: name, name }))
       //     .sort((a, b) => a.name.localeCompare(b.name));
       // } else if (selectedCountry === 'Germany') {
-      if (selectedCountry === 'Germany') {
+      if (numberType === 'regular') {
+        const catalogRef = doc(db, 'allCatalog', 'catalog');
+        const catalogSnap = await getDoc(catalogRef);
+        const catalogData = catalogSnap.data();
+        const regularNames: string[] = catalogData?.stnUSARegular || [];
+
+        finalServicesList = regularNames
+          .map(name => ({ id: name, name }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      } else if (selectedCountry === 'Germany') {
         const catalogRef = doc(db, 'allCatalog', 'catalog');
         const catalogSnap = await getDoc(catalogRef);
         const catalogData = catalogSnap.data();
@@ -287,15 +356,12 @@ const ShortNumbers: React.FC = () => {
     }
   };
 
+  // The catalog depends on the number type and the country, so it loads once the type is chosen
   useEffect(() => {
-    loadServices();
-  }, []);
-
-  useEffect(() => {
-    if (selectedCountry) {
+    if (numberType && selectedCountry) {
       loadServices();
     }
-  }, [selectedCountry]);
+  }, [numberType, selectedCountry]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -639,6 +705,30 @@ const ShortNumbers: React.FC = () => {
     }
   };
 
+  const handleNumberTypeSelect = (type: NumberType) => {
+    setNumberType(type);
+    setRegularOffer(null);
+    setIsCountryDropdownOpen(false);
+    if (type === 'regular') {
+      setSelectedCountry('United States');
+    }
+  };
+
+  const handleChangeSetup = () => {
+    setIsSetupComplete(false);
+    setRegularOffer(null);
+    setSelectedService(null);
+    setSearchTerm('');
+    setIsServiceDropdownOpen(false);
+  };
+
+  const handleRegularPurchase = () => {
+    if (!regularOffer) return;
+    globalPurchaseData.serviceId = regularOffer.id;
+    globalPurchaseData.option = REGULAR_OPTION;
+    handleBuyShortUSAPurchase(`${regularOffer.id}-opt${REGULAR_OPTION}`);
+  };
+
   const handlePurchaseClick = (option: NumberOption) => {
     if (option.opt === 'opt1') {
       setPendingOpt1Option(option);
@@ -781,6 +871,20 @@ const ShortNumbers: React.FC = () => {
 
     try {
       let allNumbers: NumberOption[] = [];
+
+      if (numberType === 'regular') {
+        // The document id is the service name, so the current price is a single read
+        const serviceSnap = await getDoc(doc(db, 'stnUSA', `opt${REGULAR_OPTION}`, 'services', selectedService.name));
+        const data = serviceSnap.data();
+        const price = parseFloat(data?.price);
+        if (!serviceSnap.exists() || !data?.id || !Number.isFinite(price)) {
+          setErrorMessage('No service available');
+          setShowErrorModal(true);
+          return;
+        }
+        setRegularOffer({ id: data.id, serviceName: data.serviceName || selectedService.name, price });
+        return;
+      }
 
       if (selectedCountry === 'United States') {
         const searchPromises = ['opt1', 'opt2', 'opt10'].map(async (optDoc) => {
@@ -1035,6 +1139,7 @@ const ShortNumbers: React.FC = () => {
           <div className="text-center">
             <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
             <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
+              <li>• Regular numbers are United States numbers at the lowest price that receive 1 SMS. Premium numbers include more countries, reusable options and area code/carrier selection</li>
               <li>• They can only be reused multiple times if you purchase the "Reusable: Yes" option, otherwise they can only receive just 1 SMS</li>
               <li>• You can use the reuse feature for 9-10 minutes</li>
               <li>• You can choose area code and/or carrier if you purchase the "Area Code/Carrier: Yes" option, otherwise they will be randomly assigned</li>
@@ -1059,7 +1164,231 @@ const ShortNumbers: React.FC = () => {
       {/* Main Content Section */}
       <div className={`rounded-3xl shadow-2xl border border-slate-700/50 relative ${(isCountryDropdownOpen || isServiceDropdownOpen) ? 'overflow-visible' : 'overflow-hidden'}`}>
 
-        {!hasSearched ? (
+        {!isSetupComplete ? (
+          /* SETUP VIEW: number type and country */
+          <div className="p-6">
+            <div className="relative z-10 mx-auto">
+              <div className="text-left mb-9">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent mb-2">
+                  Choose your number
+                </h1>
+                <p className="text-slate-300 text-md">Select the type of number and the country you need</p>
+              </div>
+
+              <div className="space-y-9">
+                <div className="space-y-6">
+                  {/* Number Type */}
+                  <div className="space-y-3">
+                    <label id="number-type-label" className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
+                      Which type of number do you want?
+                    </label>
+                    <div role="radiogroup" aria-labelledby="number-type-label" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {numberTypeOptions.map((option) => {
+                        const isSelected = numberType === option.type;
+                        return (
+                          <button
+                            key={option.type}
+                            type="button"
+                            role="radio"
+                            aria-checked={isSelected}
+                            onClick={() => handleNumberTypeSelect(option.type)}
+                            className={`text-left p-5 rounded-2xl border-2 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isSelected
+                              ? 'border-emerald-500/60 bg-emerald-500/10 shadow-lg shadow-emerald-500/10'
+                              : 'border-slate-600/50 bg-slate-800/50 hover:border-slate-500/50 hover:bg-slate-800/70'
+                              }`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${option.iconClass}`}>
+                                  {option.icon}
+                                </div>
+                                <div>
+                                  <p className="text-white font-bold text-lg leading-tight">{option.title}</p>
+                                  <p className={`text-xs font-semibold uppercase tracking-wider ${option.taglineClass}`}>{option.tagline}</p>
+                                </div>
+                              </div>
+                              <span className={`mt-1 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors duration-300 ${isSelected ? 'border-emerald-400 bg-emerald-400' : 'border-slate-500'}`}>
+                                {isSelected && (
+                                  <svg className="w-3 h-3 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4.5 12.75l6 6 9-13.5" />
+                                  </svg>
+                                )}
+                              </span>
+                            </div>
+                            <ul className="mt-4 space-y-2">
+                              {option.features.map((feature) => (
+                                <li key={feature} className="flex items-center text-sm text-slate-300">
+                                  <svg className="w-4 h-4 mr-2 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.5 12.75l6 6 9-13.5" />
+                                  </svg>
+                                  {feature}
+                                </li>
+                              ))}
+                            </ul>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Country Selection */}
+                  {numberType && (
+                    <div className="space-y-3">
+                      <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
+                        Select Country
+                      </label>
+                      <div className="relative group" ref={dropdownRef}>
+                        <div
+                          onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                          className="w-full pl-12 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between cursor-pointer hover:border-slate-500/50"
+                        >
+                          <div className="flex items-center">
+                            <div className="absolute left-4">
+                              {countries.find(c => c.name === selectedCountry)?.flag}
+                            </div>
+                            <span>{selectedCountry}</span>
+                          </div>
+                        </div>
+
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+
+                        {isCountryDropdownOpen && (
+                          <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
+                            {availableCountries.map((country) => (
+                              <div
+                                key={country.code}
+                                onClick={() => {
+                                  setSelectedCountry(country.name);
+                                  setIsCountryDropdownOpen(false);
+                                }}
+                                className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                              >
+                                <div className="mr-1">
+                                  {country.flag}
+                                </div>
+                                <span className="text-white">{country.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {numberType === 'regular' && (
+                        <p className="text-slate-400 text-xs text-left">Regular numbers are only available in the United States</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Continue Button */}
+                <div className="flex flex-col items-center space-y-3">
+                  <button
+                    onClick={() => setIsSetupComplete(true)}
+                    disabled={!numberType}
+                    className="group px-8 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[150px]"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <span className="relative z-10 group-hover:tracking-wide transition-all duration-300">Continue</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : regularOffer ? (
+          /* REGULAR CONFIRMATION VIEW */
+          <div className="p-6">
+            <div className="relative z-10">
+              {/* Back Button */}
+              <div className="mb-5">
+                <button
+                  onClick={() => setRegularOffer(null)}
+                  disabled={purchasingOptionId !== null}
+                  className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                  <span className="text-slate-400 group-hover:text-white font-medium transition-colors duration-300">
+                    Back to Search
+                  </span>
+                </button>
+              </div>
+
+              {/* Confirmation Header */}
+              <div className="text-left mb-7">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
+                  Confirm your number
+                </h1>
+                <p className="text-slate-300 text-md">Review the details before purchasing</p>
+              </div>
+
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/50 transition-all duration-300 shadow-lg shadow-blue-500/25" style={{ boxShadow: '0 0 24px rgba(59, 130, 246, 0.25)' }}>
+                <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-11 h-11 bg-emerald-500/15 text-emerald-400 rounded-xl flex items-center justify-center">
+                      {numberTypeOptions[0].icon}
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-bold text-md">Regular number</p>
+                      <p className="text-slate-400 text-sm flex items-center">
+                        {countries.find(c => c.name === 'United States')?.flag}
+                        United States
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    1 SMS
+                  </span>
+                </div>
+
+                <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 text-left">
+                  <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl px-4 py-3 min-w-0">
+                    <dt className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Service</dt>
+                    <dd className="text-white font-semibold text-lg mt-1 truncate" title={regularOffer.serviceName}>{regularOffer.serviceName}</dd>
+                  </div>
+                  <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl px-4 py-3">
+                    <dt className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Price</dt>
+                    <dd className="text-emerald-400 font-bold text-lg mt-1">${formatPrice(regularOffer.price)}</dd>
+                  </div>
+                  <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl px-4 py-3">
+                    <dt className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Number expires in</dt>
+                    <dd className="text-white font-semibold text-lg mt-1">{REGULAR_EXPIRATION_MINUTES} minutes</dd>
+                  </div>
+                </dl>
+
+                <div className="flex items-start bg-blue-500/10 border border-blue-500/30 rounded-xl px-4 py-3 mb-6 text-left">
+                  <svg className="w-5 h-5 text-blue-300 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                  </svg>
+                  <p className="text-blue-200 text-sm">
+                    The number receives 1 SMS. If no code arrives within {REGULAR_EXPIRATION_MINUTES} minutes, it is cancelled and refunded automatically.
+                  </p>
+                </div>
+
+                <div className="flex justify-center sm:justify-end">
+                  <button
+                    onClick={handleRegularPurchase}
+                    disabled={purchasingOptionId !== null}
+                    className="w-full sm:w-auto sm:min-w-[200px] px-8 py-3 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  >
+                    {purchasingOptionId !== null ? (
+                      <div className="flex items-center justify-center">
+                        <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </div>
+                    ) : (
+                      'Confirm'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : !hasSearched ? (
           /* SEARCH VIEW */
           <div className="p-6">
             <div className="relative z-10 mx-auto">
@@ -1071,11 +1400,35 @@ const ShortNumbers: React.FC = () => {
                 <p className="text-slate-300 text-md">Find and configure your short number service</p>
               </div>
 
+              {/* Number type and country chosen in the previous step */}
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 mb-6 bg-slate-800/50 border border-slate-600/50 rounded-2xl">
+                <div className="flex items-center flex-wrap gap-3 text-sm">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${numberType === 'regular'
+                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                    : 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                    }`}>
+                    {numberType === 'regular' ? 'Regular' : 'Premium'}
+                  </span>
+                  <span className="flex items-center text-white">
+                    {countries.find(c => c.name === selectedCountry)?.flag}
+                    {selectedCountry}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleChangeSetup}
+                  disabled={isSearching}
+                  className="text-sm font-semibold text-emerald-400 hover:text-emerald-300 underline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Change
+                </button>
+              </div>
+
               {/* Search Form */}
               <div className="space-y-9">
                 {/* Form Elements Container */}
                 <div className="space-y-6">
-                  {/* Service Input and Country Selection Row */}
+                  {/* Service Input */}
                   <div className="grid grid-cols-1 gap-6">
                     {/* Search Input */}
                     <div className="space-y-3">
@@ -1108,56 +1461,6 @@ const ShortNumbers: React.FC = () => {
                                 className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
                               >
                                 <span className="text-white">{service.name}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Country Selection */}
-                    <div className="space-y-3">
-                      <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
-                        Select Country
-                      </label>
-                      <div className="relative group" ref={dropdownRef}>
-                        <div
-                          onClick={() => !isLoadingServices && !hasError && !isSearching && setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-                          className={`w-full pl-12 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between ${isLoadingServices || hasError || isSearching
-                            ? 'opacity-50 cursor-not-allowed'
-                            : 'cursor-pointer hover:border-slate-500/50'
-                            }`}
-                        >
-                          <div className="flex items-center">
-                            <div className="absolute left-4">
-                              {countries.find(c => c.name === selectedCountry)?.flag}
-                            </div>
-                            <span>{selectedCountry}</span>
-                          </div>
-                        </div>
-
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                          <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-
-                        {/* Custom Dropdown Options */}
-                        {isCountryDropdownOpen && !isLoadingServices && !hasError && !isSearching && (
-                          <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
-                            {countries.map((country) => (
-                              <div
-                                key={country.code}
-                                onClick={() => {
-                                  setSelectedCountry(country.name);
-                                  setIsCountryDropdownOpen(false);
-                                }}
-                                className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-                              >
-                                <div className="mr-1">
-                                  {country.flag}
-                                </div>
-                                <span className="text-white">{country.name}</span>
                               </div>
                             ))}
                           </div>
