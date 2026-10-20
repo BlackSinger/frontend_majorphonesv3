@@ -233,7 +233,7 @@ const ShortNumbers: React.FC = () => {
       title: 'Regular',
       tagline: 'Lowest price',
       taglineClass: 'text-emerald-400',
-      iconClass: 'bg-emerald-500/15 text-emerald-400',
+      iconClass: 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-400/20',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
@@ -245,11 +245,13 @@ const ShortNumbers: React.FC = () => {
       type: 'premium',
       title: 'Premium',
       tagline: 'More options',
-      taglineClass: 'text-blue-300',
-      iconClass: 'bg-blue-500/15 text-blue-300',
+      taglineClass: 'text-amber-300',
+      iconClass: 'bg-amber-500/10 text-amber-300 ring-1 ring-amber-400/20',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M4 17.5 2.5 7l5.25 4.25L12 3.5l4.25 7.75L21.5 7 20 17.5H4z" />
+          <path strokeLinecap="round" strokeWidth="1.8" d="M4.5 21h15" />
+          <circle cx="12" cy="13.75" r="1.4" fill="currentColor" stroke="none" />
         </svg>
       ),
       features: [formatCountryList(countries.map(c => c.name)), 'Reusable numbers available', 'Choose area code and carrier']
@@ -1200,22 +1202,22 @@ const ShortNumbers: React.FC = () => {
                             role="radio"
                             aria-checked={isSelected}
                             onClick={() => handleNumberTypeSelect(option.type)}
-                            className={`text-left p-5 rounded-2xl border-2 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isSelected
+                            className={`flex flex-col h-full text-left p-5 sm:p-6 rounded-2xl border-2 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isSelected
                               ? 'border-emerald-500/60 bg-emerald-500/10 shadow-lg shadow-emerald-500/10'
                               : 'border-slate-600/50 bg-slate-800/50 hover:border-slate-500/50 hover:bg-slate-800/70'
                               }`}
                           >
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-center space-x-3">
-                                <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${option.iconClass}`}>
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-center gap-4 min-w-0">
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${option.iconClass}`}>
                                   {option.icon}
                                 </div>
-                                <div>
-                                  <p className="text-white font-bold text-lg leading-tight">{option.title}</p>
-                                  <p className={`text-xs font-semibold uppercase tracking-wider ${option.taglineClass}`}>{option.tagline}</p>
+                                <div className="min-w-0">
+                                  <p className="text-white font-bold text-lg leading-6">{option.title}</p>
+                                  <p className={`mt-1 text-[11px] leading-4 font-semibold uppercase tracking-[0.14em] ${option.taglineClass}`}>{option.tagline}</p>
                                 </div>
                               </div>
-                              <span className={`mt-1 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors duration-300 ${isSelected ? 'border-emerald-400 bg-emerald-400' : 'border-slate-500'}`}>
+                              <span className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors duration-300 ${isSelected ? 'border-emerald-400 bg-emerald-400' : 'border-slate-500'}`}>
                                 {isSelected && (
                                   <svg className="w-3 h-3 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4.5 12.75l6 6 9-13.5" />
@@ -1223,10 +1225,10 @@ const ShortNumbers: React.FC = () => {
                                 )}
                               </span>
                             </div>
-                            <ul className="mt-4 space-y-2">
+                            <ul className="mt-5 pt-4 border-t border-slate-700/60 space-y-3">
                               {option.features.map((feature) => (
-                                <li key={feature} className="flex items-center text-sm text-slate-300">
-                                  <svg className="w-4 h-4 mr-2 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <li key={feature} className="flex items-start gap-2.5 text-sm leading-5 text-slate-300">
+                                  <svg className="w-4 h-4 mt-0.5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.5 12.75l6 6 9-13.5" />
                                   </svg>
                                   {feature}
@@ -1413,7 +1415,7 @@ const ShortNumbers: React.FC = () => {
                 <div className="flex items-center flex-wrap gap-3 text-sm">
                   <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${numberType === 'regular'
                     ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                    : 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                    : 'bg-amber-500/10 text-amber-300 border-amber-400/30'
                     }`}>
                     {numberType === 'regular' ? 'Regular' : 'Premium'}
                   </span>
