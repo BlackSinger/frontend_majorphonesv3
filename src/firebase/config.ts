@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getAuth } from "firebase/auth";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -23,5 +23,10 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// Local QA only: `npm start` with REACT_APP_AUTH_EMULATOR_URL signs in against the Auth emulator; builds never do
+if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_AUTH_EMULATOR_URL) {
+  connectAuthEmulator(auth, process.env.REACT_APP_AUTH_EMULATOR_URL, { disableWarnings: true });
+}
 
 export { app, analytics, auth, db };
