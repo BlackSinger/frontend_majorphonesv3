@@ -353,8 +353,13 @@ const History: React.FC = () => {
     // const [activeTab, setActiveTab] = useState<'numbers' | 'virtualCards' | 'proxies' | 'voip' | 'accounts'>(
     //     tabFromUrl === 'virtualCards' ? 'virtualCards' : tabFromUrl === 'proxies' ? 'proxies' : tabFromUrl === 'voip' ? 'voip' : tabFromUrl === 'accounts' ? 'accounts' : 'numbers'
     // );
+    /*
     const [activeTab, setActiveTab] = useState<'numbers' | 'virtualCards' | 'proxies' | 'accounts'>(
         tabFromUrl === 'virtualCards' ? 'virtualCards' : tabFromUrl === 'proxies' ? 'proxies' : tabFromUrl === 'accounts' ? 'accounts' : 'numbers'
+    );
+    */
+    const [activeTab, setActiveTab] = useState<'numbers' | 'proxies' | 'accounts'>(
+        tabFromUrl === 'proxies' ? 'proxies' : tabFromUrl === 'accounts' ? 'accounts' : 'numbers'
     );
     const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('All');
     const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -993,6 +998,7 @@ const History: React.FC = () => {
         };
     }, [activeTab]);
 
+    /*
     useEffect(() => {
         if (activeTab !== 'virtualCards') {
             return;
@@ -1053,6 +1059,7 @@ const History: React.FC = () => {
             unsubscribe();
         };
     }, [activeTab]);
+    */
 
     // useEffect(() => {
     //     if (activeTab !== 'voip') return;
@@ -1568,7 +1575,7 @@ const History: React.FC = () => {
                             >
                                 VoIP
                             </button>*/}
-                            <button
+                            {/*<button
                                 onClick={() => { setActiveTab('virtualCards'); setCurrentVirtualCardPage(1); }}
                                 className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${activeTab === 'virtualCards'
                                     ? 'text-emerald-400 border-emerald-400'
@@ -1576,7 +1583,7 @@ const History: React.FC = () => {
                                     }`}
                             >
                                 Virtual Debit Cards
-                            </button>
+                            </button>*/}
                             <button
                                 onClick={() => { setActiveTab('accounts'); setCurrentAccountsPage(1); }}
                                 className={`pb-3 px-1 text-md font-semibold transition-all duration-300 border-b-2 ${activeTab === 'accounts'
@@ -2095,8 +2102,8 @@ const History: React.FC = () => {
                         </>
                     )}
 
-                    {/* Virtual Cards Tab Content */}
-                    {activeTab === 'virtualCards' && (
+                    {/* Virtual Cards Tab Content hidden without deleting the original code */}
+                    {false && (
                         <>
                             {/* Virtual Cards Filters */}
                             <div className="mb-6">
@@ -2241,8 +2248,8 @@ const History: React.FC = () => {
                                                         <td className="py-4 px-6 text-center">
                                                             <button
                                                                 onClick={() => handleCheckCard(record.id, record.status, setCheckingCardId, setErrorMessage, setShowErrorModal, navigate)}
-                                                                // disabled={checkingCardId !== null}
-                                                                disabled
+                                                                disabled={checkingCardId !== null}
+                                                                // disabled
                                                                 className={`px-6 py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] text-sm min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${checkingCardId !== null ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
                                                             >
                                                                 {checkingCardId === record.id ? (

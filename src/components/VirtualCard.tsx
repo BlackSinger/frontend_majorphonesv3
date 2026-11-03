@@ -4,11 +4,14 @@ import { getAuth } from 'firebase/auth';
 
 const VirtualCard: React.FC = () => {
   const navigate = useNavigate();
-  const [amount, setAmount] = useState(0.5);
+  const [amount, setAmount] = useState(10);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isPurchaseDisabled, setIsPurchaseDisabled] = useState(false);
+  const [isCardPending, setIsCardPending] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [cardName, setCardName] = useState('');
 
   const handleErrorModalClose = () => {
@@ -30,7 +33,7 @@ const VirtualCard: React.FC = () => {
     try {
       const idToken = await currentUser.getIdToken();
 
-      const response = await fetch('https://buycard-ezeznlhr5a-uc.a.run.app', {
+      const response = await fetch('https://buycardv2-ezeznlhr5a-uc.a.run.app', {
         method: 'POST',
         headers: {
           'authorization': `${idToken}`,
@@ -45,7 +48,14 @@ const VirtualCard: React.FC = () => {
       const data = await response.json();
 
       if (response.ok) {
-        navigate('/history?tab=virtualCards');
+        if (data.pending === true) {
+          setIsPurchasing(false);
+          setIsCardPending(true);
+          setSuccessMessage('Your card is being created, please wait for a few minutes');
+          setShowSuccessModal(true);
+        } else if (data.message === 'Card bought successfully') {
+          // navigate('/history?tab=virtualCards');
+        }
       } else {
         let errorMsg = 'An unknown error occurred';
         let shouldKeepDisabled = false;
@@ -53,8 +63,10 @@ const VirtualCard: React.FC = () => {
         if (response.status === 400) {
           if (data.error === 'Missing parameters') {
             errorMsg = 'Please try again or contact customer support';
-          } else if (data.error === 'Amount must be less than or equal to 20') {
-            errorMsg = 'Pre-loaded funds must be less than or equal to $20';
+          } else if (data.error === 'Amount must be greater than or equal to 10') {
+            errorMsg = 'Pre-loaded funds must be greater than or equal to $10';
+          } else if (data.error === 'Name must be at least 2 characters') {
+            errorMsg = 'The associated name must have at least 2 characters';
           } else if (data.error === 'Insufficient balance') {
             errorMsg = "You don't have enough balance to make the purchase";
           } else if (data.error === 'Failed to buy card') {
@@ -62,6 +74,8 @@ const VirtualCard: React.FC = () => {
           } else if (data.error === 'You cannot buy a card, because you have used Amazon Pay') {
             errorMsg = 'Users that deposit with Amazon Pay cannot purchase virtual cards';
             shouldKeepDisabled = true;
+          } else if (data.error === 'Service Unavailable') {
+            errorMsg = 'This service is not available, try again later';
           }
         } else if (response.status === 401) {
           errorMsg = 'You are not authenticated or your token is invalid';
@@ -91,11 +105,12 @@ const VirtualCard: React.FC = () => {
   };
 
   const handleAmountChange = (value: number) => {
-    let clamped = Math.min(20, Math.max(0.5, value));
+    let clamped = Math.min(30, Math.max(10, value));
     clamped = Math.round(clamped * 2) / 2;
     setAmount(clamped);
   };
 
+  /*
   const calculateFee = (amount: number): number => {
     let fee = 0;
     if (amount <= 3) {
@@ -109,8 +124,10 @@ const VirtualCard: React.FC = () => {
     }
     return fee;
   };
+  */
 
-  const finalPrice = amount + calculateFee(amount) + 5;
+  //const finalPrice = amount + calculateFee(amount) + 6 + amount * 0.06;
+  const finalPrice = amount + 6 + amount * 0.06;
 
   return (
     <>
@@ -135,13 +152,12 @@ const VirtualCard: React.FC = () => {
             <div className="text-center">
               <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these cards:</p>
               <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
-                <li>• They have a creation one-time fee of $5</li>
+                <li>• They have a creation one-time fee of $6, plus 6% of the pre-loaded funds</li>
                 <li>• They are randomly assigned as VISA or MasterCard, you can't choose the type of card</li>
-                <li>• They can be chosen with pre-loaded funds, starting from $0.5 up to $20</li>
+                <li>• They can be chosen with pre-loaded funds, starting from $10 up to $30</li>
                 <li>• You need to add a cardholder name</li>
                 <li>• They can be used in multiple sites, but may not work in some</li>
                 <li>• They can't be refunded once purchased</li>
-                <li>• They can be frozen/unfrozen once purchased</li>
                 <li>• You can add extra funds to the card</li>
                 <li>• Expiration date varies depending on the card assigned, it can't be chosen</li>
                 <li>• You can't have a physical card shipped or withdraw funds as cash</li>
@@ -173,22 +189,22 @@ const VirtualCard: React.FC = () => {
                       </label>
                       <input
                         type="range"
-                        min="0.5"
-                        max="20"
+                        min="10"
+                        max="30"
                         step="0.5"
                         value={amount}
                         onChange={(e) => handleAmountChange(parseFloat(e.target.value))}
-                        disabled={isPurchasing}
+                        disabled={isPurchasing || isCardPending}
                         className="w-full h-2 rounded-full appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{
-                          background: `linear-gradient(to right, #10b981 0%, #10b981 ${((amount - 0.5) / (20 - 0.5)) * 100}%, #334155 ${((amount - 0.5) / (20 - 0.5)) * 100}%, #334155 100%)`,
+                          background: `linear-gradient(to right, #10b981 0%, #10b981 ${((amount - 10) / (30 - 10)) * 100}%, #334155 ${((amount - 10) / (30 - 10)) * 100}%, #334155 100%)`,
                           accentColor: '#10b981',
                         }}
                       />
                       <div className="flex justify-between text-sm text-slate-400 mt-1">
-                        <span>$0.5</span>
+                        <span>$10</span>
                         <span className="text-emerald-400 font-bold text-base">${amount.toFixed(2)}</span>
-                        <span>$20</span>
+                        <span>$30</span>
                       </div>
                     </div>
 
@@ -207,7 +223,7 @@ const VirtualCard: React.FC = () => {
                           }
                         }}
                         maxLength={30}
-                        disabled={isPurchasing}
+                        disabled={isPurchasing || isCardPending}
                         placeholder="Enter name for the card"
                         className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white text-center text-sm outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-colors duration-150 placeholder-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       />
@@ -215,7 +231,7 @@ const VirtualCard: React.FC = () => {
                         {cardName.length}/30 characters — Letters only
                       </p>
                       <p className="text-md font-semibold text-slate-400 tracking-wider text-center mt-2">
-                        Card creation <span className="font-bold text-green-400">one-time</span> fee: <span className="text-green-400 font-bold">$5</span>
+                        Card creation <span className="font-bold text-green-400">one-time</span> fee: <span className="text-green-400 font-bold">$6</span>, plus <span className="text-green-400 font-bold">6%</span> of the selected pre-loaded funds
                       </p>
                     </div>
 
@@ -273,6 +289,31 @@ const VirtualCard: React.FC = () => {
                 className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ margin: '0' }}>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-80">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-12 h-12 mx-auto bg-emerald-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">Success</h3>
+              <p className="text-blue-200 mb-4">{successMessage}</p>
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg"
+              >
+                Ok
               </button>
             </div>
           </div>

@@ -155,5 +155,4 @@ export const handleCheckCard = (
   navigate: (path: string, options?: { state?: any }) => void
 ) => {
   // navigate(`/vcc-config?orderId=${orderId}`, { state: { status } });
-  navigate(`/vcc-config-test?orderId=${orderId}`, { state: { status } });
 };

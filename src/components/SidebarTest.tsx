@@ -102,7 +102,7 @@ const Sidebar: React.FC = () => {
       ),
       path: '/emptysimcard'
     },
-    {
+    /*{
       name: 'Send SMS',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,8 +110,8 @@ const Sidebar: React.FC = () => {
         </svg>
       ),
       path: '/send-sms'
-    },
-    {
+    },*/
+    /*{
       name: 'Virtual Debit Cards',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -119,7 +119,7 @@ const Sidebar: React.FC = () => {
         </svg>
       ),
       path: '/virtualcard'
-    },
+    },*/
     /*{
       name: 'Proxies',
       icon: (

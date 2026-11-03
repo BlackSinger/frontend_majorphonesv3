@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import MajorPhonesFavIc from '../MajorPhonesFavIc.png';
 import { getAuth } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase/config';
 
 const VccConfig: React.FC = () => {
     const navigate = useNavigate();
@@ -13,28 +11,19 @@ const VccConfig: React.FC = () => {
     const [showErrorModal, setShowErrorModal] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
 
-    const [currentVirtualCardPage, setCurrentVirtualCardPage] = useState(1);
-    const [showInfoModal, setShowInfoModal] = useState(false);
-    const [selectedRecord, setSelectedRecord] = useState<any>(null);
-    const [isInfoIdCopied, setIsInfoIdCopied] = useState(false);
     const [isAddressCopied, setIsAddressCopied] = useState(false);
 
     const [isLoadFundsView, setIsLoadFundsView] = useState(false);
-    const [amount, setAmount] = useState(0.5);
+    const [amount, setAmount] = useState(10);
     const [isLoadingFunds, setIsLoadingFunds] = useState(false);
     const [isLoadingFundsDisabled, setIsLoadingFundsDisabled] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
 
-    const [vccTransactions, setVccTransactions] = useState<any[]>([]);
-
-    const [vccFrozen, setVccFrozen] = useState(false);
-    const [isFreezingCard, setIsFreezingCard] = useState(false);
-    const [areCardActionsDisabled, setAreCardActionsDisabled] = useState(false);
-
     const [isLoadingVccData, setIsLoadingVccData] = useState(!!orderIdFromUrl);
     const [vccDataError, setVccDataError] = useState(false);
     const [vccCardInfo, setVccCardInfo] = useState<any>(null);
+    const [isCardProvisioning, setIsCardProvisioning] = useState(false);
 
     useEffect(() => {
         if (!orderIdFromUrl) return;
@@ -58,67 +47,46 @@ const VccConfig: React.FC = () => {
                 };
                 const body = JSON.stringify({ orderId: orderIdFromUrl });
 
-                const docFetchPromise = getDoc(doc(db, 'vccOrders', orderIdFromUrl)).then(docSnap => {
-                    if (docSnap.exists()) {
-                        setVccFrozen(docSnap.data().status === 'Frozen');
-                    }
-                }).catch(() => { });
+                const response = await fetch('https://getcardv2-ezeznlhr5a-uc.a.run.app', { method: 'POST', headers, body });
+                const cardData = await response.json();
 
-                const [cardResult, transactionsResult] = await Promise.allSettled([
-                    fetch('https://getcard-ezeznlhr5a-uc.a.run.app', { method: 'POST', headers, body }),
-                    fetch('https://gettransactionscard-ezeznlhr5a-uc.a.run.app', { method: 'POST', headers, body }),
-                    docFetchPromise
-                ]);
-
-                let cardData: any = null;
-                let cardOk = false;
-                let cardStatus = 0;
-
-                if (cardResult.status === 'fulfilled') {
-                    cardStatus = cardResult.value.status;
-                    cardOk = cardResult.value.ok;
-                    cardData = await cardResult.value.json();
-                }
-
-                let transactionsData: any = null;
-                let transactionsOk = false;
-                let transactionsStatus = 0;
-
-                if (transactionsResult.status === 'fulfilled') {
-                    transactionsStatus = transactionsResult.value.status;
-                    transactionsOk = transactionsResult.value.ok;
-                    transactionsData = await transactionsResult.value.json();
-                }
-
-                if (cardOk && transactionsOk) {
+                if (response.ok && response.status !== 202) {
                     setVccCardInfo(cardData);
-                    setVccTransactions(transactionsData?.data || []);
                     setIsLoadingVccData(false);
                     setVccDataError(false);
                 } else {
                     let errorMsg = 'An unknown error occurred';
-                    const failedData = !cardOk ? cardData : transactionsData;
-                    const failedStatus = !cardOk ? cardStatus : transactionsStatus;
 
-                    if (failedStatus === 400) {
-                        if (failedData?.error === 'Missing parameters') {
+                    if (response.status === 400) {
+                        if (cardData?.error === 'Missing parameters') {
                             errorMsg = 'Please try again or contact our customer support';
-                        } else if (failedData?.error === 'Failed to get card details' || failedData?.error === 'Failed to get transactions') {
+                        } else if (cardData?.error === 'Failed to get card details') {
                             errorMsg = 'Please refresh and try again';
+                        } else if (cardData?.error === 'Card provider not supported') {
+                            errorMsg = 'You cannot get further details about this card';
                         }
-                    } else if (failedStatus === 404) {
-                        if (failedData?.error === 'User not found') {
+                    } else if (response.status === 404) {
+                        if (cardData?.error === 'User not found') {
                             errorMsg = 'You cannot check this information';
-                        } else if (failedData?.error === 'Order not found') {
+                        } else if (cardData?.error === 'Order not found') {
                             errorMsg = 'This VCC does not exist';
                         }
-                    } else if (failedStatus === 401) {
-                        if (failedData?.error === 'Unauthorized') {
+                    } else if (response.status === 401) {
+                        if (cardData?.error === 'Unauthorized') {
                             errorMsg = 'You are not authenticated or your token is invalid';
                         }
-                    } else if (failedStatus === 500) {
-                        if (failedData?.error === 'Internal Error') {
+                    } else if (response.status === 500) {
+                        if (cardData?.error === 'Internal Error') {
                             errorMsg = 'Please contact our customer support';
+                        }
+                    } else if (response.status === 503) {
+                        if (cardData?.error === 'Service Unavailable') {
+                            errorMsg = 'This functionality is not available at the moment';
+                        }
+                    } else if (response.status === 202) {
+                        if (cardData?.error === 'Card is being provisioned. Check back shortly.') {
+                            errorMsg = 'Your card is still being created, please wait for a few minutes';
+                            setIsCardProvisioning(true);
                         }
                     }
 
@@ -138,113 +106,11 @@ const VccConfig: React.FC = () => {
         fetchVccData();
     }, [orderIdFromUrl]);
 
-    const itemsPerPage = 10;
-    const totalVirtualCardPages = Math.ceil(vccTransactions.length / itemsPerPage);
-    const virtualCardStartIndex = (currentVirtualCardPage - 1) * itemsPerPage;
-    const virtualCardEndIndex = virtualCardStartIndex + itemsPerPage;
-    const paginatedVirtualCardData = vccTransactions.slice(virtualCardStartIndex, virtualCardEndIndex);
-
-    const handleInfoClick = (record: any) => {
-        setSelectedRecord(record);
-        setShowInfoModal(true);
-        setIsInfoIdCopied(false);
-    };
-
-    const handleCopyInfoId = async () => {
-        if (selectedRecord) {
-            try {
-                await navigator.clipboard.writeText(selectedRecord.id);
-                setIsInfoIdCopied(true);
-                setTimeout(() => setIsInfoIdCopied(false), 2000);
-            } catch (err) { }
-        }
-    };
-
     const handleErrorModalClose = () => {
         setShowErrorModal(false);
     };
 
-    // const handleLoadFunds = async () => {
-    //     const currentUser = getAuth().currentUser;
-
-    //     if (!currentUser) {
-    //         setErrorMessage('You are not authenticated or your token is invalid');
-    //         setShowErrorModal(true);
-    //         return;
-    //     }
-
-    //     setIsLoadingFunds(true);
-    //     setIsLoadingFundsDisabled(true);
-
-    //     try {
-    //         const idToken = await currentUser.getIdToken();
-
-    //         const response = await fetch('https://loadfundscard-ezeznlhr5a-uc.a.run.app', {
-    //             method: 'POST',
-    //             headers: {
-    //                 'authorization': `${idToken}`,
-    //                 'Content-Type': 'application/json'
-    //             },
-    //             body: JSON.stringify({
-    //                 orderId: orderIdFromUrl,
-    //                 amount: amount
-    //             })
-    //         });
-
-    //         const data = await response.json();
-
-    //         if (response.ok) {
-    //             setIsLoadingFunds(false);
-    //             setIsLoadingFundsDisabled(false);
-    //             setSuccessMessage('You have correctly added funds to your VCC');
-    //             setShowSuccessModal(true);
-    //         } else {
-    //             let errorMsg = 'An unknown error occurred';
-    //             let shouldKeepDisabled = false;
-
-    //             if (response.status === 400) {
-    //                 if (data.error === 'Missing parameters') {
-    //                     errorMsg = 'Please try again or contact customer support';
-    //                 } else if (data.error === 'Funds loaded but failed to get updated card details') {
-    //                     errorMsg = 'The payment was successful but the card details could not be updated, contact customer support';
-    //                 } else if (data.error === 'Insufficient balance') {
-    //                     errorMsg = "You don't have enough balance to make the purchase";
-    //                 } else if (data.error === 'Failed to load funds') {
-    //                     errorMsg = 'The payment could not be completed, please try again or contact our customer support';
-    //                 } else if (data.error === 'Invalid amount') {
-    //                     errorMsg = 'The amount is invalid, please try again';
-    //                     shouldKeepDisabled = true;
-    //                 }
-    //             } else if (response.status === 401) {
-    //                 errorMsg = 'You are not authenticated or your token is invalid';
-    //                 shouldKeepDisabled = true;
-    //             } else if (response.status === 404) {
-    //                 if (data.error === 'User not found' || data.error === 'Order not found') {
-    //                     errorMsg = 'You cannot add funds to this VCC';
-    //                     shouldKeepDisabled = true;
-    //                 }
-    //             } else if (response.status === 500) {
-    //                 errorMsg = 'Please contact our customer support';
-    //             }
-
-    //             setErrorMessage(errorMsg);
-    //             setShowErrorModal(true);
-    //             setIsLoadingFunds(false);
-
-    //             if (!shouldKeepDisabled) {
-    //                 setIsLoadingFundsDisabled(false);
-    //             }
-    //         }
-    //     } catch (error) {
-    //         console.log('Load funds catch error:', error);
-    //         setErrorMessage('Please contact our customer support');
-    //         setShowErrorModal(true);
-    //         setIsLoadingFunds(false);
-    //         setIsLoadingFundsDisabled(false);
-    //     }
-    // };
-
-    const handleFreezeCard = async () => {
+    const handleLoadFunds = async () => {
         const currentUser = getAuth().currentUser;
 
         if (!currentUser) {
@@ -253,12 +119,13 @@ const VccConfig: React.FC = () => {
             return;
         }
 
-        setIsFreezingCard(true);
+        setIsLoadingFunds(true);
+        setIsLoadingFundsDisabled(true);
 
         try {
             const idToken = await currentUser.getIdToken();
 
-            const response = await fetch('https://freezecard-ezeznlhr5a-uc.a.run.app', {
+            const response = await fetch('https://loadfundscardv2-ezeznlhr5a-uc.a.run.app', {
                 method: 'POST',
                 headers: {
                     'authorization': `${idToken}`,
@@ -266,146 +133,81 @@ const VccConfig: React.FC = () => {
                 },
                 body: JSON.stringify({
                     orderId: orderIdFromUrl,
+                    amount: amount
                 })
             });
 
             const data = await response.json();
 
             if (response.ok) {
-                setIsFreezingCard(false);
-                setVccFrozen(true);
-                setSuccessMessage('This VCC has been frozen successfully');
+                setIsLoadingFunds(false);
+                setIsLoadingFundsDisabled(false);
+                setSuccessMessage('You have correctly added funds to your VCC');
                 setShowSuccessModal(true);
             } else {
                 let errorMsg = 'An unknown error occurred';
-                let shouldDisableAll = false;
-                let cardAlreadyFrozen = false;
+                let shouldKeepDisabled = false;
 
                 if (response.status === 400) {
                     if (data.error === 'Missing parameters') {
-                        errorMsg = 'Please contact our customer support';
-                    } else if (data.error === 'Card is already frozen') {
-                        errorMsg = 'This VCC is already frozen';
-                        cardAlreadyFrozen = true;
-                    } else if (data.error === 'Failed to freeze card') {
-                        errorMsg = 'Please try again or contact our customer support';
-                    } else if (data.error === 'Internal Error') {
-                        errorMsg = 'Please contact our customer support';
+                        errorMsg = 'Please try again or contact customer support';
+                    } else if (data.error === 'Funds loaded but failed to get updated card details') {
+                        errorMsg = 'The payment was successful but the card details could not be updated, contact customer support';
+                    } else if (data.error === 'Insufficient balance') {
+                        errorMsg = "You don't have enough balance to make the purchase";
+                    } else if (data.error === 'Failed to load funds') {
+                        errorMsg = 'The payment could not be completed, please try again or contact our customer support';
+                    } else if (data.error === 'Invalid amount') {
+                        errorMsg = 'The amount is invalid, please try again';
+                        shouldKeepDisabled = true;
+                    } else if (data.error === 'Amount must be greater than or equal to 10') {
+                        errorMsg = 'Pre-loaded funds must be greater than or equal to $10';
+                        shouldKeepDisabled = true;
+                    } else if (data.error === 'Card provider not supported') {
+                        errorMsg = 'You cannot add funds to this card';
+                        shouldKeepDisabled = true;
+                    } else if (data.error === 'Service Unavailable') {
+                        errorMsg = 'This service is not available, try again later';
+                    } else if (data.error === 'Card is being provisioned. Check back shortly.') {
+                        errorMsg = 'Your card is still being created, please wait for a few minutes';
+                        shouldKeepDisabled = true;
                     }
                 } else if (response.status === 401) {
                     errorMsg = 'You are not authenticated or your token is invalid';
-                    shouldDisableAll = true;
+                    shouldKeepDisabled = true;
                 } else if (response.status === 404) {
                     if (data.error === 'User not found' || data.error === 'Order not found') {
-                        errorMsg = 'You cannot freeze this VCC';
-                        shouldDisableAll = true;
+                        errorMsg = 'You cannot add funds to this VCC';
+                        shouldKeepDisabled = true;
                     }
+                } else if (response.status === 500) {
+                    errorMsg = 'Please contact our customer support';
                 }
 
                 setErrorMessage(errorMsg);
                 setShowErrorModal(true);
-                setIsFreezingCard(false);
+                setIsLoadingFunds(false);
 
-                if (shouldDisableAll) {
-                    setAreCardActionsDisabled(true);
-                }
-
-                if (cardAlreadyFrozen) {
-                    setVccFrozen(true);
+                if (!shouldKeepDisabled) {
+                    setIsLoadingFundsDisabled(false);
                 }
             }
         } catch (error) {
-            console.log('Freeze card catch error:', error);
+            console.log('Load funds catch error:', error);
             setErrorMessage('Please contact our customer support');
             setShowErrorModal(true);
-            setIsFreezingCard(false);
+            setIsLoadingFunds(false);
+            setIsLoadingFundsDisabled(false);
         }
     };
 
-    const handleUnfreezeCard = async () => {
-        const currentUser = getAuth().currentUser;
-
-        if (!currentUser) {
-            setErrorMessage('You are not authenticated or your token is invalid');
-            setShowErrorModal(true);
-            return;
-        }
-
-        setIsFreezingCard(true);
-
-        try {
-            const idToken = await currentUser.getIdToken();
-
-            const response = await fetch('https://unfreezecard-ezeznlhr5a-uc.a.run.app', {
-                method: 'POST',
-                headers: {
-                    'authorization': `${idToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    orderId: orderIdFromUrl,
-                })
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                setIsFreezingCard(false);
-                setVccFrozen(false);
-                setSuccessMessage('This VCC has been unfrozen successfully');
-                setShowSuccessModal(true);
-            } else {
-                let errorMsg = 'An unknown error occurred';
-                let shouldDisableAll = false;
-                let cardNotFrozen = false;
-
-                if (response.status === 400) {
-                    if (data.error === 'Missing parameters') {
-                        errorMsg = 'Please contact our customer support';
-                    } else if (data.error === 'Card is not frozen') {
-                        errorMsg = 'This VCC is not frozen';
-                        cardNotFrozen = true;
-                    } else if (data.error === 'Failed to unfreeze card') {
-                        errorMsg = 'Please try again or contact our customer support';
-                    } else if (data.error === 'Internal Error') {
-                        errorMsg = 'Please contact our customer support';
-                    }
-                } else if (response.status === 401) {
-                    errorMsg = 'You are not authenticated or your token is invalid';
-                    shouldDisableAll = true;
-                } else if (response.status === 404) {
-                    if (data.error === 'User not found' || data.error === 'Order not found') {
-                        errorMsg = 'You cannot unfreeze this VCC';
-                        shouldDisableAll = true;
-                    }
-                }
-
-                setErrorMessage(errorMsg);
-                setShowErrorModal(true);
-                setIsFreezingCard(false);
-
-                if (shouldDisableAll) {
-                    setAreCardActionsDisabled(true);
-                }
-
-                if (cardNotFrozen) {
-                    setVccFrozen(false);
-                }
-            }
-        } catch (error) {
-            console.log('Unfreeze card catch error:', error);
-            setErrorMessage('Please contact our customer support');
-            setShowErrorModal(true);
-            setIsFreezingCard(false);
-        }
+    const handleAmountChange = (value: number) => {
+        let clamped = Math.min(30, Math.max(10, value));
+        clamped = Math.round(clamped * 2) / 2;
+        setAmount(clamped);
     };
 
-    // const handleAmountChange = (value: number) => {
-    //     let clamped = Math.min(20, Math.max(0.5, value));
-    //     clamped = Math.round(clamped * 2) / 2;
-    //     setAmount(clamped);
-    // };
-
+    /*
     const calculateFee = (amount: number): number => {
         let fee = 0;
         if (amount <= 3) {
@@ -419,8 +221,9 @@ const VccConfig: React.FC = () => {
         }
         return fee;
     };
+    */
 
-    const finalPrice = amount + calculateFee(amount);
+    const finalPrice = amount + 1 + amount * 0.06;
 
     return (
         <>
@@ -446,9 +249,9 @@ const VccConfig: React.FC = () => {
                             <p className="text-blue-300 text-sm font-semibold mb-3">Important information about this feature:</p>
                             <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
                                 <li>• Check the entire details of your virtual debit card</li>
-                                {/*<li>• You can add more funds to your card, which cannot be refunded</li>*/}
-                                <li>• You can freeze your card to prevent any future transactions and unfreeze it whenever you want</li>
-                                <li>• You can check all the transactions made with your card</li>
+                                <li>• You can add more funds to your card, which cannot be refunded</li>
+                                <li>• Each load has a fee of $1, plus 6% of the amount added</li>
+                                <li>• You can add from $10 up to $30 each time</li>
                             </ul>
                         </div>
                     </div>
@@ -472,7 +275,7 @@ const VccConfig: React.FC = () => {
                                     </button>
                                 ) : (
                                     <button
-                                        onClick={() => navigate('/history?tab=virtualCards')}
+                                        onClick={() => { /* navigate('/history?tab=virtualCards') */ }}
                                         className="group flex items-center space-x-3 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 hover:border-slate-500/50 rounded-xl transition-all duration-300 backdrop-blur-sm"
                                     >
                                         <svg className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -510,8 +313,10 @@ const VccConfig: React.FC = () => {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                         </svg>
                                     </div>
-                                    <h1 className="text-xl font-bold text-slate-300 mb-3">Error getting the VCC data</h1>
-                                    <p className="text-slate-400 text-lg">Please contact our customer support</p>
+                                    <h1 className="text-xl font-bold text-slate-300 mb-3">
+                                        {isCardProvisioning ? 'Your card is still being created, please wait' : 'Error getting the VCC data'}
+                                    </h1>
+                                    {/*<p className="text-slate-400 text-lg">Please contact our customer support</p>*/}
                                 </div>
                             ) : (
                                 <>
@@ -597,22 +402,7 @@ const VccConfig: React.FC = () => {
                                                                 </div>
                                                                 <div className="flex flex-col md:flex-row gap-3 pt-2">
                                                                     <button
-                                                                        onClick={vccFrozen ? handleUnfreezeCard : handleFreezeCard}
-                                                                        disabled={isFreezingCard || areCardActionsDisabled}
-                                                                        className={`flex-1 px-4 py-2 text-white font-bold rounded-xl transition-colors duration-300 shadow-lg text-sm ${areCardActionsDisabled ? 'bg-slate-700 opacity-50 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 hover:scale-[1.02]'} disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
-                                                                    >
-                                                                        <div className="flex items-center justify-center h-5">
-                                                                            {isFreezingCard ? (
-                                                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                                                            ) : (
-                                                                                <span>{vccFrozen ? 'Unfreeze' : 'Freeze'}</span>
-                                                                            )}
-                                                                        </div>
-                                                                    </button>
-                                                                    <button
-                                                                        // onClick={() => setIsLoadFundsView(true)}
-                                                                        // disabled={vccFrozen || isFreezingCard || areCardActionsDisabled}
-                                                                        disabled
+                                                                        onClick={() => setIsLoadFundsView(true)}
                                                                         className="flex-1 px-4 py-2 text-white font-bold rounded-xl transition-all duration-300 shadow-lg text-sm bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                                                                     >
                                                                         Load Funds
@@ -660,142 +450,6 @@ const VccConfig: React.FC = () => {
                                                     </span>
                                                 </div>
                                             </div>
-
-                                            <div className="text-left mb-7">
-                                                <h1 className="text-xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">Transactions</h1>
-                                            </div>
-
-                                            {/* Virtual Cards Table */}
-                                            <div className="overflow-x-auto overflow-y-visible mt-6">
-                                                {vccTransactions.length > 0 ? (
-                                                    <>
-                                                        <table className="w-full">
-                                                            <thead>
-                                                                <tr className="border-b border-slate-700/50">
-                                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">ID</th>
-                                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Date</th>
-                                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Amount</th>
-                                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Merchant</th>
-                                                                    <th className="text-center py-4 px-4 text-slate-300 font-semibold">Status</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {paginatedVirtualCardData.map((record, index) => (
-                                                                    <tr
-                                                                        key={record.id}
-                                                                        className={`border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors duration-200 ${index % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'
-                                                                            }`}
-                                                                    >
-                                                                        <td className="py-4 px-6">
-                                                                            <div className="flex items-center justify-center">
-                                                                                <button
-                                                                                    onClick={() => handleInfoClick(record)}
-                                                                                    className="p-2 text-slate-400 hover:text-green-500 transition-colors duration-200 rounded-lg hover:bg-slate-700/30"
-                                                                                    title="View Information"
-                                                                                >
-                                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                                                    </svg>
-                                                                                </button>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td className="py-4 px-6 text-white text-center">
-                                                                            {new Date(record.timestamp).toLocaleString('en-US', {
-                                                                                month: '2-digit', day: '2-digit', year: 'numeric',
-                                                                                hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
-                                                                            })}
-                                                                        </td>
-                                                                        <td className="py-4 px-6 text-center">
-                                                                            <span className="text-emerald-400 font-semibold">${Number(record.amount).toFixed(2)}</span>
-                                                                        </td>
-                                                                        <td className="py-4 px-6 text-white text-center">
-                                                                            {record.merchantName}
-                                                                        </td>
-                                                                        <td className="py-4 px-6 text-center">
-                                                                            <span style={{ width: '100px' }} className={`inline-block text-center px-3 py-1 rounded-lg text-sm font-semibold border ${record.status === 'completed'
-                                                                                ? 'text-green-400 border-green-500/30 bg-green-500/20'
-                                                                                : record.status === 'pending'
-                                                                                    ? 'text-amber-400 border-amber-500/30 bg-amber-500/20'
-                                                                                    : 'text-red-400 border-red-500/30 bg-red-500/20'
-                                                                                }`}>
-                                                                                {record.status === 'completed' ? 'Completed' : record.status === 'pending' ? 'Pending' : 'Declined'}
-                                                                            </span>
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-
-                                                        {/* Virtual Cards Pagination */}
-                                                        {totalVirtualCardPages > 1 && (
-                                                            <div className="mt-6">
-                                                                <div className="text-sm text-slate-400 text-center mb-4 md:hidden">
-                                                                    Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, vccTransactions.length)} of {vccTransactions.length} results
-                                                                </div>
-
-                                                                <div className="flex items-center justify-between">
-                                                                    <div className="hidden md:block text-sm text-slate-400">
-                                                                        Showing {virtualCardStartIndex + 1} to {Math.min(virtualCardEndIndex, vccTransactions.length)} of {vccTransactions.length} results
-                                                                    </div>
-
-                                                                    <div className="flex items-center space-x-2 mx-auto md:mx-0">
-                                                                        {/* Previous Button */}
-                                                                        <button
-                                                                            onClick={() => setCurrentVirtualCardPage(prev => Math.max(prev - 1, 1))}
-                                                                            disabled={currentVirtualCardPage === 1}
-                                                                            className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                        >
-                                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                                                                            </svg>
-                                                                        </button>
-
-                                                                        {/* Page Numbers */}
-                                                                        <div className="flex space-x-1">
-                                                                            {[currentVirtualCardPage, currentVirtualCardPage + 1].filter(page => page <= totalVirtualCardPages).map((page) => (
-                                                                                <button
-                                                                                    key={page}
-                                                                                    onClick={() => setCurrentVirtualCardPage(page)}
-                                                                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentVirtualCardPage === page
-                                                                                        ? 'bg-emerald-500 text-white'
-                                                                                        : 'bg-slate-800/50 border border-slate-600/50 text-slate-300 hover:bg-slate-700/50'
-                                                                                        }`}
-                                                                                >
-                                                                                    {page}
-                                                                                </button>
-                                                                            ))}
-                                                                        </div>
-
-                                                                        {/* Next Button */}
-                                                                        <button
-                                                                            onClick={() => setCurrentVirtualCardPage(prev => Math.min(prev + 1, totalVirtualCardPages))}
-                                                                            disabled={currentVirtualCardPage === totalVirtualCardPages}
-                                                                            className="px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-white hover:bg-slate-700/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                        >
-                                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                                                            </svg>
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                ) : (
-                                                    /* Empty State */
-                                                    <div className="text-center py-16">
-                                                        <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-700 rounded-2xl mb-5">
-                                                            <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                                                            </svg>
-                                                        </div>
-                                                        <h1 className="text-xl font-bold text-slate-300 mb-3">No Transactions Found</h1>
-                                                        <p className="text-slate-400 text-lg">You have not used this VCC yet</p>
-                                                    </div>
-                                                )}
-                                            </div>
-
                                         </div>
                                     ) : (
                                         /* Load Funds View */
@@ -816,24 +470,26 @@ const VccConfig: React.FC = () => {
                                                     </label>
                                                     <input
                                                         type="range"
-                                                        min="0.5"
-                                                        max="20"
+                                                        min="10"
+                                                        max="30"
                                                         step="0.5"
                                                         value={amount}
-                                                        // onChange={(e) => handleAmountChange(parseFloat(e.target.value))}
-                                                        // disabled={isLoadingFunds || isLoadingFundsDisabled}
-                                                        disabled
+                                                        onChange={(e) => handleAmountChange(parseFloat(e.target.value))}
+                                                        disabled={isLoadingFunds || isLoadingFundsDisabled}
                                                         className="w-full h-2 rounded-full appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                                         style={{
-                                                            background: `linear-gradient(to right, #10b981 0%, #10b981 ${((amount - 0.5) / 19.5) * 100}%, #334155 ${((amount - 0.5) / 19.5) * 100}%, #334155 100%)`,
+                                                            background: `linear-gradient(to right, #10b981 0%, #10b981 ${((amount - 10) / 20) * 100}%, #334155 ${((amount - 10) / 20) * 100}%, #334155 100%)`,
                                                             accentColor: '#10b981',
                                                         }}
                                                     />
                                                     <div className="flex justify-between text-sm text-slate-400 mt-1">
-                                                        <span>$0.5</span>
+                                                        <span>$10</span>
                                                         <span className="text-emerald-400 font-bold text-base">${amount.toFixed(2)}</span>
-                                                        <span>$20</span>
+                                                        <span>$30</span>
                                                     </div>
+                                                    <p className="text-md font-semibold text-slate-400 tracking-wider text-center mt-2">
+                                                        Fee <span className="font-bold text-green-400">per load</span>: <span className="text-green-400 font-bold">$1</span>, plus <span className="text-green-400 font-bold">6%</span> of the selected amount
+                                                    </p>
                                                 </div>
 
                                                 {/* Bottom Row: Price (left) + Purchase Button (right) */}
@@ -846,9 +502,8 @@ const VccConfig: React.FC = () => {
                                                     {/* Purchase Button */}
                                                     <div className="flex justify-center sm:justify-end">
                                                         <button
-                                                            // onClick={handleLoadFunds}
-                                                            // disabled={isLoadingFunds || isLoadingFundsDisabled}
-                                                            disabled
+                                                            onClick={handleLoadFunds}
+                                                            disabled={isLoadingFunds || isLoadingFundsDisabled}
                                                             className="group w-[200px] py-2 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-[1.02] border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                                                         >
                                                             <div className="relative z-10 flex items-center justify-center h-6">
@@ -922,66 +577,6 @@ const VccConfig: React.FC = () => {
                             >
                                 Ok
                             </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Information Modal */}
-            {showInfoModal && selectedRecord && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-96">
-                        <div className="text-center">
-                            <div className="mb-4">
-                                <div className="w-12 h-12 mx-auto flex items-center justify-center">
-                                    <img src={MajorPhonesFavIc} alt="Major Phones" className="w-12 h-10" />
-                                </div>
-                            </div>
-                            <h3 className="text-lg font-medium text-white mb-2">Information</h3>
-                            <div className="space-y-4 text-left mt-6">
-                                <div>
-                                    <span className="text-slate-300">Transaction ID: </span>
-                                    <span className="text-emerald-400 break-all">{selectedRecord.id}
-                                        <button
-                                            onClick={handleCopyInfoId}
-                                            className="ml-2 p-1 text-slate-400 hover:text-emerald-400 transition-colors duration-200 rounded hover:bg-slate-700/30 inline-flex items-center"
-                                            title={isInfoIdCopied ? "Copied!" : "Copy Transaction ID"}
-                                        >
-                                            {isInfoIdCopied ? (
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                                </svg>
-                                            ) : (
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                </svg>
-                                            )}
-                                        </button>
-                                    </span>
-                                </div>
-                                <div>
-                                    <span className="text-slate-300">Currency: </span>
-                                    <span className="text-emerald-400 break-all">{selectedRecord.currency}</span>
-                                </div>
-                                <div>
-                                    <span className="text-slate-300">Type: </span>
-                                    <span className="text-emerald-400 break-all">{selectedRecord.type}</span>
-                                </div>
-                                {selectedRecord.status === 'failed' && selectedRecord.declineReason && (
-                                    <div>
-                                        <span className="text-slate-300">Reason for failure: </span>
-                                        <span className="text-red-400 break-all">{selectedRecord.declineReason}</span>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex justify-center mt-8">
-                                <button
-                                    onClick={() => setShowInfoModal(false)}
-                                    className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-xl transition-all duration-300 shadow-lg"
-                                >
-                                    Ok
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </div>
