@@ -76,7 +76,7 @@ const MajorSidebar: React.FC = () => {
       ),
       path: '/major-user-history'
     },
-    {
+    /*{
       name: 'Moderation',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,7 +84,7 @@ const MajorSidebar: React.FC = () => {
         </svg>
       ),
       path: '/major-moderation'
-    },
+    },*/
     {
       name: 'Transactions',
       icon: (
