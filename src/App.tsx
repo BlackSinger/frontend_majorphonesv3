@@ -12,6 +12,7 @@ import ShortNumbers from './components/ShortNumbers';
 import Middle from './components/Middle';
 import LongTerm from './components/LongTerm';
 import EmptySimcard from './components/EmptySimcard';
+import PrivacyBrowser from './components/PrivacyBrowser';
 //import SendMessage from './components/SendMessage';
 //import SendSMS from './components/SendSMS';
 //import VirtualCard from './components/VirtualCard';
@@ -70,6 +71,7 @@ function App() {
             <Route path="/middle" element={<PrivateRoute><DashboardLayout><Middle /></DashboardLayout></PrivateRoute>} />
             <Route path="/long" element={<PrivateRoute><DashboardLayout><LongTerm /></DashboardLayout></PrivateRoute>} />
             <Route path="/emptysimcard" element={<PrivateRoute><DashboardLayout><EmptySimcard /></DashboardLayout></PrivateRoute>} />
+            <Route path="/privacy-browser" element={<PrivateRoute><DashboardLayout><PrivacyBrowser /></DashboardLayout></PrivateRoute>} />
             {/*<Route path="/send-sms" element={<PrivateRoute><DashboardLayout><SendSMS /></DashboardLayout></PrivateRoute>} />*/}
             {/*<Route path="/virtualcard" element={<PrivateRoute><DashboardLayout><VirtualCard /></DashboardLayout></PrivateRoute>} />*/}
             {/*<Route path="/virtualcard-test" element={<PrivateRoute><DashboardLayout><VirtualCardTest /></DashboardLayout></PrivateRoute>} />*/}
