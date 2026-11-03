@@ -13,6 +13,11 @@ test('links to the MajorStealth installer and the official support channels', ()
   expect(screen.getByRole('link', { name: /download for windows/i })).toHaveAttribute('href', DOWNLOAD_URL);
   expect(screen.getByText(/is in beta/i)).toBeInTheDocument();
   expect(screen.getByText(/Windows SmartScreen may show/i)).toBeInTheDocument();
+  expect(screen.getByText(/MajorStealth is free/i)).toBeInTheDocument();
+  // The getting started steps come right after the beta notice
+  const beta = screen.getByText(/is in beta/i), steps = screen.getByText('How to get started:');
+  expect(beta.compareDocumentPosition(steps) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(steps.compareDocumentPosition(screen.getByRole('link', { name: /download for windows/i })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(screen.getByRole('link', { name: 'Tickets' })).toHaveAttribute('href', '/tickets');
   expect(screen.getByRole('link', { name: 'Telegram' })).toHaveAttribute('href', 'https://t.me/MajorPhones');
   expect(screen.getByRole('link', { name: 'support@majorphones.com' })).toHaveAttribute('href', 'mailto:support@majorphones.com');

@@ -59,12 +59,25 @@ const PrivacyBrowser: React.FC = () => {
                 </p>
             </div>
 
+            {/* Getting started */}
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4">
+                <div className="flex items-center justify-center">
+                    <div className="text-center">
+                        <p className="text-blue-300 text-sm font-semibold mb-1">How to get started:</p>
+                        <p className="text-blue-200 text-xs mb-3">MajorStealth is free: you don't pay anything to download it or use it.</p>
+                        <ol className="text-blue-200 text-xs mt-1 space-y-2 text-left">
+                            {steps.map((step, index) => <li key={step}>{index + 1}. {step}</li>)}
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
             {/* Download */}
             <div className="rounded-3xl shadow-2xl border border-slate-700/50 p-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                     <div className="text-left">
                         <h2 className="text-xl font-bold text-white">MajorStealth 1.1.0</h2>
-                        <p className="text-slate-300 text-sm mt-1">Windows 64-bit · Installer, about 120 MB</p>
+                        <p className="text-slate-300 text-sm mt-1">Free · Windows 64-bit · Installer, about 120 MB</p>
                         <p className="text-slate-400 text-sm mt-1">You need a MajorPhones account to sign in to the browser.</p>
                     </div>
                     <a
@@ -110,18 +123,6 @@ const PrivacyBrowser: React.FC = () => {
                             </div>
                         </div>
                     ))}
-                </div>
-            </div>
-
-            {/* Getting started */}
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4">
-                <div className="flex items-center justify-center">
-                    <div className="text-center">
-                        <p className="text-blue-300 text-sm font-semibold mb-3">How to get started:</p>
-                        <ol className="text-blue-200 text-xs mt-1 space-y-2 text-left">
-                            {steps.map((step, index) => <li key={step}>{index + 1}. {step}</li>)}
-                        </ol>
-                    </div>
                 </div>
             </div>
         </div>
