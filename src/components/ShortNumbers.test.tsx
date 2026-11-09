@@ -64,7 +64,14 @@ beforeEach(() => {
   mockNavigate.mockReset();
   mockReads.length = 0;
   mockDocs = {
-    'allCatalog/catalog': { stnUSA: ['Telegram', 'Whatsapp'], stnUK: ['Telegram'], stnUSARegular: ['Discord', 'Whatsapp'] },
+    'allCatalog/catalog': {
+      stnUSA: ['Telegram', 'Whatsapp'], stnUK: ['Telegram'], stnGermany: ['Telegram'],
+      stnUSARegular: ['Discord', 'Whatsapp'], stnUKRegular: ['Gmail', 'Whatsapp'], stnGermanyRegular: ['Kleinanzeigen', 'Whatsapp']
+    },
+    'stnGermany/opt11/services/Whatsapp': { serviceName: 'Whatsapp', price: '2.55', id: 'wa' },
+    'stnUK/opt11/services/Whatsapp': { serviceName: 'Whatsapp', price: '1.02', id: 'wa' },
+    'stnGermany/opt2/services/Telegram': { serviceName: 'Telegram', price: 3.11, id: '7' },
+    'stnGermany/opt11/services/Telegram': { serviceName: 'Telegram', price: '1.80', id: 'tg' },
     'stnUSA/opt777/services/Whatsapp': { serviceName: 'Whatsapp', price: '0.44', id: 'wa' },
     'stnUSA/opt2/services/Telegram': { serviceName: 'Telegram', price: 1.5, id: '845' },
     'stnUSA/opt10/services/Telegram': { serviceName: 'Telegram', price: '0.90', id: '8' },
@@ -84,14 +91,14 @@ describe('choosing the type of number', () => {
     expect(mockReads).toEqual([]);
   });
 
-  test('regular numbers only offer the United States', async () => {
+  test('regular numbers offer the United States, the United Kingdom and Germany', async () => {
     render(<ShortNumbers />);
     await chooseType('Regular');
     expect(screen.getByRole('radio', { name: /^Regular/ })).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByText('Regular numbers are only available in the United States')).toBeInTheDocument();
+    expect(screen.getByText('Regular numbers are available in United States, United Kingdom and Germany')).toBeInTheDocument();
     openCountries();
     expect(screen.getAllByText(/^(United States|United Kingdom|Germany)$/, { selector: 'span' }).map(el => el.textContent))
-      .toEqual(['United States', 'United States']);
+      .toEqual(['United States', 'United States', 'United Kingdom', 'Germany']);
   });
 
   test('premium numbers keep every country', async () => {
@@ -102,14 +109,14 @@ describe('choosing the type of number', () => {
     expect(screen.getByText('Germany', { selector: 'span' })).toBeInTheDocument();
   });
 
-  test('switching to regular after picking another premium country goes back to the United States', async () => {
+  test('switching to regular after picking Germany in premium keeps Germany', async () => {
     render(<ShortNumbers />);
     await chooseType('Premium');
     openCountries();
     await pickCountry('Germany');
     await chooseType('Regular');
-    expect(screen.getByText('United States', { selector: 'span' })).toBeInTheDocument();
-    expect(screen.queryByText('Germany', { selector: 'span' })).not.toBeInTheDocument();
+    expect(screen.getByText('Germany', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.queryByText('United States', { selector: 'span' })).not.toBeInTheDocument();
   });
 });
 
@@ -198,6 +205,71 @@ describe('regular numbers', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Change' }));
     expect(screen.getByRole('radiogroup')).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /^Regular/ })).toHaveAttribute('aria-checked', 'true');
+  });
+});
+
+describe('regular numbers in the United Kingdom and Germany (SMSBulk, option 11)', () => {
+  const goToSearchIn = async (country: string) => {
+    render(<ShortNumbers />);
+    await chooseType('Regular');
+    openCountries();
+    await pickCountry(country);
+    continueToSearch();
+    await serviceInput();
+  };
+
+  test.each([
+    ['Germany', 'Kleinanzeigen', 'stnGermany/opt11/services/Whatsapp', '$2.55', 'https://buyshortgermany-ezeznlhr5a-uc.a.run.app'],
+    ['United Kingdom', 'Gmail', 'stnUK/opt11/services/Whatsapp', '$1.02', 'https://buyshortuk-ezeznlhr5a-uc.a.run.app']
+  ])('%s lists its regular catalog, shows the opt11 price and buys with option 11', async (country, onlyRegular, priceDoc, price, url) => {
+    const fetchMock = mockBuy(200, { success: true, status: 'Pending', number: '491512345678', orderId: 'o1' });
+    await goToSearchIn(country);
+    fireEvent.change(await serviceInput(), { target: { value: onlyRegular.slice(0, 4) } });
+    expect(await screen.findByText(onlyRegular, { selector: 'span' })).toBeInTheDocument();
+    await pickService('whats', 'Whatsapp');
+    search();
+
+    expect(await screen.findByText('Confirm your number')).toBeInTheDocument();
+    expect(screen.getByText('Regular number').parentElement).toHaveTextContent(country);
+    const details = screen.getByText('Service').closest('dl') as HTMLElement;
+    expect(within(details).getByText(price)).toBeInTheDocument();
+    expect(mockReads).toContain(priceDoc);
+    expect(mockReads.some(path => path.endsWith('/*'))).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/history'));
+    const [calledUrl, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(calledUrl).toBe(url);
+    expect(JSON.parse(init.body as string)).toEqual({ serviceId: 'wa', option: 11 });
+  });
+
+  test('a Germany service without an SMSBulk price is not offered', async () => {
+    delete mockDocs['stnGermany/opt11/services/Whatsapp'];
+    await goToSearchIn('Germany');
+    await pickService('whats', 'Whatsapp');
+    search();
+    expect(await screen.findByText('No service available')).toBeInTheDocument();
+  });
+
+  test('without a published Germany regular catalog it says so', async () => {
+    mockDocs['allCatalog/catalog'] = { stnGermany: ['Telegram'], stnUSARegular: ['Whatsapp'] };
+    await goToSearchIn('Germany');
+    expect(await screen.findByText('Regular numbers are temporarily unavailable, please try Premium numbers')).toBeInTheDocument();
+  });
+
+  test('premium Germany keeps reading opt2 only, never SMSBulk', async () => {
+    mockBuy(200, { success: true, status: 'Pending' });
+    render(<ShortNumbers />);
+    await chooseType('Premium');
+    openCountries();
+    await pickCountry('Germany');
+    continueToSearch();
+    await pickService('tele', 'Telegram');
+    search();
+    expect(await screen.findByText('Number options')).toBeInTheDocument();
+    expect(mockReads).toContain('stnGermany/opt2/services/*');
+    expect(mockReads.some(path => path.includes('opt11'))).toBe(false);
+    expect(screen.queryByText('$1.80')).not.toBeInTheDocument();
   });
 });
 

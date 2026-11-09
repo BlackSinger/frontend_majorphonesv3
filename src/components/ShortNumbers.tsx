@@ -30,18 +30,32 @@ interface ServiceOption {
   name: string;
 }
 
-// Regular: single-SMS US numbers at the lowest price (SMSKody, option 777 of buyShortUSA)
+// Regular: single-SMS numbers at the lowest price (SMSKody in the United States, SMSBulk in the United Kingdom and Germany)
 // Premium: the existing options (reusable, area code/carrier, more countries)
 type NumberType = 'regular' | 'premium';
+
+// Where each country's regular numbers come from: catalog of names in allCatalog/catalog,
+// price and id in {collection}/opt{option}/services/{serviceName}, and the option sent to buyShort{Country}
+interface RegularSource {
+  catalogKey: string;
+  collection: string;
+  option: number;
+}
+
+const REGULAR_SOURCES: Record<string, RegularSource> = {
+  'United States': { catalogKey: 'stnUSARegular', collection: 'stnUSA', option: 777 },
+  'United Kingdom': { catalogKey: 'stnUKRegular', collection: 'stnUK', option: 11 },
+  'Germany': { catalogKey: 'stnGermanyRegular', collection: 'stnGermany', option: 11 },
+};
 
 interface RegularOffer {
   id: string;
   serviceName: string;
   price: number;
+  country: string;
 }
 
-const REGULAR_OPTION = 777;
-// buyShortUSA waits 5 minutes for the SMS, then cancels and refunds
+// buyShortUSA, buyShortUK and buyShortGermany wait 5 minutes for the SMS, then cancel and refund
 const REGULAR_EXPIRATION_MINUTES = 5;
 
 const ShortNumbers: React.FC = () => {
@@ -214,8 +228,9 @@ const ShortNumbers: React.FC = () => {
     // }
   ];
 
-  // Regular numbers only exist in the United States; premium keeps every country above
-  const availableCountries = numberType === 'regular' ? countries.filter(c => c.code === 'US') : countries;
+  // Regular numbers exist only where REGULAR_SOURCES has a provider; premium keeps every country above
+  const regularCountries = countries.filter(c => REGULAR_SOURCES[c.name]);
+  const availableCountries = numberType === 'regular' ? regularCountries : countries;
 
   const formatCountryList = (names: string[]) => names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names.join('');
 
@@ -239,7 +254,7 @@ const ShortNumbers: React.FC = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
         </svg>
       ),
-      features: ['United States numbers', 'Receives 1 SMS', `Active for ${REGULAR_EXPIRATION_MINUTES} minutes`]
+      features: [formatCountryList(regularCountries.map(c => c.name)), 'Receives 1 SMS', `Active for ${REGULAR_EXPIRATION_MINUTES} minutes`]
     },
     {
       type: 'premium',
@@ -282,11 +297,12 @@ const ShortNumbers: React.FC = () => {
       //     .map(name => ({ id: name, name }))
       //     .sort((a, b) => a.name.localeCompare(b.name));
       // } else if (selectedCountry === 'Germany') {
-      if (numberType === 'regular') {
+      const regularSource = REGULAR_SOURCES[selectedCountry];
+      if (numberType === 'regular' && regularSource) {
         const catalogRef = doc(db, 'allCatalog', 'catalog');
         const catalogSnap = await getDoc(catalogRef);
         const catalogData = catalogSnap.data();
-        const regularNames: string[] = catalogData?.stnUSARegular || [];
+        const regularNames: string[] = catalogData?.[regularSource.catalogKey] || [];
 
         // Without a published catalog every search would fall back to "Service not listed"
         if (regularNames.length === 0) {
@@ -719,7 +735,8 @@ const ShortNumbers: React.FC = () => {
     setNumberType(type);
     setRegularOffer(null);
     setIsCountryDropdownOpen(false);
-    if (type === 'regular') {
+    // Keep the chosen country when it also has regular numbers
+    if (type === 'regular' && !REGULAR_SOURCES[selectedCountry]) {
       setSelectedCountry('United States');
     }
   };
@@ -734,9 +751,18 @@ const ShortNumbers: React.FC = () => {
 
   const handleRegularPurchase = () => {
     if (!regularOffer) return;
+    const source = REGULAR_SOURCES[regularOffer.country];
+    if (!source) return;
     globalPurchaseData.serviceId = regularOffer.id;
-    globalPurchaseData.option = REGULAR_OPTION;
-    handleBuyShortUSAPurchase(`${regularOffer.id}-opt${REGULAR_OPTION}`);
+    globalPurchaseData.option = source.option;
+    const uniqueOptionId = `${regularOffer.id}-opt${source.option}`;
+    if (regularOffer.country === 'United Kingdom') {
+      handleBuyShortUKPurchase(uniqueOptionId);
+    } else if (regularOffer.country === 'Germany') {
+      handleBuyShortGermanyPurchase(uniqueOptionId);
+    } else {
+      handleBuyShortUSAPurchase(uniqueOptionId);
+    }
   };
 
   const handlePurchaseClick = (option: NumberOption) => {
@@ -882,9 +908,10 @@ const ShortNumbers: React.FC = () => {
     try {
       let allNumbers: NumberOption[] = [];
 
-      if (numberType === 'regular') {
+      const regularSource = REGULAR_SOURCES[selectedCountry];
+      if (numberType === 'regular' && regularSource) {
         // The document id is the service name, so the current price is a single read
-        const serviceSnap = await getDoc(doc(db, 'stnUSA', `opt${REGULAR_OPTION}`, 'services', selectedService.name));
+        const serviceSnap = await getDoc(doc(db, regularSource.collection, `opt${regularSource.option}`, 'services', selectedService.name));
         const data = serviceSnap.data();
         const price = parseFloat(data?.price);
         if (!serviceSnap.exists() || !data?.id || !Number.isFinite(price)) {
@@ -892,7 +919,7 @@ const ShortNumbers: React.FC = () => {
           setShowErrorModal(true);
           return;
         }
-        setRegularOffer({ id: data.id, serviceName: data.serviceName || selectedService.name, price });
+        setRegularOffer({ id: data.id, serviceName: data.serviceName || selectedService.name, price, country: selectedCountry });
         return;
       }
 
@@ -1149,7 +1176,7 @@ const ShortNumbers: React.FC = () => {
           <div className="text-center">
             <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
             <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
-              <li>• Regular numbers are United States numbers at the lowest price that receive 1 SMS. Premium numbers include more countries, reusable options and area code/carrier selection</li>
+              <li>• Regular numbers are United States, United Kingdom and Germany numbers at the lowest price that receive 1 SMS. Premium numbers include reusable options and area code/carrier selection</li>
               <li>• They can only be reused multiple times if you purchase the "Reusable: Yes" option, otherwise they can only receive just 1 SMS</li>
               <li>• You can use the reuse feature for 9-10 minutes</li>
               <li>• You can choose area code and/or carrier if you purchase the "Area Code/Carrier: Yes" option, otherwise they will be randomly assigned</li>
@@ -1287,7 +1314,7 @@ const ShortNumbers: React.FC = () => {
                         )}
                       </div>
                       {numberType === 'regular' && (
-                        <p className="text-slate-400 text-xs text-left">Regular numbers are only available in the United States</p>
+                        <p className="text-slate-400 text-xs text-left">Regular numbers are available in {formatCountryList(regularCountries.map(c => c.name))}</p>
                       )}
                     </div>
                   )}
@@ -1344,8 +1371,8 @@ const ShortNumbers: React.FC = () => {
                     <div className="text-left">
                       <p className="text-white font-bold text-md">Regular number</p>
                       <p className="text-slate-400 text-sm flex items-center">
-                        {countries.find(c => c.name === 'United States')?.flag}
-                        United States
+                        {countries.find(c => c.name === regularOffer.country)?.flag}
+                        {regularOffer.country}
                       </p>
                     </div>
                   </div>

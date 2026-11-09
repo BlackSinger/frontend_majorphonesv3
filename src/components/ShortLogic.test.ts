@@ -43,7 +43,8 @@ describe('regular numbers (opt 777)', () => {
 });
 
 describe('the other options keep the 2:45 wait', () => {
-  test.each([1, 2, 10])('opt %i', (opt) => {
+  // opt 11 = regular UK/Germany numbers (SMSBulk), which SMSBulk does not let cancel in the first 2 minutes
+  test.each([1, 2, 10, 11])('opt %i', (opt) => {
     expect(getShortAvailableActions(record({ opt, createdAt: minutesAgo(1) }))).toEqual([]);
     expect(getShortAvailableActions(record({ opt, createdAt: minutesAgo(3) }))).toEqual(['Cancel']);
   });

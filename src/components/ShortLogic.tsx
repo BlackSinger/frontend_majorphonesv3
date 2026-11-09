@@ -143,6 +143,9 @@ export const handleCancelShort = async (
         errorMsg = 'Please refresh the page and try again';
       } else if (data.message === 'Error cancelling number') {
         errorMsg = 'This number could not be cancelled, please try again or contact our customer support';
+      } else if (data.message === 'This number cannot be cancelled yet, try again in a minute') {
+        // Regular UK/Germany numbers (SMSBulk) cannot be cancelled during their first minutes
+        errorMsg = 'This number cannot be cancelled yet, please try again in a minute';
       } else if (data.message === 'Error updating balance') {
         errorMsg = 'Please refresh the page and try again';
       } else if (data.message === 'Internal Server Error') {
