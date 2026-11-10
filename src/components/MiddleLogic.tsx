@@ -227,8 +227,15 @@ export const handleCancelMiddle = async (
         errorMsg = 'You are not authenticated or your token is invalid';
       } else if (data.message === 'Bad Request: Missing orderId' || data.message === 'Order not found') {
         errorMsg = 'Please refresh the page and try again';
-      } else if (data.message === 'Error cancelling number') {
+      } else if (data.message === 'Error cancelling number' || data.message === 'Error cancelling middle' || data.message === 'Number cannot be cancelled') {
         errorMsg = 'This number could not be cancelled, please try again or contact our customer support';
+      } else if (data.message === 'This number cannot be cancelled yet, try again in a minute') {
+        // Regular middle numbers (SMSBulk) cannot be cancelled during their first 2 minutes
+        errorMsg = 'This number cannot be cancelled yet, please try again in a minute';
+      } else if (data.message === 'Number can only be cancelled within 20 minutes of the purchase') {
+        errorMsg = 'Regular numbers can only be cancelled within 20 minutes of the purchase';
+      } else if (data.message === 'Number cannot be cancelled after receiving an SMS') {
+        errorMsg = 'This number cannot be cancelled because it already received an SMS';
       } else if (data.message === 'Error updating balance') {
         errorMsg = 'Please refresh the page and try again';
       } else if (data.message === 'Internal Server Error') {
@@ -296,8 +303,10 @@ export const handleActivateMiddle = async (
         errorMsg = 'You are not authenticated or your token is invalid';
       } else if (data.message === 'Bad Request: Missing orderId' || data.message === 'Order not found') {
         errorMsg = 'Please refresh the page and try again';
-      } else if (data.message === 'Number is not inactive') {
+      } else if (data.message === 'Number is not inactive' || data.message === 'Order cannot be activated') {
         errorMsg = 'This number is not inactive and cannot be activated';
+      } else if (data.message === 'Number expired') {
+        errorMsg = 'This number has expired';
       } else if (data.message === 'Error activating number') {
         errorMsg = 'This number could not be activated, please try again or contact our customer support';
       } else if (data.message === 'Error updating balance') {

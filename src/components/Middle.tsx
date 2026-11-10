@@ -32,6 +32,12 @@ interface ServiceOption {
   name: string;
 }
 
+// Regular: SMSBulk rentals of 1 or 7 days, the lowest price for most services (option 11 of buyMiddleUSA)
+// Premium: the existing options (TextVerified and Getatext, 1/7/14 days, area code)
+type NumberType = 'regular' | 'premium';
+
+const REGULAR_OPTION = 11;
+
 const Middle: React.FC = () => {
   const navigate = useNavigate();
   const [user] = useAuthState(auth);
@@ -61,6 +67,9 @@ const Middle: React.FC = () => {
   const [areaCodeSearchTerm, setAreaCodeSearchTerm] = useState('');
 
   const [serviceAvailability, setServiceAvailability] = useState<{ inOpt4: boolean; inOpt5: boolean }>({ inOpt4: false, inOpt5: false });
+
+  const [numberType, setNumberType] = useState<NumberType | null>(null);
+  const [isSetupComplete, setIsSetupComplete] = useState(false);
 
   const areaCodeData: { code: string; state: string }[] = [
     { code: '205', state: 'Alabama' }, { code: '251', state: 'Alabama' }, { code: '256', state: 'Alabama' }, { code: '334', state: 'Alabama' }, { code: '938', state: 'Alabama' },
@@ -144,6 +153,45 @@ const Middle: React.FC = () => {
     }
   ];
 
+  const numberTypeOptions: {
+    type: NumberType;
+    title: string;
+    tagline: string;
+    taglineClass: string;
+    iconClass: string;
+    icon: React.ReactNode;
+    features: string[];
+  }[] = [
+    {
+      type: 'regular',
+      title: 'Regular',
+      tagline: 'Lowest price',
+      taglineClass: 'text-emerald-400',
+      iconClass: 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-400/20',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+        </svg>
+      ),
+      features: ['United States numbers', 'Rent for 1 or 7 days', 'Lowest price for most services']
+    },
+    {
+      type: 'premium',
+      title: 'Premium',
+      tagline: 'More options',
+      taglineClass: 'text-amber-300',
+      iconClass: 'bg-amber-500/10 text-amber-300 ring-1 ring-amber-400/20',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M4 17.5 2.5 7l5.25 4.25L12 3.5l4.25 7.75L21.5 7 20 17.5H4z" />
+          <path strokeLinecap="round" strokeWidth="1.8" d="M4.5 21h15" />
+          <circle cx="12" cy="13.75" r="1.4" fill="currentColor" stroke="none" />
+        </svg>
+      ),
+      features: ['United States numbers', 'Rent for 1, 7 or 14 days', 'Choose area code']
+    }
+  ];
+
   const loadServices = async () => {
     try {
       setIsLoadingServices(true);
@@ -157,7 +205,15 @@ const Middle: React.FC = () => {
       const catalogRef = doc(db, 'allCatalog', 'catalog');
       const catalogSnap = await getDoc(catalogRef);
       const catalogData = catalogSnap.data();
-      const middleUSANames: string[] = catalogData?.middleUSA || [];
+      const middleUSANames: string[] = (numberType === 'regular' ? catalogData?.middleUSARegular : catalogData?.middleUSA) || [];
+
+      // Without a published regular catalog every search would fall back to "Service not listed"
+      if (numberType === 'regular' && middleUSANames.length === 0) {
+        setHasError(true);
+        setErrorMessage('Regular numbers are temporarily unavailable, please try Premium numbers');
+        setShowErrorModal(true);
+        return;
+      }
 
       const servicesList: ServiceOption[] = middleUSANames
         .map(name => ({ id: name, name }))
@@ -192,9 +248,24 @@ const Middle: React.FC = () => {
     }
   };
 
+  // The catalog depends on the number type, so it loads once the type is chosen
   useEffect(() => {
-    loadServices();
-  }, []);
+    if (numberType) {
+      loadServices();
+    }
+  }, [numberType]);
+
+  const handleNumberTypeSelect = (type: NumberType) => {
+    setNumberType(type);
+    setIsCountryDropdownOpen(false);
+  };
+
+  const handleChangeSetup = () => {
+    setIsSetupComplete(false);
+    setSelectedService(null);
+    setSearchTerm('');
+    setIsServiceDropdownOpen(false);
+  };
 
   const handleErrorModalClose = () => {
     setShowErrorModal(false);
@@ -256,6 +327,10 @@ const Middle: React.FC = () => {
   }, []);
 
   const handlePurchaseClick = (option: NumberOption) => {
+    if (numberType === 'regular') {
+      handleRegularPurchase(option);
+      return;
+    }
 
     if (serviceAvailability.inOpt4 && !serviceAvailability.inOpt5) {
       handleDirectPurchase(option);
@@ -340,6 +415,58 @@ const Middle: React.FC = () => {
           errorMsg = 'Please contact our customer support';
         } else if (data.message === 'Service unavailable') {
           errorMsg = 'We ran out of SIM cards, try again later';
+        }
+
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      setErrorMessage('Please contact our customer support');
+      setShowErrorModal(true);
+    } finally {
+      setPurchasingOptionId(null);
+    }
+  };
+
+  // Regular numbers: the service document id is its name, so buyMiddleUSA gets it directly with option 11
+  const handleRegularPurchase = async (option: NumberOption) => {
+    const currentUser = getAuth().currentUser;
+    if (!currentUser) {
+      setErrorMessage('You are not authenticated or your token is invalid');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setPurchasingOptionId(`${option.duration}days-${option.id}`);
+
+    try {
+      const idToken = await currentUser.getIdToken();
+      const response = await fetch('https://buymiddleusa-ezeznlhr5a-uc.a.run.app', {
+        method: 'POST',
+        headers: {
+          'authorization': `${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ serviceId: globalSearchData.name, duration: option.duration, option: REGULAR_OPTION })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        navigate('/history');
+      } else {
+        let errorMsg = 'We ran out of SIM cards, try again later';
+
+        if (data.message === 'Unauthorized') {
+          errorMsg = 'You are not authenticated or your token is invalid';
+        } else if (data.message === 'Invalid serviceId' || data.message === 'Invalid duration') {
+          errorMsg = 'Please refresh the page and try again';
+        } else if (data.message === 'You cannot rent, because you have used Amazon Pay') {
+          errorMsg = 'Users that deposit with Amazon Pay cannot purchase middle numbers';
+        } else if (data.message === 'Insufficient balance') {
+          errorMsg = 'You do not have enough balance to make the purchase';
+        } else if (data.message === 'Internal Server Error') {
+          errorMsg = 'Please contact our customer support';
         }
 
         setErrorMessage(errorMsg);
@@ -465,6 +592,36 @@ const Middle: React.FC = () => {
       const selectedCountryData = countries.find(c => c.name === selectedCountry);
       const countryCode = selectedCountryData?.code || 'US';
       const countryPrefix = selectedCountryData?.prefix || '+1';
+
+      if (numberType === 'regular') {
+        // The document id is the service name, so both durations come from a single read
+        const serviceSnap = await getDoc(doc(db, 'middleUSA', `opt${REGULAR_OPTION}`, 'services', selectedService.name));
+        const data = serviceSnap.exists() ? serviceSnap.data() : null;
+        const regularNumbers: NumberOption[] = [];
+        for (const [duration, field] of [[1, 'priceOneDay'], [7, 'priceSevenDays']] as const) {
+          const price = Number(data?.[field]);
+          if (!data?.id || !Number.isFinite(price) || price <= 0) continue;
+          regularNumbers.push({
+            id: `${duration === 1 ? '1day' : '7days'}-${data.id}`,
+            number: `${countryPrefix}-XXXXXX`,
+            priceOneDay: duration === 1 ? price : 0,
+            priceSevenDays: duration === 7 ? price : 0,
+            priceFourteenDays: 0,
+            country: selectedCountry,
+            countryCode: countryCode,
+            countryPrefix: countryPrefix,
+            duration
+          });
+        }
+        if (regularNumbers.length === 0) {
+          setErrorMessage('No service available');
+          setShowErrorModal(true);
+          return;
+        }
+        setSearchResults(regularNumbers);
+        setHasSearched(true);
+        return;
+      }
 
       const searchPromises = ['opt4', 'opt5'].map(async (optDoc) => {
         const servicesRef = collection(db, 'middleUSA', optDoc, 'services');
@@ -635,7 +792,8 @@ const Middle: React.FC = () => {
           <div className="text-center">
             <p className="text-blue-300 text-sm font-semibold mb-3">Important information about these numbers:</p>
             <ul className="text-blue-200 text-xs mt-1 space-y-2 text-left">
-              <li>• You can choose area code for some middle numbers</li>
+              <li>• Regular numbers have the lowest price for most services and last 1 or 7 days. They can be cancelled between 2 and 20 minutes after the purchase if no code has arrived. Premium numbers include 14 days and area code selection</li>
+              <li>• You can choose area code for some premium middle numbers</li>
               <li>• These numbers last 1, 7 or 14 days depending on the option specified</li>
               <li>• Their duration can only be extended before they expire</li>
               <li>• After purchased, some can be cancelled and some can't</li>
@@ -660,7 +818,137 @@ const Middle: React.FC = () => {
       {/* Main Content Section */}
       <div className={`rounded-3xl shadow-2xl border border-slate-700/50 relative ${(isCountryDropdownOpen || isServiceDropdownOpen) ? 'overflow-visible' : 'overflow-hidden'}`}>
 
-        {!hasSearched ? (
+        {!isSetupComplete ? (
+          /* SETUP VIEW: number type and country */
+          <div className="p-6">
+            <div className="relative z-10 mx-auto">
+              <div className="text-left mb-9">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-emerald-100 to-green-100 bg-clip-text text-transparent mb-2">
+                  Choose your number
+                </h1>
+                <p className="text-slate-300 text-md">Select the type of number and the country you need</p>
+              </div>
+
+              <div className="space-y-9">
+                <div className="space-y-6">
+                  {/* Number Type */}
+                  <div className="space-y-3">
+                    <label id="number-type-label" className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
+                      Which type of number do you want?
+                    </label>
+                    <div role="radiogroup" aria-labelledby="number-type-label" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {numberTypeOptions.map((option) => {
+                        const isSelected = numberType === option.type;
+                        return (
+                          <button
+                            key={option.type}
+                            type="button"
+                            role="radio"
+                            aria-checked={isSelected}
+                            onClick={() => handleNumberTypeSelect(option.type)}
+                            className={`flex flex-col h-full text-left p-5 sm:p-6 rounded-2xl border-2 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isSelected
+                              ? 'border-emerald-500/60 bg-emerald-500/10 shadow-lg shadow-emerald-500/10'
+                              : 'border-slate-600/50 bg-slate-800/50 hover:border-slate-500/50 hover:bg-slate-800/70'
+                              }`}
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-center gap-4 min-w-0">
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${option.iconClass}`}>
+                                  {option.icon}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-white font-bold text-lg leading-6">{option.title}</p>
+                                  <p className={`mt-1 text-[11px] leading-4 font-semibold uppercase tracking-[0.14em] ${option.taglineClass}`}>{option.tagline}</p>
+                                </div>
+                              </div>
+                              <span className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors duration-300 ${isSelected ? 'border-emerald-400 bg-emerald-400' : 'border-slate-500'}`}>
+                                {isSelected && (
+                                  <svg className="w-3 h-3 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4.5 12.75l6 6 9-13.5" />
+                                  </svg>
+                                )}
+                              </span>
+                            </div>
+                            <ul className="mt-5 pt-4 border-t border-slate-700/60 space-y-3">
+                              {option.features.map((feature) => (
+                                <li key={feature} className="flex items-start gap-2.5 text-sm leading-5 text-slate-300">
+                                  <svg className="w-4 h-4 mt-0.5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.5 12.75l6 6 9-13.5" />
+                                  </svg>
+                                  {feature}
+                                </li>
+                              ))}
+                            </ul>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Country Selection */}
+                  {numberType && (
+                    <div className="space-y-3">
+                      <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
+                        Select Country
+                      </label>
+                      <div className="relative group" ref={dropdownRef}>
+                        <div
+                          onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                          className="w-full pl-12 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
+                        >
+                          <div className="flex items-center">
+                            <div className="absolute left-4">
+                              {countries.find(c => c.name === selectedCountry)?.flag}
+                            </div>
+                            <span>{selectedCountry}</span>
+                          </div>
+                        </div>
+
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+
+                        {isCountryDropdownOpen && (
+                          <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
+                            {countries.map((country) => (
+                              <div
+                                key={country.code}
+                                onClick={() => {
+                                  setSelectedCountry(country.name);
+                                  setIsCountryDropdownOpen(false);
+                                }}
+                                className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                              >
+                                <div className="mr-1">
+                                  {country.flag}
+                                </div>
+                                <span className="text-white">{country.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Continue Button */}
+                <div className="flex flex-col items-center space-y-3">
+                  <button
+                    onClick={() => setIsSetupComplete(true)}
+                    disabled={!numberType}
+                    className="group px-8 py-3 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:via-green-500 hover:to-teal-500 text-white font-bold text-md rounded-2xl transition-all duration-300 shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30 hover:border-emerald-400/50 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-w-[150px]"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <span className="relative z-10 group-hover:tracking-wide transition-all duration-300">Continue</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : !hasSearched ? (
           /* SEARCH VIEW */
           <div className="p-6">
             <div className="relative z-10 mx-auto">
@@ -670,6 +958,30 @@ const Middle: React.FC = () => {
                   Search For Numbers
                 </h1>
                 <p className="text-slate-300 text-md">Find the service you are looking for</p>
+              </div>
+
+              {/* Number type and country chosen in the previous step */}
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 mb-6 bg-slate-800/50 border border-slate-600/50 rounded-2xl">
+                <div className="flex items-center flex-wrap gap-3 text-sm">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${numberType === 'regular'
+                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                    : 'bg-amber-500/10 text-amber-300 border-amber-400/30'
+                    }`}>
+                    {numberType === 'regular' ? 'Regular' : 'Premium'}
+                  </span>
+                  <span className="flex items-center text-white">
+                    {countries.find(c => c.name === selectedCountry)?.flag}
+                    {selectedCountry}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleChangeSetup}
+                  disabled={isSearching}
+                  className="text-sm font-semibold text-emerald-400 hover:text-emerald-300 underline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Change
+                </button>
               </div>
 
               {/* Search Form */}
@@ -716,52 +1028,6 @@ const Middle: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Country Selection */}
-                    <div className="space-y-3">
-                      <label className="block text-sm font-semibold text-emerald-300 uppercase tracking-wider">
-                        Select Country
-                      </label>
-                      <div className="relative group" ref={dropdownRef}>
-                        <div
-                          onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-                          className="w-full pl-12 pr-10 py-3 bg-slate-800/50 border-2 border-slate-600/50 rounded-2xl text-white cursor-pointer text-sm shadow-inner hover:border-slate-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 transition-all duration-300 flex items-center justify-between"
-                        >
-                          <div className="flex items-center">
-                            <div className="absolute left-4">
-                              {countries.find(c => c.name === selectedCountry)?.flag}
-                            </div>
-                            <span>{selectedCountry}</span>
-                          </div>
-                        </div>
-
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                          <svg className={`h-6 w-6 text-emerald-400 transition-transform duration-300 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-
-                        {/* Custom Dropdown Options */}
-                        {isCountryDropdownOpen && (
-                          <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600/50 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
-                            {countries.map((country) => (
-                              <div
-                                key={country.code}
-                                onClick={() => {
-                                  setSelectedCountry(country.name);
-                                  setIsCountryDropdownOpen(false);
-                                }}
-                                className="flex items-center px-4 py-3 hover:bg-slate-700/50 cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-                              >
-                                <div className="mr-1">
-                                  {country.flag}
-                                </div>
-                                <span className="text-white">{country.name}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
                   </div>
 
                 </div>
@@ -892,7 +1158,7 @@ const Middle: React.FC = () => {
                             </div>
                             <div className="flex items-center justify-between text-md">
                               <span className="text-slate-300 font-medium">Renewable:</span>
-                              <span className="text-emerald-400 font-semibold">Yes</span>
+                              <span className="text-emerald-400 font-semibold">{numberType === 'regular' ? 'No' : 'Yes'}</span>
                             </div>
                           </div>
                           {/* Purchase Button - full width */}
@@ -934,7 +1200,7 @@ const Middle: React.FC = () => {
 
                         <div className="hidden md:flex md:items-center md:space-x-2 text-md">
                           <span className="text-slate-300 font-medium">Renewable:</span>
-                          <span className="text-emerald-400 font-semibold">Yes</span>
+                          <span className="text-emerald-400 font-semibold">{numberType === 'regular' ? 'No' : 'Yes'}</span>
                         </div>
 
                         <button
