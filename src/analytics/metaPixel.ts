@@ -1,4 +1,5 @@
 import type { User } from 'firebase/auth';
+import { readGaClientId, readGaSessionId } from './gaCookies';
 
 // "Major Phones" pixel from Events Manager (the ID is public)
 export const META_PIXEL_ID = process.env.REACT_APP_META_PIXEL_ID || '1650951706375195';
@@ -157,6 +158,9 @@ export const syncMetaContext = async (user: User) => {
       fbc: getFbc(),
       attribution: readAttribution(),
       eventSourceUrl: window.location.href,
+      // Lets server-side GA purchases join this visit
+      gaClientId: readGaClientId(),
+      gaSessionId: readGaSessionId(),
     });
     for (let attempt = 0; attempt < 3; attempt++) {
       const idToken = await user.getIdToken();

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
+import { identifyAnalyticsUser } from '../analytics/googleAnalytics';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -27,8 +28,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Only set user as current if they exist AND their email is verified
       if (user && user.emailVerified) {
         setCurrentUser(user);
+        identifyAnalyticsUser(user.uid);
       } else {
         setCurrentUser(null);
+        identifyAnalyticsUser(null);
       }
       setLoading(false);
     });

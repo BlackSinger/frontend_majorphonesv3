@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+import { initializeAnalytics } from "firebase/analytics";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 // TODO: Add SDKs for Firebase products that you want to use
@@ -20,7 +20,17 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// The first page_view goes out before Firebase Auth restores the session: start with the uid saved on
+// the last sign-in so every hit carries user_id (googleAnalytics.ts keeps it up to date)
+const readStoredUid = () => {
+  try {
+    return localStorage.getItem('mp_ga_uid') || undefined;
+  } catch {
+    return undefined;
+  }
+};
+const storedUid = readStoredUid();
+const analytics = initializeAnalytics(app, storedUid ? { config: { user_id: storedUid } } : {});
 const auth = getAuth(app);
 const db = getFirestore(app);
 
